@@ -71,6 +71,9 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
+                    <!-- UpdateSourceTrigger=PropertyChanged is required: inside a DataGrid, cell bindings join the row's
+                         BindingGroup, which makes their default trigger Explicit (only on row edit commit), so
+                         without it the slider/toggle never write back to the view model. -->
                     <DataGridTemplateColumn Header="Volume" Width="190">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -80,7 +83,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="38"/>
                                     </Grid.ColumnDefinitions>
-                                    <ToggleButton Grid.Column="0" IsChecked="{Binding IsMuted, Mode=TwoWay}"
+                                    <ToggleButton Grid.Column="0" IsChecked="{Binding IsMuted, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   Width="26" Height="22" Margin="0,0,4,0" Padding="0">
                                         <ToggleButton.Style>
                                             <Style TargetType="ToggleButton">
@@ -124,7 +127,7 @@
                                         </TextBlock>
                                     </ToggleButton>
                                     <Slider Grid.Column="1" Minimum="0" Maximum="100" VerticalAlignment="Center"
-                                            Value="{Binding VolumePercent, Mode=TwoWay}"
+                                            Value="{Binding VolumePercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             IsMoveToPointEnabled="True" SmallChange="1" LargeChange="10"/>
                                     <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right"
                                                Text="{Binding VolumePercent, StringFormat={}{0:0}%}"/>
