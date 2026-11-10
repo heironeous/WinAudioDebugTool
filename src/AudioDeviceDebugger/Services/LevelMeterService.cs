@@ -5,9 +5,14 @@ using NAudio.Wave;
 namespace AudioDeviceDebugger.Services;
 
 /// <summary>
-/// Polls every monitored device's peak meter from one dedicated MTA thread.
+/// Polls every monitored device's peak meter from one dedicated MTA thread, and keeps a silent capture stream open on
+/// at most one input device (the selected one) so its meter reads live levels.
 /// </summary>
 /// <remarks>
+/// Capture streams are deliberately limited: opening a headset's microphone switches Bluetooth headsets (and USB
+/// dongles such as Jabra Link / Poly BT700) into call / hands-free mode, degrading their playback quality. Without a
+/// stream an input's meter only moves while some other app (or this tool's own mic test) is recording from it.
+///
 /// All Core Audio objects (enumerator, devices, meters, capture streams) are created, used and released on that
 /// one thread. They can't be handed across apartments: an <c>IMMDevice</c> created on the WPF UI (STA) thread and
 /// used from a timer thread fails every call with E_NOINTERFACE, because the interface has no proxy/stub.
@@ -18,6 +23,7 @@ public sealed class LevelMeterService : ILevelMeterService
 
     private readonly object _lock = new();
     private readonly HashSet<string> _wanted = new();
+    private string? _captureDeviceId;
     private readonly ManualResetEventSlim _wake = new(false);
     private readonly Thread _thread;
     private TimeSpan _interval = TimeSpan.FromMilliseconds(100);
@@ -49,6 +55,16 @@ public sealed class LevelMeterService : ILevelMeterService
         }
     }
 
+    public void SetCaptureStreamDevice(string? deviceId)
+    {
+        lock (_lock)
+        {
+            if (_captureDeviceId == deviceId) return;
+            _captureDeviceId = deviceId;
+        }
+        _wake.Set(); // apply now rather than on the next poll tick, so the previous mic closes promptly
+    }
+
     private void PollLoop()
     {
         var monitors = new Dictionary<string, Monitor>();
@@ -60,10 +76,12 @@ public sealed class LevelMeterService : ILevelMeterService
             {
                 HashSet<string> wanted;
                 TimeSpan interval;
+                string? captureDeviceId;
                 lock (_lock)
                 {
                     wanted = new HashSet<string>(_wanted);
                     interval = _interval;
+                    captureDeviceId = _captureDeviceId;
                 }
 
                 // Close what's no longer wanted (also ends the capture stream for inputs).
@@ -94,6 +112,12 @@ public sealed class LevelMeterService : ILevelMeterService
                     monitors[id] = monitor;
                 }
 
+                // Keep a capture stream open only on the chosen input; close it everywhere else.
+                foreach (var (id, monitor) in monitors)
+                {
+                    monitor.SetCaptureStreamOpen(id == captureDeviceId);
+                }
+
                 foreach (var (id, monitor) in monitors.ToList())
                 {
                     if (!TryPoll(id, monitor))
@@ -107,6 +131,7 @@ public sealed class LevelMeterService : ILevelMeterService
                 }
 
                 _wake.Wait(interval);
+                _wake.Reset();
             }
         }
         finally
@@ -159,14 +184,18 @@ public sealed class LevelMeterService : ILevelMeterService
     /// <summary>One metered device. Owned by (and only touched from) the polling thread.</summary>
     private sealed class Monitor : IDisposable
     {
-        private readonly MMDevice _device;
-        private readonly WasapiCapture? _capture;
+        private static readonly TimeSpan RetryCaptureAfter = TimeSpan.FromSeconds(2);
 
-        private Monitor(MMDevice device, AudioMeterInformation meter, WasapiCapture? capture)
+        private readonly MMDevice _device;
+        private readonly bool _isCapture;
+        private WasapiCapture? _capture;
+        private DateTime _nextCaptureAttempt;
+
+        private Monitor(MMDevice device, AudioMeterInformation meter)
         {
             _device = device;
+            _isCapture = device.DataFlow == DataFlow.Capture;
             Meter = meter;
-            _capture = capture;
         }
 
         public AudioMeterInformation Meter { get; }
@@ -182,10 +211,7 @@ public sealed class LevelMeterService : ILevelMeterService
                     device.Dispose();
                     return null;
                 }
-
-                var meter = device.AudioMeterInformation;
-                var capture = device.DataFlow == DataFlow.Capture ? TryStartSilentCapture(device) : null;
-                return new Monitor(device, meter, capture);
+                return new Monitor(device, device.AudioMeterInformation);
             }
             catch
             {
@@ -194,36 +220,52 @@ public sealed class LevelMeterService : ILevelMeterService
             }
         }
 
-        /// <summary>Opens a shared-mode capture stream whose data is thrown away, purely so Windows feeds the
-        /// endpoint's peak meter. Fails (returns null) e.g. if another app holds the mic in exclusive mode or mic
-        /// access is blocked in Windows privacy settings — the meter then just reads 0.</summary>
-        private static WasapiCapture? TryStartSilentCapture(MMDevice device)
+        /// <summary>Opens or closes the silent capture stream (inputs only; no-op for outputs). A failed open — e.g.
+        /// another app holds the mic in exclusive mode, or mic access is blocked in Windows privacy settings — is
+        /// retried every couple of seconds while still wanted; the meter just reads 0 meanwhile.</summary>
+        public void SetCaptureStreamOpen(bool open)
         {
+            if (!_isCapture) return;
+
+            if (!open)
+            {
+                CloseCapture();
+                return;
+            }
+            if (_capture is not null || DateTime.UtcNow < _nextCaptureAttempt) return;
+
             WasapiCapture? capture = null;
             try
             {
-                capture = new WasapiCapture(device);
-                capture.DataAvailable += (_, _) => { };
+                capture = new WasapiCapture(_device);
+                capture.DataAvailable += (_, _) => { }; // data discarded; the stream only feeds the endpoint meter
                 capture.StartRecording();
-                return capture;
+                _capture = capture;
             }
             catch
             {
                 capture?.Dispose();
-                return null;
+                _nextCaptureAttempt = DateTime.UtcNow + RetryCaptureAfter;
             }
         }
 
-        public void Dispose()
+        private void CloseCapture()
         {
+            if (_capture is null) return;
             try
             {
-                _capture?.Dispose(); // stops recording and joins NAudio's capture thread
+                _capture.Dispose(); // stops recording and joins NAudio's capture thread
             }
             catch
             {
                 // Best-effort; device may already be gone.
             }
+            _capture = null;
+        }
+
+        public void Dispose()
+        {
+            CloseCapture();
             _device.Dispose();
         }
     }

@@ -125,6 +125,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (!SetField(ref _selectedDevice, value)) return;
             OnPropertyChanged(nameof(CanSetDefaults));
+            // Hold a microphone open (so its meter is live) only while it's the selected row; selecting anything
+            // else closes it. A running mic test keeps its own capture open regardless of selection.
+            _levelMeterService.SetCaptureStreamDevice(
+                value?.Device.Direction == AudioDirection.Input ? value.Device.Id : null);
             LoadSelectedDeviceDetails(value);
         }
     }

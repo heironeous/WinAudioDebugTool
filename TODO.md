@@ -75,8 +75,11 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Real-time peak-level meter per device using `IAudioMeterInformation`
       — `LevelMeterService`. All Core Audio objects live on one dedicated
       MTA polling thread (IMMDevice can't cross from the UI STA: E_NOINTERFACE).
-      Inputs get a silent shared-mode capture stream, since Windows only
-      feeds a capture endpoint's meter while something records from it
+      Windows only feeds an input's meter while something records from it,
+      so the *selected* input (only) gets a silent shared-mode capture
+      stream; it closes when the selection moves. Opening a headset mic
+      switches it into call/hands-free mode, so no mic is held open otherwise
+      (a running mic test keeps its own capture open while recording)
 - [x] Rolling graph (time-series) for the selected device — `LevelGraph`
       control in the detail panel
 - [x] Simultaneous mini-meters next to every device in the list — a live
