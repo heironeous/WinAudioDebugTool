@@ -98,6 +98,11 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     are drawn in the `ListCell` template instead. Setting `CellStyle` doesn't remove the theme style's triggers, so
     pin `Foreground` or the selected row's text turns near-black ("inactive selection" colour). Thin icon glyphs get
     ClearType colour fringes on dark backgrounds; the list uses `TextOptions.TextRenderingMode="Grayscale"`.
+12. **NAudio's `WaveFormat.Serialize` prepends a 4-byte length**, so in its output the WAVEFORMATEXTENSIBLE
+    `dwChannelMask` is at offset 24, not 20 (see `ChannelLayout.GetChannelMask`).
+13. Per-channel tests (`ChannelSegmentsSampleProvider`) report the sounding channel from the audio thread via
+    `AudioTestSession.SetChannel` — use `SetChannel`, not `BeginPhase`, for that: `BeginPhase` swaps the stop token,
+    so a Stop click would no longer reach the playback loop that is waiting on the original token.
 
 ## Verifying changes (techniques that worked)
 
@@ -105,7 +110,8 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   rows, `Invoke()` buttons, `Toggle()` checkboxes/toggle buttons, read `RangeValuePattern` (sliders, level bars) and
   `HelpText` (tooltips). DataGrid virtualises rows, so only on-screen rows are visible to UIA.
 - **Screenshots**: `PrintWindow(hwnd, hdc, 2)` via a small Add-Type helper works even when the window is covered;
-  `CopyFromScreen` returns black when the screen is locked. Re-declare the helper type in each new PowerShell process
+  `CopyFromScreen` returns black when the screen is locked, and WPF windows capture as plain white while the display
+  is asleep (owner idle for minutes) — don't mistake that for a rendering bug. Re-declare the helper type in each new PowerShell process
   (or keep a script file in the session scratchpad).
 - **Scratch harness projects** (in the session scratchpad, never in the repo) referencing NAudio to measure things
   directly: endpoint volume/mute readback, per-device active audio sessions of the app's PID (to prove which mics are

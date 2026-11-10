@@ -54,6 +54,34 @@ public sealed class AudioTestSession
     /// <summary>Raised (on the test's worker thread) when the test moves to a new phase.</summary>
     public event EventHandler<AudioTestPhase>? PhaseChanged;
 
+    private int? _channel;
+
+    /// <summary>For per-channel tests: the channel currently sounding (null between/after channels, and for
+    /// whole-device tests).</summary>
+    public int? Channel
+    {
+        get { lock (_lock) return _channel; }
+    }
+
+    /// <summary>Raised (on the audio/worker thread) when <see cref="Channel"/> changes.</summary>
+    public event EventHandler<int?>? ChannelChanged;
+
+    /// <summary>The audio captured by a mic test (set once recording ends), so its channels can be replayed
+    /// individually afterwards.</summary>
+    public RecordedTake? Take { get; private set; }
+
+    internal void SetChannel(int? channel)
+    {
+        lock (_lock)
+        {
+            if (_channel == channel) return;
+            _channel = channel;
+        }
+        ChannelChanged?.Invoke(this, channel);
+    }
+
+    internal void SetTake(RecordedTake take) => Take = take;
+
     /// <summary>Ends the currently running phase early.</summary>
     public void Stop()
     {

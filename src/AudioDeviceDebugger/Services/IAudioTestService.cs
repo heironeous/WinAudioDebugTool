@@ -13,4 +13,13 @@ public interface IAudioTestService
     /// <paramref name="outputDeviceId"/> (or the current default output device if null). Calling
     /// <see cref="AudioTestSession.Stop"/> again during playback cuts the playback short.</summary>
     AudioTestSession StartRecordAndPlayback(string inputDeviceId, string? outputDeviceId);
+
+    /// <summary>Plays the test music (mono) on one output channel only — or, given several channels, on each in turn
+    /// (a 1.5 s excerpt per channel) — with all other channels silent. <see cref="AudioTestSession.Channel"/> reports
+    /// the channel currently sounding.</summary>
+    AudioTestSession StartChannelTestSound(string outputDeviceId, IReadOnlyList<int> channels);
+
+    /// <summary>Plays one channel of a recorded mic take — or several, in turn — in mono on every speaker of
+    /// <paramref name="outputDeviceId"/> (or the default output if null).</summary>
+    AudioTestSession StartChannelPlayback(RecordedTake take, string inputName, IReadOnlyList<int> channels, string? outputDeviceId);
 }

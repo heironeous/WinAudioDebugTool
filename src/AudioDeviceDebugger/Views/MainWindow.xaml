@@ -286,23 +286,99 @@
                         <local:LevelGraph x:Name="DetailGraph" Background="Transparent" Margin="1"/>
                     </Border>
 
-                    <ItemsControl Grid.Row="2" ItemsSource="{Binding SelectedDeviceChannelPeaks}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Vertical" Width="34" Margin="0,0,4,0">
-                                    <TextBlock Text="{Binding ChannelLabel}" FontSize="10" Foreground="{StaticResource ListSubtleText}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                                    <ProgressBar Style="{StaticResource FlatMeterVertical}" Minimum="0" Maximum="1"
-                                                 Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
-                                                 Width="6" Height="48" HorizontalAlignment="Center"/>
+                    <!-- Channel strip: per-channel meter + dB readout + play button; "Cycle all" plays each in turn. -->
+                    <DockPanel Grid.Row="2"
+                               Visibility="{Binding HasChannels, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel DockPanel.Dock="Left" Width="104" Margin="0,0,12,0" VerticalAlignment="Top">
+                            <TextBlock Text="CHANNELS" FontSize="11" Foreground="{StaticResource ListHeaderText}"/>
+                            <Button Click="CycleChannelsButton_Click" Margin="0,8,0,0" Padding="8,4" HorizontalAlignment="Left"
+                                    IsEnabled="{Binding CanCycleChannels}" ToolTip="{Binding CycleChannelsToolTip}"
+                                    ToolTipService.ShowOnDisabled="True" Style="{StaticResource FlatButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Cycle all"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelectedDeviceTesting}" Value="True">
+                                                        <Setter Property="Text" Value="Stop"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" FontSize="10"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="&#xE768;"/>
+                                                <Setter Property="Foreground" Value="{StaticResource PositiveGlyph}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelectedDeviceTesting}" Value="True">
+                                                        <Setter Property="Text" Value="&#xE71A;"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource NegativeGlyph}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                            </Button>
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding SelectedDeviceChannelPeaks}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Vertical" Width="44" Margin="0,0,4,0">
+                                        <!-- Channel name; accent-coloured while this channel is sounding. -->
+                                        <TextBlock Text="{Binding ShortName}" ToolTip="{Binding LongName}" FontSize="10"
+                                                   HorizontalAlignment="Center" Margin="0,0,0,4">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource ListSubtleText}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource ListAccent}"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <ProgressBar Style="{StaticResource FlatMeterVertical}" Minimum="0" Maximum="1"
+                                                     Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
+                                                     Width="6" Height="48" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DbShort}" ToolTip="{Binding LevelText}" FontSize="10"
+                                                   Foreground="{StaticResource ListSubtleText}" HorizontalAlignment="Center" Margin="0,4,0,4"/>
+                                        <Button Click="ChannelPlayButton_Click" Width="30" Height="22" Padding="0"
+                                                HorizontalAlignment="Center" Style="{StaticResource FlatButton}"
+                                                IsEnabled="{Binding CanPlay}" ToolTip="{Binding PlayToolTip}"
+                                                ToolTipService.ShowOnDisabled="True">
+                                            <TextBlock FontSize="9" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="&#xE768;"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource PositiveGlyph}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                                <Setter Property="Text" Value="&#xE71A;"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource NegativeGlyph}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DockPanel>
                 </Grid>
 
                 <GridSplitter x:Name="PropertiesSplitter" Grid.Column="1" Width="8" HorizontalAlignment="Center" VerticalAlignment="Stretch"

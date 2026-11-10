@@ -78,6 +78,19 @@ means **implemented and committed**, not "verified on real hardware" — see
       via `OnVolumeNotification`; own changes are tagged with an event-context
       GUID so they don't echo back into the slider while dragging
 
+## Per-channel testing
+- [x] Channel strip in the details panel names each channel from the mix
+      format's speaker mask (FL, FR, C, LFE, …; inputs "Ch n") with a live
+      meter, dB readout and its own play button (`ChannelLayout`)
+- [x] Outputs: test music on one channel only (others silent; LFE gets a
+      120 Hz low-passed version), or "Cycle all" — a 1.5 s excerpt per
+      channel in turn, with the sounding channel highlighted
+- [x] Inputs: the last mic-test recording is kept per device; play any one
+      channel (mono, on every speaker of the default output) or cycle
+      through all of them; buttons disabled until a recording exists
+- [ ] Optional: "raw" capture (IAudioClient2 stream options) to bypass mic-array
+      processing and expose the individual capsules
+
 ## Live level metering
 - [x] Real-time peak-level meter per device using `IAudioMeterInformation`
       — `LevelMeterService`. All Core Audio objects live on one dedicated

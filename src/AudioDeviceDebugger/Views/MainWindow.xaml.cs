@@ -97,6 +97,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ChannelPlayButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: ChannelPeakViewModel channel })
+        {
+            _ = _viewModel.ToggleChannelTestAsync(channel);
+        }
+    }
+
+    private void CycleChannelsButton_Click(object sender, RoutedEventArgs e) =>
+        _ = _viewModel.ToggleChannelTestAsync(null);
+
     private void SetDefaultButton_Click(object sender, RoutedEventArgs e) =>
         _viewModel.SetSelectedAsDefault(DefaultRoles.Default);
 

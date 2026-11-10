@@ -117,6 +117,89 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     /// stereo (e.g. 5.1 surround). Resized in place as samples for the selection arrive.</summary>
     public ObservableCollection<ChannelPeakViewModel> SelectedDeviceChannelPeaks { get; } = new();
 
+    private bool _hasChannels;
+    /// <summary>Whether the channel strip has anything to show (the selected device is active and its format known).</summary>
+    public bool HasChannels
+    {
+        get => _hasChannels;
+        private set => SetField(ref _hasChannels, value);
+    }
+
+    private bool _canCycleChannels;
+    public bool CanCycleChannels
+    {
+        get => _canCycleChannels;
+        private set => SetField(ref _canCycleChannels, value);
+    }
+
+    private string _cycleChannelsToolTip = "";
+    public string CycleChannelsToolTip
+    {
+        get => _cycleChannelsToolTip;
+        private set => SetField(ref _cycleChannelsToolTip, value);
+    }
+
+    private bool _isSelectedDeviceTesting;
+    /// <summary>A test (whole-device or per-channel) is running on the selected device — the strip's buttons stop it.</summary>
+    public bool IsSelectedDeviceTesting
+    {
+        get => _isSelectedDeviceTesting;
+        private set => SetField(ref _isSelectedDeviceTesting, value);
+    }
+
+    /// <summary>Names the strip's channels from the device's mix format (speaker positions for outputs).</summary>
+    private void ApplyChannelLayout(IReadOnlyList<SpeakerChannel> layout)
+    {
+        while (SelectedDeviceChannelPeaks.Count > layout.Count)
+        {
+            SelectedDeviceChannelPeaks.RemoveAt(SelectedDeviceChannelPeaks.Count - 1);
+        }
+        for (int i = 0; i < layout.Count; i++)
+        {
+            if (i >= SelectedDeviceChannelPeaks.Count)
+            {
+                SelectedDeviceChannelPeaks.Add(new ChannelPeakViewModel(i));
+            }
+            SelectedDeviceChannelPeaks[i].ShortName = layout[i].ShortName;
+            SelectedDeviceChannelPeaks[i].LongName = layout[i].LongName;
+        }
+        RefreshChannelControls();
+    }
+
+    /// <summary>Recomputes which channel-strip buttons are usable, their tooltips, and the playing highlight.</summary>
+    private void RefreshChannelControls()
+    {
+        var row = SelectedDevice;
+        string id = row?.Device.Id ?? "";
+        bool isActive = row?.IsActive == true;
+        bool isOutput = row?.IsOutput == true;
+        _activeTests.TryGetValue(id, out var running);
+        _lastTakes.TryGetValue(id, out var take);
+        bool canStart = isActive && (isOutput || take is not null);
+
+        foreach (var vm in SelectedDeviceChannelPeaks)
+        {
+            vm.IsPlaying = running?.Channel == vm.Index;
+            vm.CanPlay = running is not null || (canStart && (isOutput || vm.Index < take!.Channels));
+            vm.PlayToolTip =
+                running is not null ? "Stop the running test"
+                : !isActive ? "The device isn't active"
+                : isOutput ? $"Play the test music on {vm.LongName} ({vm.ShortName}) only"
+                : take is not null ? $"Listen to {vm.LongName} of the last recording ({take.Duration.TotalSeconds:0.0} s) on the default output"
+                : "Run the mic test first (Test on the device row) — then listen to each channel here";
+        }
+
+        HasChannels = SelectedDeviceChannelPeaks.Count > 0;
+        IsSelectedDeviceTesting = running is not null;
+        CanCycleChannels = HasChannels && (running is not null || canStart);
+        CycleChannelsToolTip =
+            running is not null ? "Stop the running test"
+            : !isActive ? "The device isn't active"
+            : isOutput ? "Play a short excerpt on each channel in turn"
+            : take is not null ? "Listen to each channel of the last recording in turn"
+            : "Run the mic test first (Test on the device row) — then listen to each channel here";
+    }
+
     private DeviceRowViewModel? _selectedDevice;
     public DeviceRowViewModel? SelectedDevice
     {
@@ -178,6 +261,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
 
     private readonly Dictionary<string, AudioTestSession> _activeTests = new();
+
+    // Last mic-test recording per input device, so its channels can be replayed one by one.
+    private readonly Dictionary<string, RecordedTake> _lastTakes = new();
 
     /// <summary>Raised on the UI thread with a fresh sample whenever the *currently selected* device
     /// reports a new level — the view wires this straight to the big detail-panel graph.</summary>
@@ -281,11 +367,64 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             return;
         }
 
-        var session = row.Device.Direction == AudioDirection.Output
-            ? _testService.StartTestSound(id)
-            : _testService.StartRecordAndPlayback(id, null);
+        string name = row.Device.FriendlyName;
+        if (row.Device.Direction == AudioDirection.Output)
+        {
+            await RunTestAsync(id, name, _testService.StartTestSound(id), $"Playing test music on \"{name}\"…");
+        }
+        else
+        {
+            await RunTestAsync(id, name, _testService.StartRecordAndPlayback(id, null),
+                $"Recording from \"{name}\"… click stop to end recording early and play it back.");
+        }
+    }
 
-        string deviceName = row.Device.FriendlyName;
+    /// <summary>
+    /// Channel strip: plays one channel (<paramref name="channel"/>) or every channel in turn (null) of the selected
+    /// device — test music on that output channel only, or that channel of the last mic recording. If a test is
+    /// already running on the device, this stops it instead.
+    /// </summary>
+    public async Task ToggleChannelTestAsync(ChannelPeakViewModel? channel)
+    {
+        var row = SelectedDevice;
+        if (row is null) return;
+
+        string id = row.Device.Id;
+        if (_activeTests.TryGetValue(id, out var running))
+        {
+            running.Stop();
+            return;
+        }
+
+        string name = row.Device.FriendlyName;
+        var channels = channel is null
+            ? SelectedDeviceChannelPeaks.Select(c => c.Index).ToList()
+            : new List<int> { channel.Index };
+
+        if (row.Device.Direction == AudioDirection.Output)
+        {
+            if (channels.Count == 0) return;
+            string status = channel is null
+                ? $"Playing the test music on each channel of \"{name}\" in turn…"
+                : $"Playing the test music on {channel.LongName} ({channel.ShortName}) of \"{name}\" only…";
+            await RunTestAsync(id, name, _testService.StartChannelTestSound(id, channels), status);
+        }
+        else
+        {
+            if (!_lastTakes.TryGetValue(id, out var take)) return;
+            channels = channels.Where(c => c < take.Channels).ToList();
+            if (channels.Count == 0) return;
+            string status = channel is null
+                ? $"Playing each channel of the \"{name}\" recording in turn…"
+                : $"Playing {channel.LongName} of the \"{name}\" recording…";
+            await RunTestAsync(id, name, _testService.StartChannelPlayback(take, name, channels, null), status);
+        }
+    }
+
+    /// <summary>Tracks a running test (row button state, channel highlight, status) until it completes; keeps a
+    /// mic test's recording for per-channel playback.</summary>
+    private async Task RunTestAsync(string id, string deviceName, AudioTestSession session, string startStatus)
+    {
         _activeTests[id] = session;
         session.PhaseChanged += (_, phase) => _dispatcher.BeginInvoke(() =>
         {
@@ -295,14 +434,30 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 SetStatus($"Playing back the recording from \"{deviceName}\"… click stop to end playback.");
             }
         });
+        session.ChannelChanged += (_, channel) => _dispatcher.BeginInvoke(() =>
+        {
+            if (SelectedDevice?.Device.Id != id) return;
+            foreach (var vm in SelectedDeviceChannelPeaks)
+            {
+                vm.IsPlaying = vm.Index == channel;
+            }
+            var playing = SelectedDeviceChannelPeaks.FirstOrDefault(vm => vm.Index == channel);
+            if (playing is not null && _activeTests.ContainsKey(id))
+            {
+                SetStatus($"Channel test on \"{deviceName}\": now playing {playing.LongName} ({playing.ShortName})…");
+            }
+        });
         UpdateRowTestState(id);
-        SetStatus(row.Device.Direction == AudioDirection.Output
-            ? $"Playing test music on \"{deviceName}\"…"
-            : $"Recording from \"{deviceName}\"… click stop to end recording early and play it back.");
+        RefreshChannelControls();
+        SetStatus(startStatus);
 
         try
         {
             var outcome = await session.Completion;
+            if (session.Take is { } take)
+            {
+                _lastTakes[id] = take;
+            }
             SetStatus(outcome.Message);
         }
         catch (Exception ex)
@@ -313,6 +468,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             _activeTests.Remove(id);
             UpdateRowTestState(id);
+            RefreshChannelControls();
         }
     }
 
@@ -335,6 +491,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         SelectedDeviceDetails = null;
         SelectedDeviceChannelPeaks.Clear();
+        RefreshChannelControls();
         if (row is null) return;
 
         string id = row.Device.Id;
@@ -348,6 +505,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                     if (SelectedDevice?.Device.Id == id)
                     {
                         SelectedDeviceDetails = details;
+                        ApplyChannelLayout(details.SharedModeFormat?.ChannelLayout ?? Array.Empty<SpeakerChannel>());
                     }
                 });
             }
@@ -452,7 +610,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (i >= SelectedDeviceChannelPeaks.Count)
             {
+                // Meter arrived before the format/layout: show generic names until ApplyChannelLayout renames them.
                 SelectedDeviceChannelPeaks.Add(new ChannelPeakViewModel(i));
+                RefreshChannelControls();
             }
 
             SelectedDeviceChannelPeaks[i].Peak = channelPeaks[i];

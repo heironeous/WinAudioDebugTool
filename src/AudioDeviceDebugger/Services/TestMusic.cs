@@ -27,6 +27,19 @@ internal static class TestMusic
     /// instantly. Most endpoints run at 48 kHz.</summary>
     public static void Prewarm(int sampleRate = 48000) => Cache.GetOrAdd(sampleRate, Render);
 
+    /// <summary>The clip mixed down to mono (L+R)/2 at <paramref name="sampleRate"/> — used for per-channel tests,
+    /// where the whole arrangement should come out of one speaker.</summary>
+    public static float[] GetMono(int sampleRate)
+    {
+        var stereo = Cache.GetOrAdd(sampleRate, Render);
+        var mono = new float[stereo.Length / 2];
+        for (int i = 0; i < mono.Length; i++)
+        {
+            mono[i] = 0.5f * (stereo[2 * i] + stereo[2 * i + 1]);
+        }
+        return mono;
+    }
+
     /// <summary>Creates a provider playing the clip once, in <paramref name="format"/>'s sample rate and channel
     /// count (mono: L+R mixed; 3+ channels: front left/right carry the music, the rest stay silent).</summary>
     public static ISampleProvider Create(WaveFormat format) =>

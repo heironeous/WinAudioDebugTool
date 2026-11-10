@@ -36,7 +36,7 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
         try
         {
             var mix = device.AudioClient.MixFormat;
-            return ToFormatInfo(mix);
+            return ToFormatInfo(mix, device.DataFlow == DataFlow.Render);
         }
         catch
         {
@@ -53,12 +53,13 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
             bool supported = device.AudioClient.IsFormatSupported(
                 AudioClientShareMode.Exclusive, mix, out WaveFormatExtensible? closestMatch);
 
+            bool isOutput = device.DataFlow == DataFlow.Render;
             if (supported)
             {
-                return ToFormatInfo(mix);
+                return ToFormatInfo(mix, isOutput);
             }
 
-            return closestMatch is null ? null : ToFormatInfo(closestMatch);
+            return closestMatch is null ? null : ToFormatInfo(closestMatch, isOutput);
         }
         catch
         {
@@ -66,12 +67,13 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
         }
     }
 
-    private static AudioFormatInfo ToFormatInfo(WaveFormat format) => new()
+    private static AudioFormatInfo ToFormatInfo(WaveFormat format, bool isOutput) => new()
     {
         SampleRateHz = format.SampleRate,
         BitsPerSample = format.BitsPerSample,
         Channels = format.Channels,
         Encoding = format.Encoding.ToString(),
+        ChannelLayout = ChannelLayout.Describe(format, isOutput),
     };
 
     private static IReadOnlyList<PropertyEntry> DumpProperties(MMDevice device)
