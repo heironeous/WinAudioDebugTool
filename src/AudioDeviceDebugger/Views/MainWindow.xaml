@@ -63,6 +63,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
@@ -81,7 +82,24 @@
 
                 <local:LevelGraph x:Name="DetailGraph" Grid.Row="1" Height="110" Margin="0,0,0,8"/>
 
-                <ListView Grid.Row="2" ItemsSource="{Binding SelectedDeviceDetails.Properties}">
+                <ItemsControl Grid.Row="2" Margin="0,0,0,8" ItemsSource="{Binding SelectedDeviceChannelPeaks}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Vertical" Width="32" Margin="0,0,6,0">
+                                <TextBlock Text="{Binding ChannelLabel}" FontSize="9" Foreground="Gray" HorizontalAlignment="Center"/>
+                                <ProgressBar Minimum="0" Maximum="1" Value="{Binding Peak, Mode=OneWay}"
+                                             Orientation="Vertical" Width="24" Height="48" Foreground="#00E676"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <ListView Grid.Row="3" ItemsSource="{Binding SelectedDeviceDetails.Properties}">
                     <ListView.View>
                         <GridView>
                             <GridViewColumn Header="Property" DisplayMemberBinding="{Binding Key}" Width="280"/>

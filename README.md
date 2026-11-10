@@ -75,6 +75,13 @@ dotnet publish -c Release -r win-x64 --self-contained true `
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
+or equivalently, using the checked-in publish profile (also selectable from
+Visual Studio's Publish UI):
+
+```powershell
+dotnet publish -p:PublishProfile=win-x64-selfcontained
+```
+
 The output executable will be at:
 
 ```

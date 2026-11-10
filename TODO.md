@@ -49,13 +49,16 @@ means **implemented and committed**, not "verified on real hardware" — see
       control in the detail panel
 - [x] Simultaneous mini-meters next to every device in the list — a live
       `ProgressBar` per row, all updating independently and concurrently
-- [ ] Per-channel peak levels where the endpoint reports more than stereo
-      (`LevelSample.ChannelPeaks` is captured by the service, but the UI
-      only surfaces the combined master peak so far)
+- [x] Per-channel peak levels where the endpoint reports more than stereo
+      (`SelectedDeviceChannelPeaks` in `MainViewModel`, rendered as a row of
+      vertical bars below the rolling graph in the detail panel)
 
 ## Packaging
-- [ ] `dotnet publish` profile for a single self-contained `.exe`
-- [ ] App icon / metadata (version, product name)
+- [x] `dotnet publish` profile for a single self-contained `.exe`
+      (`Properties/PublishProfiles/win-x64-selfcontained.pubxml`)
+- [x] App icon / metadata (version, product name) — `Assets/app.ico` +
+      `app.manifest` (DPI awareness, OS compatibility, no elevation) wired
+      up via `ApplicationIcon`/`ApplicationManifest` in the `.csproj`
 
 ## Not yet done / follow-ups
 - [ ] Manual verification pass on a real Windows machine (blocked: this

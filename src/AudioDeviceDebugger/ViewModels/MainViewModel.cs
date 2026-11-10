@@ -38,6 +38,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public ObservableCollection<DeviceRowViewModel> Devices { get; } = new();
 
+    /// <summary>Per-channel peaks for the currently selected device, for endpoints that report more than
+    /// stereo (e.g. 5.1 surround). Resized in place as samples for the selection arrive.</summary>
+    public ObservableCollection<ChannelPeakViewModel> SelectedDeviceChannelPeaks { get; } = new();
+
     private DeviceRowViewModel? _selectedDevice;
     public DeviceRowViewModel? SelectedDevice
     {
@@ -149,6 +153,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void LoadSelectedDeviceDetails(DeviceRowViewModel? row)
     {
         SelectedDeviceDetails = null;
+        SelectedDeviceChannelPeaks.Clear();
         if (row is null) return;
 
         string id = row.Device.Id;
@@ -187,8 +192,27 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             if (SelectedDevice?.Device.Id == e.DeviceId)
             {
                 SelectedDeviceLevelChanged?.Invoke(this, e.Sample);
+                UpdateSelectedDeviceChannelPeaks(e.Sample.ChannelPeaks);
             }
         });
+    }
+
+    private void UpdateSelectedDeviceChannelPeaks(IReadOnlyList<float> channelPeaks)
+    {
+        while (SelectedDeviceChannelPeaks.Count > channelPeaks.Count)
+        {
+            SelectedDeviceChannelPeaks.RemoveAt(SelectedDeviceChannelPeaks.Count - 1);
+        }
+
+        for (int i = 0; i < channelPeaks.Count; i++)
+        {
+            if (i >= SelectedDeviceChannelPeaks.Count)
+            {
+                SelectedDeviceChannelPeaks.Add(new ChannelPeakViewModel(i));
+            }
+
+            SelectedDeviceChannelPeaks[i].Peak = channelPeaks[i];
+        }
     }
 
     private void SetStatus(string message) => StatusMessage = message;
