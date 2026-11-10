@@ -1,12 +1,75 @@
-# .NET / Visual Studio build artifacts
-bin/
-obj/
-*.user
-.vs/
+# ---------------------------------------------------------------------------------------------------------------
+# Audio Device Debugger — .NET 8 / WPF on Windows
+# Note: Interop/PropertyKeyNames.g.cs is generated but intentionally committed (regenerate with
+# `dotnet run --project tools/PropertyKeyNameGenerator`), and Properties/PublishProfiles/*.pubxml is shared config.
+# ---------------------------------------------------------------------------------------------------------------
 
-# Publish output
+# Build output (any project, any casing)
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+[Dd]ebugPublic/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]64/
+[Ll]og/
+[Ll]ogs/
+
+# WPF build temp project (created next to the .csproj during XAML compilation)
+*_wpftmp.csproj
+
+# Publish output (the shared *.pubxml profile stays tracked; per-user overrides don't)
 publish/
+[Pp]ublish[Oo]utput/
+*.pubxml.user
+*.publishproj
 
-# Rider / VS Code
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.userprefs
+
+# JetBrains Rider
 .idea/
+*.sln.iml
+*.DotSettings.user
+
+# VS Code (keep the folder out; add shared settings explicitly if ever needed)
 .vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+project.lock.json
+project.fragment.lock.json
+
+# Tests & coverage
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+
+# Logs, crash dumps, scratch audio
+*.log
+*.dmp
+*.tmp
+
+# Windows / macOS clutter
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Claude Code: personal (machine-local) settings; shared settings and CLAUDE.md stay tracked
+.claude/settings.local.json
