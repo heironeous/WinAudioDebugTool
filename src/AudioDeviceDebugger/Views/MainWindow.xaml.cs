@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using AudioDeviceDebugger.Models;
@@ -34,7 +35,7 @@ public partial class MainWindow : Window
 
         DataContext = _viewModel;
         Closed += OnClosed;
-        ApplyPropertiesPanelLayout();
+        ApplySidePanelLayout();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -43,40 +44,95 @@ public partial class MainWindow : Window
         {
             DetailGraph.Clear();
         }
-        else if (e.PropertyName == nameof(MainViewModel.IsPropertiesPanelOpen))
+        else if (e.PropertyName is nameof(MainViewModel.IsPropertiesPanelOpen) or nameof(MainViewModel.IsEventsPanelOpen))
         {
-            ApplyPropertiesPanelLayout();
+            ApplySidePanelLayout();
         }
     }
 
-    // Width the property table had when last open (keeps the user's splitter position across collapse/expand).
-    private GridLength _propertiesColumnWidth = new(3, GridUnitType.Star);
-    private const double PropertiesColumnMinWidth = 400;
+    // Width the side panel had when last open (keeps the user's splitter position across collapse/expand).
+    private GridLength _sidePanelWidth = new(3, GridUnitType.Star);
+    private const double SidePanelMinWidth = 400;
 
-    /// <summary>Collapses the property table to zero width (just the toggle strip remains at the right edge) or
-    /// restores it. Done here rather than in XAML because the GridSplitter writes local Width values that would
-    /// override style triggers.</summary>
-    private void ApplyPropertiesPanelLayout()
+    /// <summary>Shows the property table or the event log in the right-hand column, or collapses the column to zero
+    /// width (just the toggle strips remain at the right edge). Done here rather than in XAML because the
+    /// GridSplitter writes local Width values that would override style triggers.</summary>
+    private void ApplySidePanelLayout()
     {
-        if (_viewModel.IsPropertiesPanelOpen)
+        bool properties = _viewModel.IsPropertiesPanelOpen;
+        bool events = _viewModel.IsEventsPanelOpen;
+        PropertiesList.Visibility = properties ? Visibility.Visible : Visibility.Collapsed;
+        EventsPanel.Visibility = events ? Visibility.Visible : Visibility.Collapsed;
+
+        if (properties || events)
         {
-            PropertiesColumn.MinWidth = PropertiesColumnMinWidth;
-            PropertiesColumn.Width = _propertiesColumnWidth;
-            PropertiesSplitter.Visibility = Visibility.Visible;
-            PropertiesList.Visibility = Visibility.Visible;
+            SidePanelColumn.MinWidth = SidePanelMinWidth;
+            SidePanelColumn.Width = _sidePanelWidth;
+            SidePanelSplitter.Visibility = Visibility.Visible;
         }
         else
         {
-            if (PropertiesColumn.Width.Value > 0)
+            if (SidePanelColumn.Width.Value > 0)
             {
-                _propertiesColumnWidth = PropertiesColumn.Width;
+                _sidePanelWidth = SidePanelColumn.Width;
             }
-            PropertiesColumn.MinWidth = 0;
-            PropertiesColumn.Width = new GridLength(0);
-            PropertiesSplitter.Visibility = Visibility.Collapsed;
-            PropertiesList.Visibility = Visibility.Collapsed;
+            SidePanelColumn.MinWidth = 0;
+            SidePanelColumn.Width = new GridLength(0);
+            SidePanelSplitter.Visibility = Visibility.Collapsed;
         }
     }
+
+    private void CopyEventsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var events = _viewModel.EventLog.ShownEventsOldestFirst();
+        if (events.Count == 0)
+        {
+            _viewModel.ShowStatus("No events to copy.");
+            return;
+        }
+        try
+        {
+            Clipboard.SetText(EventLogExporter.ToText(events, EventLogFormat.PlainText));
+            _viewModel.ShowStatus($"Copied {events.Count} event(s) to the clipboard.");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.ShowStatus($"Couldn't copy the events: {ex.Message}");
+        }
+    }
+
+    private void ExportEventsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var events = _viewModel.EventLog.ShownEventsOldestFirst();
+        if (events.Count == 0)
+        {
+            _viewModel.ShowStatus("No events to export.");
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export events",
+            FileName = $"audio-events-{DateTime.Now:yyyyMMdd-HHmmss}",
+            Filter = "CSV (*.csv)|*.csv|Markdown (*.md)|*.md|JSON Lines (*.jsonl)|*.jsonl",
+            DefaultExt = ".csv",
+            AddExtension = true,
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            using var writer = new StreamWriter(dialog.FileName, append: false, new System.Text.UTF8Encoding(false));
+            EventLogExporter.Write(events, EventLogExporter.FormatFromExtension(dialog.FileName), writer);
+            _viewModel.ShowStatus($"Exported {events.Count} event(s) to {dialog.FileName}.");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.ShowStatus($"Couldn't export the events: {ex.Message}");
+        }
+    }
+
+    private void ClearEventsButton_Click(object sender, RoutedEventArgs e) => _viewModel.EventLog.Clear();
 
     private void OnClosed(object? sender, EventArgs e)
     {

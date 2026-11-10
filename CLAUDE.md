@@ -63,11 +63,14 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 - `Services/` — `DeviceEnumerationService` (enumeration + IMMNotificationClient), `DefaultDeviceService`,
   `DeviceDetailsService` (formats; `GetProperties` separately), `EndpointVolumeService` (volume/mute + external-change
   notifications), `LevelMeterService` (single MTA polling thread), `AudioTestService` + `AudioTestSession` (phased
-  tests with Stop), `TestMusic` (procedural test clip), `ChannelMatchingSampleProvider`.
-- `ViewModels/` — `MainViewModel` (refresh/debounce, filters, selection, tests, properties panel),
-  `DeviceRowViewModel`, `ChannelPeakViewModel`. `Models/` — plain data + `LevelScale` (dB conversion).
+  tests with Stop), `TestMusic` (procedural test clip), `ChannelMatchingSampleProvider`, `EventLogExporter`
+  (CSV / Markdown / JSON Lines / text). `DeviceEnumerationService.EndpointNotified` carries each
+  IMMNotificationClient callback in detail (for the event log) alongside the coarse `DevicesChanged`.
+- `ViewModels/` — `MainViewModel` (refresh/debounce, filters, selection, tests, side panels, event logging),
+  `DeviceRowViewModel`, `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging). `Models/` — plain data + `LevelScale` (dB conversion).
 - `Views/` — `MainWindow` (toolbar 2 lines; device grid top; details bottom: info + `LevelGraph` + channel bars left,
-  collapsible property table right), `LevelGraph`.
+  collapsible right-hand side panel showing either the property table or the EVENTS log — two strip toggles),
+  `LevelGraph`.
 - `tools/PropertyKeyNameGenerator/` — reads `Windows.Win32.winmd` from Microsoft.Windows.SDK.Win32Metadata.
 
 ## Hard-won lessons (don't regress these)

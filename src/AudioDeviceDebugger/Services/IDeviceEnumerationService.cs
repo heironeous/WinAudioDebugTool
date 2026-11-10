@@ -13,4 +13,13 @@ public interface IDeviceEnumerationService : IDisposable
     /// touching bound collections.
     /// </summary>
     event EventHandler? DevicesChanged;
+
+    /// <summary>
+    /// Every endpoint notification in detail (added, removed, state, default, property change), raised on the
+    /// notification thread before the change is debounced into a refresh — for the event timeline.
+    /// </summary>
+    event EventHandler<EndpointNotification>? EndpointNotified;
+
+    /// <summary>Reads an endpoint's friendly name directly (cheap keyed read), or null if it can't be read.</summary>
+    string? TryGetFriendlyName(string deviceId);
 }

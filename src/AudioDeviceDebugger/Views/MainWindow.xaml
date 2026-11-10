@@ -251,13 +251,14 @@
                           Background="Transparent" ResizeBehavior="PreviousAndNext" ShowsPreview="False"
                           Cursor="SizeNS" ToolTip="Drag to resize the device list / details"/>
 
-            <!-- Details: device info, level graph and channel meters on the left; collapsible property table on the
-                 right (column widths / visibility are switched in code-behind, see ApplyPropertiesPanelLayout). -->
+            <!-- Details: device info, level graph and channel meters on the left; on the right a collapsible side panel
+                 holding either the property table or the event log (column widths / visibility are switched in
+                 code-behind, see ApplySidePanelLayout). -->
             <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*" MinWidth="320"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition x:Name="PropertiesColumn" Width="3*" MinWidth="400"/>
+                    <ColumnDefinition x:Name="SidePanelColumn" Width="3*" MinWidth="400"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
@@ -381,7 +382,7 @@
                     </DockPanel>
                 </Grid>
 
-                <GridSplitter x:Name="PropertiesSplitter" Grid.Column="1" Width="8" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                <GridSplitter x:Name="SidePanelSplitter" Grid.Column="1" Width="8" HorizontalAlignment="Center" VerticalAlignment="Stretch"
                               Background="Transparent" ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
 
                 <ListView x:Name="PropertiesList" Grid.Column="2" ItemsSource="{Binding SelectedDeviceProperties}">
@@ -422,41 +423,199 @@
                     </ListView.View>
                 </ListView>
 
-                <!-- Collapse/expand strip for the property table. -->
-                <ToggleButton Grid.Column="3" Width="28" Margin="6,0,0,0" Padding="0,8,0,8"
-                              VerticalAlignment="Stretch" VerticalContentAlignment="Top"
-                              IsChecked="{Binding IsPropertiesPanelOpen}">
-                    <ToggleButton.Style>
-                        <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
-                            <Setter Property="ToolTip" Value="Show device properties"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsPropertiesPanelOpen}" Value="True">
-                                    <Setter Property="ToolTip" Value="Hide device properties"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ToggleButton.Style>
-                    <StackPanel>
-                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" HorizontalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <!-- Closed: chevron-left ("expand to the left"); open: chevron-right ("collapse"). -->
-                                    <Setter Property="Text" Value="&#xE76B;"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsPropertiesPanelOpen}" Value="True">
-                                            <Setter Property="Text" Value="&#xE76C;"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <TextBlock Text="PROPERTIES" FontSize="11" Margin="0,10,0,0" HorizontalAlignment="Center">
-                            <TextBlock.LayoutTransform>
-                                <RotateTransform Angle="90"/>
-                            </TextBlock.LayoutTransform>
-                        </TextBlock>
-                    </StackPanel>
-                </ToggleButton>
+                <!-- Event timeline: shares the right-hand column with the property table (only one is open at a time). -->
+                <Border x:Name="EventsPanel" Grid.Column="2" DataContext="{Binding EventLog}"
+                        Background="{StaticResource ListBackground}" BorderBrush="{StaticResource ListBorder}"
+                        BorderThickness="1" CornerRadius="6">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top" Margin="10,8,10,6">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="Copy" Click="CopyEventsButton_Click" Style="{StaticResource FlatButton}"
+                                            Padding="10,3" Margin="0,0,6,0" ToolTip="Copy the shown events as text"/>
+                                    <Button Content="Export…" Click="ExportEventsButton_Click" Style="{StaticResource FlatButton}"
+                                            Padding="10,3" Margin="0,0,6,0" ToolTip="Save the shown events as CSV, Markdown or JSON Lines"/>
+                                    <Button Content="Clear" Click="ClearEventsButton_Click" Style="{StaticResource FlatButton}"
+                                            Padding="10,3" ToolTip="Remove all recorded events"/>
+                                </StackPanel>
+                                <TextBlock VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="EVENTS" Foreground="{StaticResource ListHeaderText}"/>
+                                    <Run Text="{Binding CountText, Mode=OneWay}" Foreground="{StaticResource ListSubtleText}"/>
+                                </TextBlock>
+                            </DockPanel>
+                            <WrapPanel Margin="0,8,0,0">
+                                <CheckBox Content="Devices" IsChecked="{Binding ShowDevices}" Style="{StaticResource FlatCheckBox}" Margin="0,0,14,4"
+                                          ToolTip="Endpoints added, removed, or changing state (active, unplugged, disabled, not present)"/>
+                                <CheckBox Content="Defaults" IsChecked="{Binding ShowDefaults}" Style="{StaticResource FlatCheckBox}" Margin="0,0,14,4"
+                                          ToolTip="Default and communications device changes"/>
+                                <CheckBox Content="Volume" IsChecked="{Binding ShowVolume}" Style="{StaticResource FlatCheckBox}" Margin="0,0,14,4"
+                                          ToolTip="Volume and mute changes (active devices)"/>
+                                <CheckBox Content="Tests" IsChecked="{Binding ShowTests}" Style="{StaticResource FlatCheckBox}" Margin="0,0,14,4"
+                                          ToolTip="Tests started and finished in this app"/>
+                                <CheckBox Content="Properties" IsChecked="{Binding RecordPropertyChanges}" Style="{StaticResource FlatCheckBox}" Margin="0,0,14,4"
+                                          ToolTip="Record property-store changes too. Off by default: they are very frequent, so they're only recorded while this is ticked"/>
+                                <CheckBox Content="Selected device only" IsChecked="{Binding SelectedDeviceOnly}" Style="{StaticResource FlatCheckBox}" Margin="0,0,0,4"
+                                          ToolTip="Only show events for the device selected in the list (plus app start and errors)"/>
+                            </WrapPanel>
+                        </StackPanel>
+
+                        <DataGrid x:Name="EventsGrid"
+                                  ItemsSource="{Binding View}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  CanUserResizeRows="False"
+                                  CanUserReorderColumns="False"
+                                  CanUserSortColumns="False"
+                                  SelectionMode="Single"
+                                  SelectionUnit="FullRow"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="None"
+                                  Background="Transparent"
+                                  RowBackground="Transparent"
+                                  BorderThickness="0"
+                                  RowHeight="26"
+                                  FontSize="12"
+                                  ClipboardCopyMode="None"
+                                  Foreground="{StaticResource ListText}"
+                                  ColumnHeaderStyle="{StaticResource LogHeader}"
+                                  CellStyle="{StaticResource LogCell}"
+                                  RowStyle="{StaticResource LogRow}"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  TextOptions.TextRenderingMode="Grayscale">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="TIME" Width="86">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding TimeText}" Foreground="{StaticResource ListSubtleText}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="EVENT" Width="76">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding KindText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Kind}" Value="Error">
+                                                                <Setter Property="Foreground" Value="{StaticResource NegativeGlyph}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Kind}" Value="DefaultChanged">
+                                                                <Setter Property="Foreground" Value="{StaticResource ListAccent}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="DEVICE" Width="*" MinWidth="110">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DeviceText}" TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="DETAIL" Width="2*" MinWidth="140">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Detail}" TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="BY" Width="64">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SourceText}" FontSize="11" Foreground="{StaticResource ListSubtleText}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Border>
+
+                <!-- Collapse/expand strips for the property table and the event log, stacked at the right edge. -->
+                <Grid Grid.Column="3" Margin="6,0,0,0" Width="28">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="6"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <ToggleButton Grid.Row="0" Padding="0,8,0,8"
+                                  VerticalAlignment="Stretch" VerticalContentAlignment="Top"
+                                  IsChecked="{Binding IsPropertiesPanelOpen}">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
+                                <Setter Property="ToolTip" Value="Show device properties"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPropertiesPanelOpen}" Value="True">
+                                        <Setter Property="ToolTip" Value="Hide device properties"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ToggleButton.Style>
+                        <StackPanel>
+                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" HorizontalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <!-- Closed: chevron-left ("expand to the left"); open: chevron-right ("collapse"). -->
+                                        <Setter Property="Text" Value="&#xE76B;"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPropertiesPanelOpen}" Value="True">
+                                                <Setter Property="Text" Value="&#xE76C;"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="PROPERTIES" FontSize="11" Margin="0,10,0,0" HorizontalAlignment="Center">
+                                <TextBlock.LayoutTransform>
+                                    <RotateTransform Angle="90"/>
+                                </TextBlock.LayoutTransform>
+                            </TextBlock>
+                        </StackPanel>
+                    </ToggleButton>
+                    <ToggleButton Grid.Row="2" Padding="0,8,0,8"
+                                  VerticalAlignment="Stretch" VerticalContentAlignment="Top"
+                                  IsChecked="{Binding IsEventsPanelOpen}">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
+                                <Setter Property="ToolTip" Value="Show the event log"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEventsPanelOpen}" Value="True">
+                                        <Setter Property="ToolTip" Value="Hide the event log"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ToggleButton.Style>
+                        <StackPanel>
+                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" HorizontalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="&#xE76B;"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEventsPanelOpen}" Value="True">
+                                                <Setter Property="Text" Value="&#xE76C;"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock FontSize="11" Margin="0,10,0,0" HorizontalAlignment="Center">
+                                <TextBlock.LayoutTransform>
+                                    <RotateTransform Angle="90"/>
+                                </TextBlock.LayoutTransform>
+                                <Run Text="EVENTS"/>
+                                <Run Text="{Binding EventLog.Events.Count, Mode=OneWay}" Foreground="{StaticResource ListHeaderText}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </ToggleButton>
+                </Grid>
             </Grid>
         </Grid>
 

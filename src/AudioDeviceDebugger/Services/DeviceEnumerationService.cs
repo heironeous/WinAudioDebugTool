@@ -14,11 +14,16 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
 
     public event EventHandler? DevicesChanged;
 
+    public event EventHandler<EndpointNotification>? EndpointNotified;
+
     public DeviceEnumerationService()
     {
-        _notificationClient = new NotificationClient(RaiseDevicesChanged);
+        _notificationClient = new NotificationClient(RaiseDevicesChanged, RaiseEndpointNotified);
         _enumerator.RegisterEndpointNotificationCallback(_notificationClient);
     }
+
+    public string? TryGetFriendlyName(string deviceId) =>
+        _propertyReader.TryGetString(deviceId, PropertyKeys.PKEY_Device_FriendlyName);
 
     public IReadOnlyList<DeviceInfo> GetDevices()
     {
@@ -69,7 +74,7 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
     private string SafeFriendlyName(MMDevice device) =>
         _propertyReader.TryGetString(device.ID, PropertyKeys.PKEY_Device_FriendlyName) ?? device.ID;
 
-    private static DeviceConnectionState MapState(DeviceState state) => state switch
+    internal static DeviceConnectionState MapState(DeviceState state) => state switch
     {
         DeviceState.Active => DeviceConnectionState.Active,
         DeviceState.Disabled => DeviceConnectionState.Disabled,
@@ -79,6 +84,8 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
     };
 
     private void RaiseDevicesChanged() => DevicesChanged?.Invoke(this, EventArgs.Empty);
+
+    private void RaiseEndpointNotified(EndpointNotification notification) => EndpointNotified?.Invoke(this, notification);
 
     public void Dispose()
     {
@@ -97,27 +104,103 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
     }
 
     /// <summary>
-    /// Forwards Core Audio endpoint notifications to a single "something changed, re-enumerate" callback.
-    /// Deliberately ignores per-property noise (OnPropertyValueChanged fires constantly, e.g. for meter
-    /// updates) so we don't trigger a full refresh storm.
+    /// Forwards Core Audio endpoint notifications: each one is reported in detail (<see cref="EndpointNotified"/>,
+    /// for the event timeline), and all but property changes also trigger a re-enumeration. Property changes don't —
+    /// they fire constantly on some endpoints and would cause a refresh storm. Callbacks arrive on system threads and
+    /// must return quickly, so nothing here touches COM: the timestamp is taken now, everything else is resolved later
+    /// on the UI thread.
     /// </summary>
     private sealed class NotificationClient : IMMNotificationClient
     {
         private readonly Action _onChanged;
+        private readonly Action<EndpointNotification> _onNotification;
 
-        public NotificationClient(Action onChanged) => _onChanged = onChanged;
-
-        public void OnDeviceStateChanged(string deviceId, DeviceState newState) => _onChanged();
-
-        public void OnDeviceAdded(string pwstrDeviceId) => _onChanged();
-
-        public void OnDeviceRemoved(string deviceId) => _onChanged();
-
-        public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId) => _onChanged();
-
-        public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key)
+        public NotificationClient(Action onChanged, Action<EndpointNotification> onNotification)
         {
-            // Intentionally ignored.
+            _onChanged = onChanged;
+            _onNotification = onNotification;
+        }
+
+        public void OnDeviceStateChanged(string deviceId, DeviceState newState)
+        {
+            Notify(new EndpointNotification(EndpointNotificationKind.StateChanged, deviceId) { NewState = MapState(newState) });
+            _onChanged();
+        }
+
+        public void OnDeviceAdded(string pwstrDeviceId)
+        {
+            Notify(new EndpointNotification(EndpointNotificationKind.Added, pwstrDeviceId));
+            _onChanged();
+        }
+
+        public void OnDeviceRemoved(string deviceId)
+        {
+            Notify(new EndpointNotification(EndpointNotificationKind.Removed, deviceId));
+            _onChanged();
+        }
+
+        public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)
+        {
+            Notify(new EndpointNotification(EndpointNotificationKind.DefaultChanged,
+                string.IsNullOrEmpty(defaultDeviceId) ? null : defaultDeviceId)
+            {
+                Flow = flow == DataFlow.Capture ? AudioDirection.Input : AudioDirection.Output,
+                Role = role switch
+                {
+                    Role.Console => DefaultRole.Console,
+                    Role.Multimedia => DefaultRole.Multimedia,
+                    _ => DefaultRole.Communications,
+                },
+            });
+            _onChanged();
+        }
+
+        public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) =>
+            Notify(new EndpointNotification(EndpointNotificationKind.PropertyChanged, pwstrDeviceId)
+            {
+                PropertyFormatId = key.formatId,
+                PropertyId = key.propertyId,
+            });
+
+        private void Notify(EndpointNotification notification)
+        {
+            try
+            {
+                _onNotification(notification);
+            }
+            catch
+            {
+                // Never let a logging problem propagate into the audio service's callback.
+            }
         }
     }
+}
+
+/// <summary>What an IMMNotificationClient callback reported.</summary>
+public enum EndpointNotificationKind
+{
+    Added,
+    Removed,
+    StateChanged,
+    DefaultChanged,
+    PropertyChanged,
+}
+
+/// <summary>The three default-device roles Windows tracks per direction.</summary>
+public enum DefaultRole
+{
+    Console,
+    Multimedia,
+    Communications,
+}
+
+/// <summary>One endpoint notification, timestamped when Windows delivered it.</summary>
+public sealed record EndpointNotification(EndpointNotificationKind Kind, string? DeviceId)
+{
+    public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.Now;
+    public DeviceConnectionState? NewState { get; init; }
+    public AudioDirection? Flow { get; init; }
+    public DefaultRole? Role { get; init; }
+    public Guid? PropertyFormatId { get; init; }
+    public int? PropertyId { get; init; }
 }

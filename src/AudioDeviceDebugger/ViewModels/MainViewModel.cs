@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Data;
 using System.Windows.Threading;
+using AudioDeviceDebugger.Interop;
 using AudioDeviceDebugger.Models;
 using AudioDeviceDebugger.Services;
 
@@ -48,6 +49,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         };
 
         _enumerationService.DevicesChanged += OnDevicesChanged;
+        _enumerationService.EndpointNotified += OnEndpointNotified;
         _levelMeterService.LevelChanged += OnLevelChanged;
         _volumeService.VolumeChanged += OnExternalVolumeChanged;
 
@@ -57,7 +59,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _devicesView.Filter = item => item is DeviceRowViewModel row && IsShown(row);
 
         Refresh();
+        LogStarted();
     }
+
+    /// <summary>The event timeline (device, default, volume and test events), shown in the EVENTS panel.</summary>
+    public EventLogViewModel EventLog { get; } = new();
+
+    // Every endpoint ever seen (never pruned), so events for a removed device can still be named, and a state
+    // change can show the state it changed *from* (the notification is logged before the debounced Refresh).
+    private readonly Dictionary<string, DeviceInfo> _knownDevices = new();
+
+    // Last known volume (whole %) and mute per endpoint, so a change can be logged as "from -> to".
+    private readonly Dictionary<string, (int Percent, bool Muted)> _lastVolume = new();
 
     public ObservableCollection<DeviceRowViewModel> Devices { get; } = new();
 
@@ -208,6 +221,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (!SetField(ref _selectedDevice, value)) return;
             OnPropertyChanged(nameof(CanSetDefaults));
+            EventLog.SelectedDeviceId = value?.Device.Id;
             // Hold a microphone open (so its meter is live) only while it's the selected row; selecting anything
             // else closes it. A running mic test keeps its own capture open regardless of selection.
             _levelMeterService.SetCaptureStreamDevice(
@@ -235,11 +249,29 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             if (!SetField(ref _isPropertiesPanelOpen, value)) return;
             if (value)
             {
+                IsEventsPanelOpen = false;
                 LoadSelectedDeviceProperties(SelectedDevice);
             }
             else
             {
                 SelectedDeviceProperties = null;
+            }
+        }
+    }
+
+    private bool _isEventsPanelOpen;
+
+    /// <summary>Whether the EVENTS panel is expanded. It shares the right-hand side with the property table, so
+    /// opening one closes the other. Events are recorded either way.</summary>
+    public bool IsEventsPanelOpen
+    {
+        get => _isEventsPanelOpen;
+        set
+        {
+            if (!SetField(ref _isEventsPanelOpen, value)) return;
+            if (value)
+            {
+                IsPropertiesPanelOpen = false;
             }
         }
     }
@@ -292,12 +324,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                      .OrderBy(d => d.Direction)
                      .ThenBy(d => d.FriendlyName, StringComparer.OrdinalIgnoreCase))
         {
+            _knownDevices[info.Id] = info;
             var row = new DeviceRowViewModel(info);
             ApplyTestState(row);
             if (info.State == DeviceConnectionState.Active)
             {
                 _levelMeterService.StartMonitoring(info.Id, TimeSpan.FromMilliseconds(100));
-                row.ApplyVolumeState(_volumeService.StartMonitoring(info.Id));
+                var volume = _volumeService.StartMonitoring(info.Id);
+                row.ApplyVolumeState(volume);
+                if (volume is { } v)
+                {
+                    _lastVolume[info.Id] = (ToPercent(v.Volume), v.Muted);
+                }
             }
             row.VolumeEditedByUser += OnRowVolumeEdited;
             row.MuteEditedByUser += OnRowMuteEdited;
@@ -338,10 +376,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 _defaultDeviceService.SetDefaultCommunicationsDevice(row.Device.Id);
             }
             SetStatus($"Set \"{row.Device.FriendlyName}\" as the {roleText}.");
+            LogForDevice(row.Device.Id, AudioEventKind.DefaultRequested, AudioEventSource.ThisApp, $"Set as the {roleText}");
         }
         catch (Exception ex)
         {
             SetStatus($"Failed to set \"{row.Device.FriendlyName}\" as the {roleText}: {ex.Message}");
+            LogForDevice(row.Device.Id, AudioEventKind.Error, AudioEventSource.ThisApp, $"Failed to set as the {roleText}: {ex.Message}");
         }
 
         // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the Role column
@@ -370,12 +410,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         string name = row.Device.FriendlyName;
         if (row.Device.Direction == AudioDirection.Output)
         {
-            await RunTestAsync(id, name, _testService.StartTestSound(id), $"Playing test music on \"{name}\"…");
+            await RunTestAsync(id, name, _testService.StartTestSound(id), $"Playing test music on \"{name}\"…", "Test music");
         }
         else
         {
             await RunTestAsync(id, name, _testService.StartRecordAndPlayback(id, null),
-                $"Recording from \"{name}\"… click stop to end recording early and play it back.");
+                $"Recording from \"{name}\"… click stop to end recording early and play it back.",
+                "Mic test (record, then play back)");
         }
     }
 
@@ -407,7 +448,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             string status = channel is null
                 ? $"Playing the test music on each channel of \"{name}\" in turn…"
                 : $"Playing the test music on {channel.LongName} ({channel.ShortName}) of \"{name}\" only…";
-            await RunTestAsync(id, name, _testService.StartChannelTestSound(id, channels), status);
+            string label = channel is null
+                ? "Test music on each channel in turn"
+                : $"Test music on {channel.LongName} ({channel.ShortName}) only";
+            await RunTestAsync(id, name, _testService.StartChannelTestSound(id, channels), status, label);
         }
         else
         {
@@ -417,15 +461,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             string status = channel is null
                 ? $"Playing each channel of the \"{name}\" recording in turn…"
                 : $"Playing {channel.LongName} of the \"{name}\" recording…";
-            await RunTestAsync(id, name, _testService.StartChannelPlayback(take, name, channels, null), status);
+            string label = channel is null
+                ? "Each channel of the last recording in turn"
+                : $"{channel.LongName} of the last recording";
+            await RunTestAsync(id, name, _testService.StartChannelPlayback(take, name, channels, null), status, label);
         }
     }
 
     /// <summary>Tracks a running test (row button state, channel highlight, status) until it completes; keeps a
     /// mic test's recording for per-channel playback.</summary>
-    private async Task RunTestAsync(string id, string deviceName, AudioTestSession session, string startStatus)
+    private async Task RunTestAsync(string id, string deviceName, AudioTestSession session, string startStatus, string testLabel)
     {
         _activeTests[id] = session;
+        LogForDevice(id, AudioEventKind.TestStarted, AudioEventSource.ThisApp, $"{testLabel} started");
         session.PhaseChanged += (_, phase) => _dispatcher.BeginInvoke(() =>
         {
             UpdateRowTestState(id);
@@ -459,10 +507,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 _lastTakes[id] = take;
             }
             SetStatus(outcome.Message);
+            LogForDevice(id, outcome.Success ? AudioEventKind.TestFinished : AudioEventKind.Error,
+                AudioEventSource.ThisApp, outcome.Message);
         }
         catch (Exception ex)
         {
             SetStatus($"Test failed: {ex.Message}");
+            LogForDevice(id, AudioEventKind.Error, AudioEventSource.ThisApp, $"{testLabel} failed: {ex.Message}");
         }
         finally
         {
@@ -511,7 +562,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             }
             catch (Exception ex)
             {
-                _dispatcher.BeginInvoke(() => SetStatus($"Couldn't load device details: {ex.Message}"));
+                _dispatcher.BeginInvoke(() =>
+                {
+                    SetStatus($"Couldn't load device details: {ex.Message}");
+                    LogForDevice(id, AudioEventKind.Error, AudioEventSource.ThisApp, $"Couldn't load device details: {ex.Message}");
+                });
             }
         });
 
@@ -552,10 +607,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         try
         {
             _volumeService.SetVolume(row.Device.Id, (float)(row.VolumePercent / 100.0));
+            RecordVolume(row.Device.Id, ToPercent(row.VolumePercent / 100.0), row.IsMuted, AudioEventSource.ThisApp, DateTimeOffset.Now);
         }
         catch (Exception ex)
         {
             SetStatus($"Failed to set volume on \"{row.Device.FriendlyName}\": {ex.Message}");
+            LogForDevice(row.Device.Id, AudioEventKind.Error, AudioEventSource.ThisApp, $"Failed to set volume: {ex.Message}");
         }
     }
 
@@ -566,20 +623,230 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             _volumeService.SetMute(row.Device.Id, row.IsMuted);
             SetStatus($"{(row.IsMuted ? "Muted" : "Unmuted")} \"{row.Device.FriendlyName}\".");
+            RecordVolume(row.Device.Id, ToPercent(row.VolumePercent / 100.0), row.IsMuted, AudioEventSource.ThisApp, DateTimeOffset.Now);
         }
         catch (Exception ex)
         {
             SetStatus($"Failed to {(row.IsMuted ? "mute" : "unmute")} \"{row.Device.FriendlyName}\": {ex.Message}");
+            LogForDevice(row.Device.Id, AudioEventKind.Error, AudioEventSource.ThisApp,
+                $"Failed to {(row.IsMuted ? "mute" : "unmute")}: {ex.Message}");
         }
     }
 
     private void OnExternalVolumeChanged(object? sender, EndpointVolumeChangedEventArgs e)
     {
+        var timestamp = DateTimeOffset.Now;
         _dispatcher.BeginInvoke(() =>
-            Devices.FirstOrDefault(d => d.Device.Id == e.DeviceId)?.ApplyVolumeState(e.State));
+        {
+            Devices.FirstOrDefault(d => d.Device.Id == e.DeviceId)?.ApplyVolumeState(e.State);
+            RecordVolume(e.DeviceId, ToPercent(e.State.Volume), e.State.Muted, AudioEventSource.Windows, timestamp);
+        });
     }
 
     private void OnDevicesChanged(object? sender, EventArgs e) => _dispatcher.BeginInvoke(RequestRefresh);
+
+    // ---- event timeline ----------------------------------------------------------------------------------------
+
+    private static int ToPercent(double scalar) => (int)Math.Round(scalar * 100.0);
+
+    /// <summary>Logs a volume and/or mute change against the last known values. Consecutive volume changes on the
+    /// same device from the same source within a second (a slider drag, held media keys) merge into one line.</summary>
+    private void RecordVolume(string deviceId, int percent, bool muted, AudioEventSource source, DateTimeOffset timestamp)
+    {
+        bool known = _lastVolume.TryGetValue(deviceId, out var last);
+        _lastVolume[deviceId] = (percent, muted);
+        if (!known) return;
+
+        if (last.Muted != muted)
+        {
+            LogForDevice(deviceId, AudioEventKind.MuteChanged, source, muted ? "Muted" : "Unmuted", timestamp);
+        }
+        if (last.Percent != percent)
+        {
+            int from = last.Percent;
+            var entry = NewDeviceEvent(deviceId, AudioEventKind.VolumeChanged, source, VolumeDetail(from, percent, from, percent), timestamp)
+                with { FromValue = from.ToString(), Low = Math.Min(from, percent), High = Math.Max(from, percent) };
+            EventLog.AddOrMerge(entry, $"volume|{deviceId}|{source}", TimeSpan.FromSeconds(1),
+                (existing, incoming) =>
+                {
+                    int start = int.Parse(existing.FromValue!);
+                    int low = Math.Min(existing.Low ?? start, percent);
+                    int high = Math.Max(existing.High ?? start, percent);
+                    return incoming with
+                    {
+                        Timestamp = existing.Timestamp,
+                        FromValue = existing.FromValue,
+                        Low = low,
+                        High = high,
+                        Detail = VolumeDetail(start, percent, low, high),
+                    };
+                });
+        }
+    }
+
+    /// <summary>"Volume 40 % → 65 %", plus the range when a burst went beyond its start and end values
+    /// (e.g. "Volume 100 % → 100 % (dipped to 90 %)").</summary>
+    private static string VolumeDetail(int from, int to, int low, int high)
+    {
+        string text = $"Volume {from} % → {to} %";
+        bool dipped = low < Math.Min(from, to);
+        bool peaked = high > Math.Max(from, to);
+        return (dipped, peaked) switch
+        {
+            (true, true) => $"{text} (ranged {low}–{high} %)",
+            (true, false) => $"{text} (dipped to {low} %)",
+            (false, true) => $"{text} (peaked at {high} %)",
+            _ => text,
+        };
+    }
+
+    private void OnEndpointNotified(object? sender, EndpointNotification notification)
+    {
+        // Property changes are only recorded while their filter is on — checked here, on the notification thread,
+        // so the constant stream of them isn't even marshalled to the UI otherwise.
+        if (notification.Kind == EndpointNotificationKind.PropertyChanged && !EventLog.RecordPropertyChanges) return;
+        _dispatcher.BeginInvoke(() => LogEndpointNotification(notification));
+    }
+
+    private void LogEndpointNotification(EndpointNotification n)
+    {
+        string? id = n.DeviceId;
+        switch (n.Kind)
+        {
+            case EndpointNotificationKind.Added:
+                LogForDevice(id, AudioEventKind.DeviceAdded, AudioEventSource.Windows, "Endpoint added", n.Timestamp);
+                break;
+
+            case EndpointNotificationKind.Removed:
+                LogForDevice(id, AudioEventKind.DeviceRemoved, AudioEventSource.Windows, "Endpoint removed", n.Timestamp);
+                break;
+
+            case EndpointNotificationKind.StateChanged when id is not null && n.NewState is { } newState:
+            {
+                string detail = _knownDevices.TryGetValue(id, out var info)
+                    ? $"{StateName(info.State)} → {StateName(newState)}"
+                    : $"Now {StateName(newState)}";
+                LogForDevice(id, AudioEventKind.StateChanged, AudioEventSource.Windows, detail, n.Timestamp);
+                if (info is not null)
+                {
+                    _knownDevices[id] = CopyWithState(info, newState);
+                }
+                break;
+            }
+
+            case EndpointNotificationKind.DefaultChanged when n.Flow is { } flow && n.Role is { } role:
+            {
+                string flowText = flow == AudioDirection.Output ? "output" : "input";
+                // The previous holder, from the last refresh (which hasn't run yet — it's debounced).
+                var previous = _knownDevices.Values.FirstOrDefault(d =>
+                    d.Direction == flow && d.Id != id
+                    && (role == DefaultRole.Communications ? d.IsDefaultCommunicationsDevice : d.IsDefaultDevice));
+                string was = previous is null ? "" : $" (was {previous.FriendlyName})";
+                string Detail(string roles) => id is null
+                    ? $"No default {flowText} for {roles} any more{was}"
+                    : $"Became the default {flowText} for {roles}{was}";
+
+                // Windows reports each role separately (Set Default = Console + Multimedia): merge them into one line.
+                // Communications stays separate — its previous holder ("was") is usually a different device.
+                var entry = NewDeviceEvent(id, AudioEventKind.DefaultChanged, AudioEventSource.Windows, Detail(role.ToString()), n.Timestamp)
+                    with { FromValue = role.ToString(), Direction = flow };
+                string roleGroup = role == DefaultRole.Communications ? "comms" : "default";
+                EventLog.AddOrMerge(entry, $"default|{flow}|{id}|{roleGroup}", TimeSpan.FromMilliseconds(500), (existing, incoming) =>
+                {
+                    var roles = existing.FromValue!.Split(" + ").Append(incoming.FromValue!).Distinct().ToList();
+                    string joined = string.Join(" + ", roles);
+                    return existing with { FromValue = joined, Detail = Detail(joined) };
+                });
+                break;
+            }
+
+            case EndpointNotificationKind.PropertyChanged when id is not null && n.PropertyFormatId is { } fmtid && n.PropertyId is { } pid:
+            {
+                string? symbol = PropertyKeyNames.TryGetSymbol(fmtid, pid);
+                string keyName = symbol is null ? PropertyKeyNames.FormatRaw(fmtid, pid) : PropertyKeyNames.ToDisplayName(symbol);
+                var entry = NewDeviceEvent(id, AudioEventKind.PropertyChanged, AudioEventSource.Windows, $"{keyName} changed", n.Timestamp);
+                EventLog.AddOrMerge(entry, $"property|{id}|{fmtid}|{pid}", TimeSpan.FromSeconds(1),
+                    (existing, _) => existing);
+                break;
+            }
+        }
+    }
+
+    private void LogStarted()
+    {
+        string DefaultName(AudioDirection direction, bool comms) =>
+            Devices.FirstOrDefault(d => d.Device.Direction == direction
+                                        && (comms ? d.Device.IsDefaultCommunicationsDevice : d.Device.IsDefaultDevice))
+                ?.Device.FriendlyName ?? "none";
+
+        int active = Devices.Count(d => d.IsActive);
+        EventLog.Add(new AudioEvent
+        {
+            Timestamp = DateTimeOffset.Now,
+            Kind = AudioEventKind.Started,
+            Source = AudioEventSource.ThisApp,
+            Detail = $"Started: {Devices.Count} endpoints, {active} active. "
+                     + $"Default output: {DefaultName(AudioDirection.Output, false)}; "
+                     + $"comms output: {DefaultName(AudioDirection.Output, true)}; "
+                     + $"default input: {DefaultName(AudioDirection.Input, false)}; "
+                     + $"comms input: {DefaultName(AudioDirection.Input, true)}.",
+        });
+    }
+
+    private void LogForDevice(string? deviceId, AudioEventKind kind, AudioEventSource source, string detail,
+        DateTimeOffset? timestamp = null) =>
+        EventLog.Add(NewDeviceEvent(deviceId, kind, source, detail, timestamp ?? DateTimeOffset.Now));
+
+    private AudioEvent NewDeviceEvent(string? deviceId, AudioEventKind kind, AudioEventSource source, string detail,
+        DateTimeOffset timestamp)
+    {
+        var (name, direction) = DescribeDevice(deviceId);
+        return new AudioEvent
+        {
+            Timestamp = timestamp,
+            Kind = kind,
+            Source = source,
+            DeviceId = deviceId,
+            DeviceName = name,
+            Direction = direction,
+            Detail = detail,
+        };
+    }
+
+    /// <summary>Name and direction for an endpoint ID: from devices seen so far, else read directly (a device
+    /// added since the last refresh). Endpoint IDs start "{0.0.0." for outputs and "{0.0.1." for inputs.</summary>
+    private (string? Name, AudioDirection? Direction) DescribeDevice(string? deviceId)
+    {
+        if (deviceId is null) return (null, null);
+        if (_knownDevices.TryGetValue(deviceId, out var info)) return (info.FriendlyName, info.Direction);
+
+        AudioDirection? direction = deviceId.StartsWith("{0.0.0.", StringComparison.Ordinal) ? AudioDirection.Output
+            : deviceId.StartsWith("{0.0.1.", StringComparison.Ordinal) ? AudioDirection.Input
+            : null;
+        string? name = null;
+        try
+        {
+            name = _enumerationService.TryGetFriendlyName(deviceId);
+        }
+        catch
+        {
+            // Removed endpoints may no longer be readable; fall back to the ID.
+        }
+        return (name ?? deviceId, direction);
+    }
+
+    private static string StateName(DeviceConnectionState state) =>
+        state == DeviceConnectionState.NotPresent ? "Not present" : state.ToString();
+
+    private static DeviceInfo CopyWithState(DeviceInfo info, DeviceConnectionState state) => new()
+    {
+        Id = info.Id,
+        FriendlyName = info.FriendlyName,
+        Direction = info.Direction,
+        State = state,
+        IsDefaultDevice = info.IsDefaultDevice,
+        IsDefaultCommunicationsDevice = info.IsDefaultCommunicationsDevice,
+    };
 
     private void OnLevelChanged(object? sender, DeviceLevelChangedEventArgs e)
     {
@@ -621,6 +888,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void SetStatus(string message) => StatusMessage = message;
 
+    /// <summary>Shows a message in the status bar (for actions handled in the view, e.g. exporting the event log).</summary>
+    public void ShowStatus(string message) => SetStatus(message);
+
     public void Dispose()
     {
         _refreshDebounce.Stop();
@@ -630,6 +900,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
 
         _enumerationService.DevicesChanged -= OnDevicesChanged;
+        _enumerationService.EndpointNotified -= OnEndpointNotified;
         _levelMeterService.LevelChanged -= OnLevelChanged;
         _volumeService.VolumeChanged -= OnExternalVolumeChanged;
     }

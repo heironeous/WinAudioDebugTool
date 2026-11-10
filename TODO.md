@@ -121,8 +121,9 @@ means **implemented and committed**, not "verified on real hardware" — see
 
 ## Next steps — planned, awaiting approval
 
-Five features chosen from the suggestions list (2026-11-10). **Nothing below is
-started; each needs the owner's go-ahead before implementation.** Suggested
+Five features chosen from the suggestions list (2026-11-10). **Each needs the
+owner's go-ahead before implementation** — N2 is done (approved first); the
+others are not started. Suggested
 order: N1 → N2 → N3 → N4 → N5. N1 feeds N2 and N5, and N3 feeds N5. The report
 (N5) comes last because it collects everything else. Each feature is its own
 commit, with this file updated in that commit. Every item ends with
@@ -207,74 +208,103 @@ sound bad?" and "who is holding my mic?".
     default proposal is read-only.
   - Should output rows show sessions as well, or only inputs?
 
-### N2. Event timeline
+### N2. Event timeline — implemented (2026-11-10)
 Goal: a timestamped log of everything that happens to the audio devices, so
 an intermittent problem ("my mic died in the meeting at 14:03") can be
 reconstructed afterwards.
 
-- [ ] **Model and service.**
-  - Model: `Models/AudioEvent.cs` (Timestamp, Kind, DeviceId, DeviceName,
-    Direction, Detail, Source = Windows | ThisApp).
-  - Service: `Services/EventLogService.cs`, an in-memory ring buffer of
-    5,000 entries that raises `EventAdded`.
-  - Kinds: DeviceAdded, DeviceRemoved, StateChanged (old → new),
-    DefaultChanged (flow + role), PropertyChanged, VolumeChanged, MuteChanged,
-    SessionStarted, SessionStopped, TestStarted, TestFinished, Error.
-- [ ] **Event sources** (changes to existing code):
-  - `DeviceEnumerationService`: today every IMMNotificationClient callback
-    becomes a bare `_onChanged()`. Add a detailed event carrying each
-    callback's data, before the 150 ms refresh debounce:
-    - added/removed with the device ID;
-    - `OnDeviceStateChanged` with the new state (the old state comes from a
-      cached state per ID);
-    - `OnDefaultDeviceChanged` with flow, role and the new default ID;
-    - `OnPropertyValueChanged` with the key. Keep it but hide it by default,
-      because it's very chatty.
-  - `EndpointVolumeService.VolumeChanged`: volume and mute changes. Own
-    changes are already tagged with the event-context GUID; log those as
-    Source = ThisApp. Coalesce bursts: consecutive volume changes on the same
-    device within 500 ms merge into one entry, "Volume 40 % → 65 %", so a
-    slider drag isn't hundreds of lines. Note this only covers devices whose
-    volume is monitored, which today means active ones.
-  - `AudioSessionService` (N1): "Teams started using Headset Microphone",
-    "… stopped".
-  - The app's own actions in `MainViewModel`: Set Default/Comms/Both (with
-    the previous default), test start/stop/outcome, and errors already shown
-    in the status bar.
-- [ ] **Names for removed devices.** When a device is removed it may no longer
-      enumerate, so keep an ID → name cache (filled on every refresh, never
-      pruned) to label its entries.
-- [ ] **Grouping.** One default change fires several callbacks (lesson 7). Log
-      each raw callback, but show callbacks that arrive within 200 ms with the
-      same kind as one entry ("Default output (Console, Multimedia) →
-      Speakers"). Raw entries stay available in the export.
-- [ ] **UI.** An "EVENTS" panel:
-  - Proposal: a second collapsible strip next to PROPERTIES on the right edge
-    of the details area, reusing `FlatStripToggle`. Only one of the two is
-    open at a time.
-  - Columns: time (`HH:mm:ss.fff`), kind, device, detail.
-  - Toolbar: filter by kind, "selected device only", Pause, Clear, Copy, and
-    Export (CSV / Markdown / JSON Lines).
-  - Newest entry on top, with auto-scroll unless the user has scrolled away.
-- [ ] **Optional persistence.** Also append to
-      `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log` (JSON Lines),
-      so a session survives an app restart or crash. Keep the last 14 days.
+- [x] **Model and log.**
+  - Model: `Models/AudioEvent.cs`, an immutable record with Timestamp,
+    LastTimestamp, Kind, Category, Source = Windows | ThisApp, device ID,
+    name and direction, Detail, Count, FromValue and Low/High.
+  - Log: `ViewModels/EventLogViewModel.cs`, an in-memory ring buffer of 5,000
+    entries, newest first, used on the UI thread only. It has per-category
+    filters, "selected device only", and `AddOrMerge` for coalescing bursts.
+    - Deviation from the plan: it's a view model rather than
+      `Services/EventLogService.cs`, because it owns the filtered
+      `ICollectionView` the panel binds to.
+  - Kinds: Started, DeviceAdded, DeviceRemoved, StateChanged (old → new),
+    DefaultChanged, DefaultRequested, VolumeChanged, MuteChanged,
+    TestStarted, TestFinished, PropertyChanged, Error.
+- [x] **Event sources.**
+  - `DeviceEnumerationService`:
+    - new `EndpointNotified` event carrying each IMMNotificationClient
+      callback's data (`EndpointNotification`), timestamped in the callback,
+      before the refresh debounce;
+    - `OnPropertyValueChanged` is now forwarded, but only to the log; it
+      still doesn't trigger a refresh;
+    - new `TryGetFriendlyName` for endpoints not seen before.
+  - Volume and mute:
+    - external changes come from `EndpointVolumeService.VolumeChanged`
+      (Source = Windows);
+    - the app's own slider and mute edits are logged in `MainViewModel`
+      (Source = ThisApp);
+    - both are compared with the last known value per device.
+  - The app's own actions in `MainViewModel`: Set Default/Comms/Both, test
+    start and outcome (a failure is logged as Error), and load errors. On
+    start the log records an entry with the endpoint count and the four
+    current defaults.
+- [x] **Names for removed devices.** `_knownDevices` (ID → last `DeviceInfo`)
+      is filled on every refresh and never pruned. It also supplies the *old*
+      state for a state change, and the previous default holder ("was X").
+      Endpoints not seen yet are read directly. Their direction comes from the
+      ID prefix: `{0.0.0.` is output, `{0.0.1.` is input.
+- [x] **Grouping and coalescing.**
+  - Default changes: callbacks for the same device and direction within
+    500 ms merge into one line, e.g. "Became the default output for Console +
+    Multimedia (was X)". Communications is kept as a separate line, because
+    its previous holder usually differs.
+  - Volume: changes on the same device from the same source with less than
+    1 s between them merge, e.g. "Volume 40 % → 65 %". If the value went
+    beyond its start and end during the burst, the range is shown, e.g.
+    "100 % → 100 % (dipped to 90 %)".
+  - Property changes: repeats of the same key within 1 s merge.
+  - Each line records how many notifications it merged (Count; shown in the
+    tooltip and exports).
+    - Deviation from the plan: individual raw callbacks are not kept.
+- [x] **UI.** An "EVENTS" strip toggle under PROPERTIES at the right edge.
+      Both share the right-hand column, and opening one closes the other
+      (`ApplySidePanelLayout`).
+  - The panel has a header with its count, and buttons for Copy (plain text
+    of the shown events), Export… (CSV / Markdown / JSON Lines; the format
+    follows the chosen file extension, `Services/EventLogExporter.cs`) and
+    Clear.
+  - Filters: Devices, Defaults, Volume, Tests, Properties, and "Selected
+    device only". Entries without a device (start, errors) stay visible under
+    "Selected device only".
+  - Properties is off by default. While it's off, property changes aren't
+    *recorded* at all; the check happens on the notification thread.
+  - The table follows the flat dark theme (`LogHeader`/`LogCell`/`LogRow` in
+    `Theme.xaml`); Error is shown red, Default accent-coloured, and each row's
+    tooltip has the full detail.
+  - Deviation from the plan: no Pause button. Newest entries go on top, so
+    there's no auto-scroll to pause.
+- [ ] **Session events** ("Teams started using …"). These come with N1.
+- [ ] **Optional persistence.** Not built; events are in memory only until
+      the owner decides. The proposal is to append JSON Lines to
+      `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log` and keep 14
+      days.
 - **Limitation.** The app must be running to record anything. A tray mode
   (suggestion #15) would make it useful all day.
-- **Verification.**
-  - Toggle mute on Speakers (Realtek) twice through the app (net change
-    none) and nudge a volume and restore it. Expect the coalesced entries
-    with Source = ThisApp.
-  - Change the same volume from the Windows volume flyout. Expect
-    Source = Windows. This is manual and needs the owner.
-  - Plugging or unplugging the Jabra dongle needs the owner. Never change
-    defaults just to test.
-  - Check the export files open and parse.
-- **Decisions needed:**
-  - Persist to disk (on or off by default)?
-  - Should an always-on log record device names and IDs? They include USB
-    serial numbers.
-  - Panel placement: right-edge strip as proposed, or a bottom tab?
+- **Verified** (2026-11-10). Silent; only the Intel mic array was touched,
+  and it was restored.
+  - Offline harness (`EventLogViewModel` and exporter), 15/15 checks:
+    burst merging, merging past an interleaved event, filters, capacity,
+    CSV/Markdown escaping, JSON Lines parsing.
+  - In the app, via UI Automation:
+    - start entry with the four defaults;
+    - in-app mute and unmute → two "this app" lines;
+    - in-app slider drag → one merged line;
+    - level changes from a separate process → "Windows" lines, two bursts
+      1.5 s apart giving two lines, with "dipped to" ranges.
+  - No property-change notifications arrived in 6 s idle, nor during volume
+    changes.
+  - Screenshot checked: panel layout and both strips.
+- **Not verified, needs the owner:**
+  - plugging or unplugging a device (state, added and removed lines);
+  - default changes from Windows Settings, and Set Default in the app;
+  - test start and finish lines (the tests are audible);
+  - the Export… dialog itself (the writer is covered by the harness).
 
 ### N3. Call-mode detection from the recording (bandwidth analysis)
 Goal: after a mic test, report the *audio bandwidth* actually reaching
