@@ -50,10 +50,10 @@ means **implemented and committed**, not "verified on real hardware" — see
       e.g. `{b3f8fa53-0004-438e-9003-51a46e139bfc},*`) once their meaning is confirmed
 
 ## Testing devices
-- [x] "Test" button per device row — plays a tone for outputs, records 5s
+- [x] "Test" button per device row — plays a short generated music clip (TestMusic: drums, bass, chords, melody, bells; full-band, panned) for outputs, records 5s
       and plays it back for inputs
 - [x] Start/stop toggle on the Test button (▶ / ■): stopping an output test
-      ends the tone; stopping an input test ends recording early and still
+      ends the music; stopping an input test ends recording early and still
       plays the capture back (stop again to cut the playback)
 - [x] Input tests show their phase on the button: "Test ■" while recording,
       "Playback ■" while playing the recording back

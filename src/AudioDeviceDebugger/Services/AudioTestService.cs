@@ -9,16 +9,20 @@ namespace AudioDeviceDebugger.Services;
 
 public sealed class AudioTestService : IAudioTestService
 {
-    private static readonly TimeSpan ToneDuration = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan RecordDuration = TimeSpan.FromSeconds(5);
 
-    public AudioTestSession StartTestTone(string outputDeviceId) =>
-        new(AudioTestPhase.PlayingTone, session => PlayTestTone(outputDeviceId, session));
+    public AudioTestService()
+    {
+        _ = Task.Run(() => TestMusic.Prewarm());
+    }
+
+    public AudioTestSession StartTestSound(string outputDeviceId) =>
+        new(AudioTestPhase.PlayingTestSound, session => PlayTestSound(outputDeviceId, session));
 
     public AudioTestSession StartRecordAndPlayback(string inputDeviceId, string? outputDeviceId) =>
         new(AudioTestPhase.Recording, session => RecordAndPlayback(inputDeviceId, outputDeviceId, session));
 
-    private static TestOutcome PlayTestTone(string outputDeviceId, AudioTestSession session)
+    private static TestOutcome PlayTestSound(string outputDeviceId, AudioTestSession session)
     {
         try
         {
@@ -26,30 +30,30 @@ public sealed class AudioTestService : IAudioTestService
             using var device = enumerator.GetDevice(outputDeviceId);
             string deviceName = SafeName(device);
 
-            // Generate the tone directly in the device's shared-mode mix format: shared-mode WASAPI won't open a
+            // Render the test music directly in the device's shared-mode mix format: shared-mode WASAPI won't open a
             // stream whose channel count differs from the device's (e.g. stereo on a 5.1 or mono endpoint).
             var mix = GetMixFormat(device);
             using var output = new WasapiOut(device, AudioClientShareMode.Shared, true, 100);
-            var tone = new SignalGenerator(mix.SampleRate, mix.Channels)
-            {
-                Type = SignalGeneratorType.Sin,
-                Frequency = 440,
-                Gain = 0.25,
-            };
+            output.Init(TestMusic.Create(mix));
 
-            output.Init(tone);
+            using var playbackStopped = new ManualResetEventSlim(false);
+            output.PlaybackStopped += (_, _) => playbackStopped.Set();
+
             var started = DateTime.UtcNow;
             output.Play();
-            bool stopped = session.CurrentStopToken.WaitHandle.WaitOne(ToneDuration);
+            int signalled = WaitHandle.WaitAny(
+                new[] { playbackStopped.WaitHandle, session.CurrentStopToken.WaitHandle },
+                TestMusic.Duration + TimeSpan.FromSeconds(1));
+            bool stoppedEarly = signalled == 1;
             output.Stop();
 
-            return stopped
-                ? TestOutcome.Ok($"Stopped the 440 Hz test tone on \"{deviceName}\" after {(DateTime.UtcNow - started).TotalSeconds:0.0}s.")
-                : TestOutcome.Ok($"Played a 440 Hz test tone through \"{deviceName}\" for {ToneDuration.TotalSeconds:0}s.");
+            return stoppedEarly
+                ? TestOutcome.Ok($"Stopped the test music on \"{deviceName}\" after {(DateTime.UtcNow - started).TotalSeconds:0.0}s.")
+                : TestOutcome.Ok($"Played the test music through \"{deviceName}\" ({TestMusic.Duration.TotalSeconds:0.0}s).");
         }
         catch (Exception ex)
         {
-            return TestOutcome.Fail($"Failed to play test tone: {ex.Message}");
+            return TestOutcome.Fail($"Failed to play test music: {ex.Message}");
         }
     }
 

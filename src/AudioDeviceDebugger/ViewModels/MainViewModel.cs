@@ -267,7 +267,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Starts a test on the row's device, or — if one is already running there — stops its current
-    /// phase (tone: stop playing; mic: stop recording and play back what was captured, or stop playback).</summary>
+    /// phase (output: stop the test music; mic: stop recording and play back what was captured, or stop playback).</summary>
     public async Task ToggleTestAsync(DeviceRowViewModel row)
     {
         string id = row.Device.Id;
@@ -278,7 +278,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
 
         var session = row.Device.Direction == AudioDirection.Output
-            ? _testService.StartTestTone(id)
+            ? _testService.StartTestSound(id)
             : _testService.StartRecordAndPlayback(id, null);
 
         string deviceName = row.Device.FriendlyName;
@@ -293,7 +293,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         });
         UpdateRowTestState(id);
         SetStatus(row.Device.Direction == AudioDirection.Output
-            ? $"Playing test tone on \"{deviceName}\"…"
+            ? $"Playing test music on \"{deviceName}\"…"
             : $"Recording from \"{deviceName}\"… click stop to end recording early and play it back.");
 
         try

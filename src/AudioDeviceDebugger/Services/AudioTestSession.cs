@@ -5,8 +5,8 @@ namespace AudioDeviceDebugger.Services;
 /// <summary>What a running test is doing right now.</summary>
 public enum AudioTestPhase
 {
-    /// <summary>Output test: playing the test tone.</summary>
-    PlayingTone,
+    /// <summary>Output test: playing the test music.</summary>
+    PlayingTestSound,
 
     /// <summary>Input test, first phase: recording from the microphone.</summary>
     Recording,
@@ -16,7 +16,7 @@ public enum AudioTestPhase
 }
 
 /// <summary>
-/// Handle to a running device test. A test runs through one or more phases (tone: play; mic: record, then
+/// Handle to a running device test. A test runs through one or more phases (output: play test music; mic: record, then
 /// play back). <see cref="Stop"/> ends only the phase that is currently running — so stopping a mic test
 /// while it records still plays back what was captured, and stopping again cuts the playback.
 /// </summary>

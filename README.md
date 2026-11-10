@@ -2,7 +2,7 @@
 
 A Windows desktop tool for inspecting and debugging audio input/output
 devices: enumerate every endpoint, inspect its properties, switch the
-system-wide default (regular and "communications") device, play test tones,
+system-wide default (regular and "communications") device, play test music,
 record/play back from microphones, and watch live level meters for every
 device at once.
 
@@ -45,7 +45,7 @@ and lets you drive the device straight from the UI.
         │                         - DefaultDeviceService: reads/sets default roles
         │                         - DeviceDetailsService: property-store dump,
         │                           format inspection
-        │                         - AudioTestService: tone playback, mic record
+        │                         - AudioTestService: test-music playback, mic record
         │                           + playback round-trip
         │                         - LevelMeterService: polls
         │                           IAudioMeterInformation per device
@@ -132,7 +132,7 @@ it there:
    that an actual call app (Teams/Discord) and a media player pick the roles
    up correctly.
 4. **Output test**: hit "Test" on each output device and confirm you hear the
-   tone from the correct physical device.
+   test music from the correct physical device.
 5. **Input test**: hit "Test" on each input device, speak into it, and
    confirm the recorded playback is audible and the live meter moved while
    you spoke.

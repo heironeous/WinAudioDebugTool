@@ -42,7 +42,7 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
 
     private bool _isTesting;
 
-    /// <summary>True while a Test (tone or record+playback) is running on this device; drives the
+    /// <summary>True while a Test (test music or record+playback) is running on this device; drives the
     /// play/stop icon on the row's Test button.</summary>
     public bool IsTesting
     {
