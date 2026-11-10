@@ -20,13 +20,13 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [ ] Auto-refresh on Windows device change notifications (plug/unplug events) (service raises `DevicesChanged`; UI wiring in MainWindow task)
 
 ## Default device roles
-- [ ] Show current default device for Render / Multimedia role
-- [ ] Show current default device for Render / Communications role
-- [ ] Show current default device for Capture / Multimedia role
-- [ ] Show current default device for Capture / Communications role
-- [ ] Button to set a device as default (Console + Multimedia roles)
-- [ ] Button to set a device as default **Communications** device
-- [ ] Visual indicator (badge/icon) in the device list for current defaults
+- [x] Show current default device for Render / Multimedia role
+- [x] Show current default device for Render / Communications role
+- [x] Show current default device for Capture / Multimedia role
+- [x] Show current default device for Capture / Communications role
+- [x] Set a device as default (Console + Multimedia roles) — `DefaultDeviceService` (UI button wiring in MainWindow task)
+- [x] Set a device as default **Communications** device — `DefaultDeviceService` (UI button wiring in MainWindow task)
+- [ ] Visual indicator (badge/icon) in the device list for current defaults (UI task)
 
 ## Device details panel
 - [ ] Friendly name, description, enumerator/interface name
