@@ -88,6 +88,10 @@ means **implemented and committed**, not "verified on real hardware" — see
       (`SelectedDeviceChannelPeaks` in `MainViewModel`, rendered as a row of
       vertical bars below the rolling graph in the detail panel)
 
+- [x] All meters (row bars, level graph, per-channel bars) on a dB scale,
+      −60…0 dBFS (`Models/LevelScale`), with dBFS tooltips, a live readout
+      and −12/−24/−36/−48 dB gridlines on the graph
+
 ## Packaging
 - [x] `dotnet publish` profile for a single self-contained `.exe`
       (`Properties/PublishProfiles/win-x64-selfcontained.pubxml`)

@@ -28,7 +28,7 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
 
     private double _currentPeak;
 
-    /// <summary>Latest IAudioMeterInformation reading, 0.0–1.0. Updated on the UI thread by MainViewModel.</summary>
+    /// <summary>Latest IAudioMeterInformation reading, linear 0.0–1.0. Updated on the UI thread by MainViewModel.</summary>
     public double CurrentPeak
     {
         get => _currentPeak;
@@ -36,9 +36,17 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
         {
             if (_currentPeak == value) return;
             _currentPeak = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentPeak)));
+            OnPropertyChanged(nameof(CurrentPeak));
+            OnPropertyChanged(nameof(MeterLevel));
+            OnPropertyChanged(nameof(LevelText));
         }
     }
+
+    /// <summary>Bar fill (0–1) on the dB scale (−60…0 dBFS) — see <see cref="LevelScale"/>.</summary>
+    public double MeterLevel => LevelScale.ToMeter(_currentPeak);
+
+    /// <summary>Current level as text, e.g. "−24.3 dBFS" (shown as the level bar's tooltip).</summary>
+    public string LevelText => LevelScale.Format(_currentPeak);
 
     private bool _isTesting;
 

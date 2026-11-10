@@ -3,6 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              MinHeight="16" MinWidth="40" Background="#1E1E1E">
     <Grid ClipToBounds="True">
+        <!-- dB gridlines + labels, drawn in code-behind on resize. -->
+        <Canvas x:Name="GridCanvas" IsHitTestVisible="False"/>
         <Polyline x:Name="GraphLine" Stroke="#00E676" StrokeThickness="1.25" />
+        <TextBlock x:Name="LevelReadout" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,6,0"
+                   Foreground="#00E676" FontSize="12" FontFamily="Consolas"/>
     </Grid>
 </UserControl>

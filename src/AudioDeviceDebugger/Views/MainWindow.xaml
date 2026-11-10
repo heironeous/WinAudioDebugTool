@@ -85,10 +85,10 @@
                     <DataGridTextColumn Header="Name" Binding="{Binding Device.FriendlyName}" Width="*" MinWidth="200"/>
                     <DataGridTextColumn Header="State" Binding="{Binding StateText}" Width="80"/>
                     <DataGridTextColumn Header="Role" Binding="{Binding DefaultBadge}" Width="95"/>
-                    <DataGridTemplateColumn Header="Level" Width="80">
+                    <DataGridTemplateColumn Header="Level (dB)" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentPeak, Mode=OneWay}"
+                                <ProgressBar Minimum="0" Maximum="1" Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
                                              Height="14" Foreground="#00E676"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -256,7 +256,7 @@
                             <DataTemplate>
                                 <StackPanel Orientation="Vertical" Width="32" Margin="0,0,6,0">
                                     <TextBlock Text="{Binding ChannelLabel}" FontSize="9" Foreground="Gray" HorizontalAlignment="Center"/>
-                                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding Peak, Mode=OneWay}"
+                                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
                                                  Orientation="Vertical" Width="24" Height="48" Foreground="#00E676"/>
                                 </StackPanel>
                             </DataTemplate>
