@@ -40,5 +40,20 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
         }
     }
 
+    private bool _isTesting;
+
+    /// <summary>True while a Test (tone or record+playback) is running on this device; drives the
+    /// play/stop icon on the row's Test button.</summary>
+    public bool IsTesting
+    {
+        get => _isTesting;
+        set
+        {
+            if (_isTesting == value) return;
+            _isTesting = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsTesting)));
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }

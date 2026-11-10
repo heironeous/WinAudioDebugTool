@@ -67,12 +67,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         private set => SetField(ref _statusMessage, value);
     }
 
-    private bool _isBusy;
-    public bool IsBusy
-    {
-        get => _isBusy;
-        private set => SetField(ref _isBusy, value);
-    }
+    private readonly Dictionary<string, AudioTestSession> _activeTests = new();
 
     /// <summary>Raised on the UI thread with a fresh sample whenever the *currently selected* device
     /// reports a new level — the view wires this straight to the big detail-panel graph.</summary>
@@ -94,7 +89,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                      .OrderBy(d => d.Direction)
                      .ThenBy(d => d.FriendlyName, StringComparer.OrdinalIgnoreCase))
         {
-            Devices.Add(new DeviceRowViewModel(info));
+            Devices.Add(new DeviceRowViewModel(info) { IsTesting = _activeTests.ContainsKey(info.Id) });
             if (info.State == DeviceConnectionState.Active)
             {
                 _levelMeterService.StartMonitoring(info.Id, TimeSpan.FromMilliseconds(100));
@@ -132,22 +127,48 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    public async Task RunTestAsync(DeviceRowViewModel row)
+    /// <summary>Starts a test on the row's device, or — if one is already running there — stops its current
+    /// phase (tone: stop playing; mic: stop recording and play back what was captured, or stop playback).</summary>
+    public async Task ToggleTestAsync(DeviceRowViewModel row)
     {
-        if (IsBusy) return;
-        IsBusy = true;
+        string id = row.Device.Id;
+        if (_activeTests.TryGetValue(id, out var running))
+        {
+            running.Stop();
+            return;
+        }
+
+        var session = row.Device.Direction == AudioDirection.Output
+            ? _testService.StartTestTone(id)
+            : _testService.StartRecordAndPlayback(id, null);
+
+        _activeTests[id] = session;
+        SetRowTesting(id, true);
+        SetStatus(row.Device.Direction == AudioDirection.Output
+            ? $"Playing test tone on \"{row.Device.FriendlyName}\"…"
+            : $"Recording from \"{row.Device.FriendlyName}\"… click stop to end recording early and play it back.");
+
         try
         {
-            var outcome = row.Device.Direction == AudioDirection.Output
-                ? await _testService.PlayTestToneAsync(row.Device.Id)
-                : await _testService.RecordAndPlaybackAsync(row.Device.Id, null);
-
+            var outcome = await session.Completion;
             SetStatus(outcome.Message);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Test failed: {ex.Message}");
         }
         finally
         {
-            IsBusy = false;
+            _activeTests.Remove(id);
+            SetRowTesting(id, false);
         }
+    }
+
+    // Rows are rebuilt on every Refresh, so a running test is tracked by device ID rather than by row.
+    private void SetRowTesting(string deviceId, bool isTesting)
+    {
+        var row = Devices.FirstOrDefault(d => d.Device.Id == deviceId);
+        if (row is not null) row.IsTesting = isTesting;
     }
 
     private void LoadSelectedDeviceDetails(DeviceRowViewModel? row)
@@ -219,6 +240,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public void Dispose()
     {
+        foreach (var session in _activeTests.Values)
+        {
+            session.Stop();
+        }
+
         _enumerationService.DevicesChanged -= OnDevicesChanged;
         _levelMeterService.LevelChanged -= OnLevelChanged;
     }

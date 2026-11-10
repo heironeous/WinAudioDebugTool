@@ -50,7 +50,36 @@
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Test" Click="TestButton_Click" Margin="2" Padding="6,2"/>
+                                    <Button Click="TestButton_Click" Margin="2" Padding="6,2" MinWidth="58">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="ToolTip" Value="Start test"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsTesting}" Value="True">
+                                                        <Setter Property="ToolTip" Value="Stop test"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Test" VerticalAlignment="Center"/>
+                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" FontSize="11"
+                                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="&#xE768;"/>
+                                                        <Setter Property="Foreground" Value="#2E7D32"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsTesting}" Value="True">
+                                                                <Setter Property="Text" Value="&#xE71A;"/>
+                                                                <Setter Property="Foreground" Value="#C62828"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
                                     <Button Content="Set Default" Click="SetDefaultButton_Click" Margin="2" Padding="6,2"/>
                                     <Button Content="Set Comms" Click="SetCommsButton_Click" Margin="2" Padding="6,2"/>
                                 </StackPanel>

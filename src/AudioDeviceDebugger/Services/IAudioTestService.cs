@@ -4,11 +4,13 @@ namespace AudioDeviceDebugger.Services;
 
 public interface IAudioTestService
 {
-    /// <summary>Plays a short generated tone through the given output device.</summary>
-    Task<TestOutcome> PlayTestToneAsync(string outputDeviceId, CancellationToken cancellationToken = default);
+    /// <summary>Starts playing a generated tone through the given output device. The tone ends by itself
+    /// after a fixed duration, or early when <see cref="AudioTestSession.Stop"/> is called.</summary>
+    AudioTestSession StartTestTone(string outputDeviceId);
 
-    /// <summary>Records a few seconds from the given input device, then plays the recording back through
-    /// <paramref name="outputDeviceId"/> (or the current default output device if null) so the user can
-    /// hear what the microphone actually captured.</summary>
-    Task<TestOutcome> RecordAndPlaybackAsync(string inputDeviceId, string? outputDeviceId, CancellationToken cancellationToken = default);
+    /// <summary>Starts recording from the given input device; when recording ends (by itself after a fixed
+    /// duration, or early via <see cref="AudioTestSession.Stop"/>) the captured audio is played back through
+    /// <paramref name="outputDeviceId"/> (or the current default output device if null). Calling
+    /// <see cref="AudioTestSession.Stop"/> again during playback cuts the playback short.</summary>
+    AudioTestSession StartRecordAndPlayback(string inputDeviceId, string? outputDeviceId);
 }

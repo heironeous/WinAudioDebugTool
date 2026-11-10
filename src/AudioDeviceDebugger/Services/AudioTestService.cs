@@ -8,16 +8,16 @@ namespace AudioDeviceDebugger.Services;
 
 public sealed class AudioTestService : IAudioTestService
 {
-    private static readonly TimeSpan ToneDuration = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan RecordDuration = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan ToneDuration = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan RecordDuration = TimeSpan.FromSeconds(5);
 
-    public Task<TestOutcome> PlayTestToneAsync(string outputDeviceId, CancellationToken cancellationToken = default) =>
-        Task.Run(() => PlayTestTone(outputDeviceId, cancellationToken), cancellationToken);
+    public AudioTestSession StartTestTone(string outputDeviceId) =>
+        new(session => PlayTestTone(outputDeviceId, session));
 
-    public Task<TestOutcome> RecordAndPlaybackAsync(string inputDeviceId, string? outputDeviceId, CancellationToken cancellationToken = default) =>
-        Task.Run(() => RecordAndPlayback(inputDeviceId, outputDeviceId, cancellationToken), cancellationToken);
+    public AudioTestSession StartRecordAndPlayback(string inputDeviceId, string? outputDeviceId) =>
+        new(session => RecordAndPlayback(inputDeviceId, outputDeviceId, session));
 
-    private static TestOutcome PlayTestTone(string outputDeviceId, CancellationToken cancellationToken)
+    private static TestOutcome PlayTestTone(string outputDeviceId, AudioTestSession session)
     {
         try
         {
@@ -34,16 +34,14 @@ public sealed class AudioTestService : IAudioTestService
             };
 
             output.Init(tone);
+            var started = DateTime.UtcNow;
             output.Play();
-            cancellationToken.WaitHandle.WaitOne(ToneDuration);
+            bool stopped = session.CurrentPhase.WaitHandle.WaitOne(ToneDuration);
             output.Stop();
 
-            cancellationToken.ThrowIfCancellationRequested();
-            return TestOutcome.Ok($"Played a 440 Hz test tone through \"{deviceName}\" for {ToneDuration.TotalSeconds:0}s.");
-        }
-        catch (OperationCanceledException)
-        {
-            return TestOutcome.Fail("Test tone cancelled.");
+            return stopped
+                ? TestOutcome.Ok($"Stopped the 440 Hz test tone on \"{deviceName}\" after {(DateTime.UtcNow - started).TotalSeconds:0.0}s.")
+                : TestOutcome.Ok($"Played a 440 Hz test tone through \"{deviceName}\" for {ToneDuration.TotalSeconds:0}s.");
         }
         catch (Exception ex)
         {
@@ -51,7 +49,7 @@ public sealed class AudioTestService : IAudioTestService
         }
     }
 
-    private static TestOutcome RecordAndPlayback(string inputDeviceId, string? outputDeviceId, CancellationToken cancellationToken)
+    private static TestOutcome RecordAndPlayback(string inputDeviceId, string? outputDeviceId, AudioTestSession session)
     {
         try
         {
@@ -59,6 +57,7 @@ public sealed class AudioTestService : IAudioTestService
             using var inputDevice = enumerator.GetDevice(inputDeviceId);
             string inputName = SafeName(inputDevice);
 
+            // Phase 1: record until the fixed duration elapses or the user hits Stop.
             using var capture = new WasapiCapture(inputDevice);
             var recorded = new MemoryStream();
             capture.DataAvailable += (_, e) => recorded.Write(e.Buffer, 0, e.BytesRecorded);
@@ -67,18 +66,20 @@ public sealed class AudioTestService : IAudioTestService
             capture.RecordingStopped += (_, _) => captureStopped.Set();
 
             capture.StartRecording();
-            cancellationToken.WaitHandle.WaitOne(RecordDuration);
+            bool recordingStoppedEarly = session.CurrentPhase.WaitHandle.WaitOne(RecordDuration);
             capture.StopRecording();
             captureStopped.Wait(TimeSpan.FromSeconds(2));
-
-            cancellationToken.ThrowIfCancellationRequested();
 
             if (recorded.Length == 0)
             {
                 return TestOutcome.Fail($"No audio captured from \"{inputName}\" — check it's active and not muted.");
             }
 
+            var recordedLength = TimeSpan.FromSeconds((double)recorded.Length / capture.WaveFormat.AverageBytesPerSecond);
             recorded.Position = 0;
+
+            // Phase 2: play back what was captured — even if recording was stopped early.
+            var playbackToken = session.BeginNextPhase();
 
             using var outputDevice = outputDeviceId is null
                 ? enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)
@@ -93,13 +94,17 @@ public sealed class AudioTestService : IAudioTestService
             playback.PlaybackStopped += (_, _) => playbackStopped.Set();
 
             playback.Play();
-            playbackStopped.Wait(RecordDuration + TimeSpan.FromSeconds(1));
+            int signalled = WaitHandle.WaitAny(
+                new[] { playbackStopped.WaitHandle, playbackToken.WaitHandle },
+                recordedLength + TimeSpan.FromSeconds(1));
+            bool playbackStoppedEarly = signalled == 1;
+            playback.Stop();
 
-            return TestOutcome.Ok($"Recorded {RecordDuration.TotalSeconds:0}s from \"{inputName}\" and played it back through \"{outputName}\".");
-        }
-        catch (OperationCanceledException)
-        {
-            return TestOutcome.Fail("Microphone test cancelled.");
+            string recordPart = recordingStoppedEarly
+                ? $"Recorded {recordedLength.TotalSeconds:0.0}s (stopped early)"
+                : $"Recorded {recordedLength.TotalSeconds:0.0}s";
+            string playbackPart = playbackStoppedEarly ? "; playback stopped early" : "";
+            return TestOutcome.Ok($"{recordPart} from \"{inputName}\" and played it back through \"{outputName}\"{playbackPart}.");
         }
         catch (Exception ex)
         {

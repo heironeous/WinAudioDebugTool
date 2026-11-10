@@ -36,8 +36,11 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Details panel rendering in the UI (name, ID, formats, property grid)
 
 ## Testing devices
-- [x] "Test" button per device row — plays a tone for outputs, records 3s
+- [x] "Test" button per device row — plays a tone for outputs, records 5s
       and plays it back for inputs
+- [x] Start/stop toggle on the Test button (▶ / ■): stopping an output test
+      ends the tone; stopping an input test ends recording early and still
+      plays the capture back (stop again to cut the playback)
 - [x] Clear pass/fail + error reporting if a device fails to open/start
       (shown in the bottom status bar)
 
