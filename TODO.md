@@ -36,11 +36,12 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [ ] Details panel rendering in the UI (DeviceDetailsService is ready; wiring in MainWindow task)
 
 ## Testing devices
-- [ ] "Test Output" — play a generated tone (sine sweep) through the selected
+- [x] "Test Output" — play a generated 440 Hz tone through the selected
       output device
-- [ ] "Test Input" — record a few seconds from the selected input device and
-      play it back through the current default output device
-- [ ] Clear pass/fail + error reporting if a device fails to open/start
+- [x] "Test Input" — record a few seconds from the selected input device and
+      play it back through the current (or chosen) default output device
+- [x] Clear pass/fail + error reporting if a device fails to open/start
+      (`TestOutcome`; UI surfacing in MainWindow task)
 
 ## Live level metering
 - [ ] Real-time peak-level meter per device using `IAudioMeterInformation`
