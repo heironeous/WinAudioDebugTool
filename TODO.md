@@ -58,8 +58,10 @@ means **implemented and committed**, not "verified on real hardware" — see
 
 ## Live level metering
 - [x] Real-time peak-level meter per device using `IAudioMeterInformation`
-      (works for every device without opening an exclusive stream) —
-      `LevelMeterService`
+      — `LevelMeterService`. All Core Audio objects live on one dedicated
+      MTA polling thread (IMMDevice can't cross from the UI STA: E_NOINTERFACE).
+      Inputs get a silent shared-mode capture stream, since Windows only
+      feeds a capture endpoint's meter while something records from it
 - [x] Rolling graph (time-series) for the selected device — `LevelGraph`
       control in the detail panel
 - [x] Simultaneous mini-meters next to every device in the list — a live

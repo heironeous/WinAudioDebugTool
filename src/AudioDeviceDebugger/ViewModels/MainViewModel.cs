@@ -131,14 +131,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         string? previousId = SelectedDevice?.Device.Id;
         var latest = _enumerationService.GetDevices();
-        var latestIds = latest.Select(d => d.Id).ToHashSet();
+        var activeIds = latest.Where(d => d.State == DeviceConnectionState.Active).Select(d => d.Id).ToHashSet();
 
-        foreach (var stale in Devices.Where(row => !latestIds.Contains(row.Device.Id)).ToList())
+        // Stop metering anything that's gone *or* no longer active (for inputs this also closes the capture
+        // stream the meter keeps open).
+        foreach (var id in Devices.Select(row => row.Device.Id).Where(id => !activeIds.Contains(id)))
         {
-            _levelMeterService.StopMonitoring(stale.Device.Id);
+            _levelMeterService.StopMonitoring(id);
         }
 
-        var activeIds = latest.Where(d => d.State == DeviceConnectionState.Active).Select(d => d.Id).ToHashSet();
         foreach (var id in _volumeService.MonitoredDeviceIds.Where(id => !activeIds.Contains(id)).ToList())
         {
             _volumeService.StopMonitoring(id);

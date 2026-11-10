@@ -2,14 +2,15 @@ namespace AudioDeviceDebugger.Services;
 
 public interface ILevelMeterService : IDisposable
 {
-    /// <summary>Starts polling the device's IAudioMeterInformation on a timer. Safe to call for every
-    /// device in the list at once — this reads a passive meter, it does not open an exclusive stream,
-    /// so it never conflicts with another app (or this tool's own test playback/recording) using the
-    /// same device.</summary>
+    /// <summary>Starts metering the device via IAudioMeterInformation (no-op if already metered). For output
+    /// devices this is a passive read. For input devices a shared-mode capture stream is also kept open (and its
+    /// data discarded), because Windows only feeds a capture endpoint's peak meter while something is recording
+    /// from it — the same thing the Sound control panel's Recording tab does to show its meters.
+    /// <paramref name="interval"/> sets the polling period for all devices.</summary>
     void StartMonitoring(string deviceId, TimeSpan interval);
 
     void StopMonitoring(string deviceId);
 
-    /// <summary>Raised on a background timer thread — subscribers must marshal to the UI thread.</summary>
+    /// <summary>Raised on the service's background polling thread — subscribers must marshal to the UI thread.</summary>
     event EventHandler<DeviceLevelChangedEventArgs>? LevelChanged;
 }
