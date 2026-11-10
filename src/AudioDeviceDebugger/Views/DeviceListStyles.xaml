@@ -1,0 +1,224 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Flat, dark styling for the device list: no gridlines except a hairline between rows, quiet column headers,
+        subtle hover/selection backgrounds, and minimal in-row controls (thin meter, thin slider, flat buttons).
+        No images, gradients or shadows.
+    -->
+
+    <!-- Palette -->
+    <SolidColorBrush x:Key="ListBackground" Color="#252526"/>
+    <SolidColorBrush x:Key="ListBorder" Color="#333336"/>
+    <SolidColorBrush x:Key="ListSeparator" Color="#303033"/>
+    <SolidColorBrush x:Key="ListRowHover" Color="#2C2C2F"/>
+    <SolidColorBrush x:Key="ListRowSelected" Color="#2F3B4C"/>
+    <SolidColorBrush x:Key="ListText" Color="#E6E6E6"/>
+    <SolidColorBrush x:Key="ListSubtleText" Color="#8E8E93"/>
+    <SolidColorBrush x:Key="ListHeaderText" Color="#7A7A80"/>
+    <SolidColorBrush x:Key="ListAccent" Color="#5AB4F0"/>
+    <SolidColorBrush x:Key="ControlTrack" Color="#3A3A3D"/>
+    <SolidColorBrush x:Key="ControlHover" Color="#333336"/>
+    <SolidColorBrush x:Key="ControlPressed" Color="#3C3C40"/>
+    <SolidColorBrush x:Key="ControlOutline" Color="#45454A"/>
+    <SolidColorBrush x:Key="MeterFill" Color="#4CAF50"/>
+    <SolidColorBrush x:Key="PositiveGlyph" Color="#81C784"/>
+    <SolidColorBrush x:Key="NegativeGlyph" Color="#E57373"/>
+
+    <!-- Column header: small, grey, uppercase labels (set in the column definitions) above a hairline. -->
+    <Style x:Key="ListHeader" TargetType="DataGridColumnHeader">
+        <Setter Property="Foreground" Value="{StaticResource ListHeaderText}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Border Background="{StaticResource ListBackground}" BorderBrush="{StaticResource ListBorder}"
+                            BorderThickness="0,0,0,1" Padding="14,9">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+        Cell: padding, vertical centring, and the row's hover/selection background. The background is drawn here
+        rather than on DataGridRow because the DataGrid coerces DataGridRow.Background to its RowBackground, which
+        overrides style triggers. Foreground is pinned so the theme's "inactive selection" text colour (near-black)
+        never applies.
+    -->
+    <Style x:Key="ListCell" TargetType="DataGridCell">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Foreground" Value="{StaticResource ListText}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border x:Name="Bd" Background="Transparent" Padding="14,0">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListRowHover}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListRowSelected}"/>
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource ListText}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Row: hairline separator; inactive devices are dimmed. (Hover/selection colour: see ListCell.) -->
+    <Style x:Key="ListRow" TargetType="DataGridRow">
+        <Setter Property="BorderBrush" Value="{StaticResource ListSeparator}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsActive}" Value="False">
+                <Setter Property="Opacity" Value="0.55"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Level meter: a thin rounded line. PART_Indicator's width is driven by the ProgressBar. -->
+    <Style x:Key="FlatMeter" TargetType="ProgressBar">
+        <Setter Property="Foreground" Value="{StaticResource MeterFill}"/>
+        <Setter Property="Height" Value="4"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid>
+                        <Border x:Name="PART_Track" CornerRadius="2" Background="{StaticResource ControlTrack}"/>
+                        <Border x:Name="PART_Indicator" CornerRadius="2" HorizontalAlignment="Left"
+                                Background="{TemplateBinding Foreground}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Slider: thin track, accent fill up to a small round handle. -->
+    <Style x:Key="SliderFill" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent">
+                        <Border Height="3" CornerRadius="1.5" VerticalAlignment="Center" Background="{StaticResource ListAccent}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="SliderRemainder" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="SliderHandle" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Ellipse x:Name="Handle" Width="12" Height="12" Fill="{StaticResource ListText}"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Handle" Property="Fill" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="FlatSlider" TargetType="Slider">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid Height="18" Background="Transparent">
+                        <Border Height="3" CornerRadius="1.5" VerticalAlignment="Center" Background="{StaticResource ControlTrack}"/>
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource SliderFill}"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource SliderRemainder}"/>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource SliderHandle}"/>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Outlined flat button (Test). -->
+    <Style x:Key="FlatButton" TargetType="Button">
+        <Setter Property="Foreground" Value="{StaticResource ListText}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{StaticResource ControlOutline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="10,4"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" CornerRadius="4" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlPressed}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Borderless icon toggle (mute). -->
+    <Style x:Key="FlatIconToggle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource ListText}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Bd" CornerRadius="4" Background="{TemplateBinding Background}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlPressed}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

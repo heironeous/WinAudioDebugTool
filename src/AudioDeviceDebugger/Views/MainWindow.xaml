@@ -5,7 +5,12 @@
         Title="Audio Device Debugger" Height="800" Width="1200" MinWidth="900" MinHeight="500"
         Background="#2D2D30">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="DeviceListStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        </ResourceDictionary>
     </Window.Resources>
     <Grid Margin="8">
         <Grid.RowDefinitions>
@@ -71,44 +76,78 @@
                 <RowDefinition Height="*" MinHeight="200"/>
             </Grid.RowDefinitions>
 
+            <Border Grid.Row="0" Background="{StaticResource ListBackground}" BorderBrush="{StaticResource ListBorder}"
+                    BorderThickness="1" CornerRadius="6" Padding="0,0,0,2">
             <DataGrid x:Name="DeviceGrid"
-                      Grid.Row="0"
                       ItemsSource="{Binding Devices}"
                       SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserResizeRows="False"
+                      CanUserResizeColumns="False"
+                      CanUserReorderColumns="False"
+                      CanUserSortColumns="False"
+                      SelectionMode="Single"
+                      SelectionUnit="FullRow"
                       HeadersVisibility="Column"
-                      Margin="0,0,0,0">
+                      GridLinesVisibility="None"
+                      Background="Transparent"
+                      RowBackground="Transparent"
+                      BorderThickness="0"
+                      RowHeight="48"
+                      FontSize="13"
+                      Foreground="{StaticResource ListText}"
+                      ColumnHeaderStyle="{StaticResource ListHeader}"
+                      CellStyle="{StaticResource ListCell}"
+                      RowStyle="{StaticResource ListRow}"
+                      TextOptions.TextRenderingMode="Grayscale">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Dir" Binding="{Binding DirectionText}" Width="55"/>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Device.FriendlyName}" Width="*" MinWidth="200"/>
-                    <DataGridTextColumn Header="State" Binding="{Binding StateText}" Width="80"/>
-                    <DataGridTextColumn Header="Role" Binding="{Binding DefaultBadge}" Width="95"/>
-                    <DataGridTemplateColumn Header="Level (dB)" Width="80">
+                    <!-- Name with a quiet "Output · Active" line underneath (replaces the Dir and State columns). -->
+                    <DataGridTemplateColumn Header="DEVICE" Width="*" MinWidth="220">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ProgressBar Minimum="0" Maximum="1" Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
-                                             Height="14" Foreground="#00E676"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Device.FriendlyName}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="11" Margin="0,2,0,0"
+                                               Foreground="{StaticResource ListSubtleText}" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="ROLE" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DefaultBadge}" FontSize="12" Foreground="{StaticResource ListAccent}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="LEVEL" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ProgressBar Style="{StaticResource FlatMeter}" Minimum="0" Maximum="1"
+                                             Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
+                                             Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <!-- UpdateSourceTrigger=PropertyChanged is required: inside a DataGrid, cell bindings join the row's
                          BindingGroup, which makes their default trigger Explicit (only on row edit commit), so
                          without it the slider/toggle never write back to the view model. -->
-                    <DataGridTemplateColumn Header="Volume" Width="190">
+                    <DataGridTemplateColumn Header="VOLUME" Width="210">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Grid Visibility="{Binding HasVolume, Converter={StaticResource BoolToVisibility}}" Margin="2,0">
+                                <Grid Visibility="{Binding HasVolume, Converter={StaticResource BoolToVisibility}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="38"/>
+                                        <ColumnDefinition Width="40"/>
                                     </Grid.ColumnDefinitions>
                                     <ToggleButton Grid.Column="0" IsChecked="{Binding IsMuted, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                  Width="26" Height="22" Margin="0,0,4,0" Padding="0">
+                                                  Width="28" Height="26" Margin="0,0,8,0">
                                         <ToggleButton.Style>
-                                            <Style TargetType="ToggleButton">
+                                            <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatIconToggle}">
                                                 <Setter Property="ToolTip" Value="Mute"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsMuted}" Value="True">
@@ -133,7 +172,7 @@
                                                                 <Condition Binding="{Binding IsMuted}" Value="True"/>
                                                             </MultiDataTrigger.Conditions>
                                                             <Setter Property="Text" Value="&#xE74F;"/>
-                                                            <Setter Property="Foreground" Value="#C62828"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource NegativeGlyph}"/>
                                                         </MultiDataTrigger>
                                                         <MultiDataTrigger>
                                                             <MultiDataTrigger.Conditions>
@@ -141,74 +180,75 @@
                                                                 <Condition Binding="{Binding IsMuted}" Value="True"/>
                                                             </MultiDataTrigger.Conditions>
                                                             <Setter Property="Text" Value="&#xEC54;"/>
-                                                            <Setter Property="Foreground" Value="#C62828"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource NegativeGlyph}"/>
                                                         </MultiDataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </ToggleButton>
-                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" VerticalAlignment="Center"
+                                    <Slider Grid.Column="1" Style="{StaticResource FlatSlider}" Minimum="0" Maximum="100"
+                                            VerticalAlignment="Center"
                                             Value="{Binding VolumePercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             IsMoveToPointEnabled="True" SmallChange="1" LargeChange="10"/>
                                     <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                               Foreground="{StaticResource ListSubtleText}" FontSize="12"
                                                Text="{Binding VolumePercent, StringFormat={}{0:0}%}"/>
                                 </Grid>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Test" Width="96">
+                    <DataGridTemplateColumn Header="TEST" Width="124">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Click="TestButton_Click" Margin="2" Padding="6,2" MinWidth="86">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="ToolTip" Value="Start test"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsTesting}" Value="True">
-                                                        <Setter Property="ToolTip" Value="Stop test"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock VerticalAlignment="Center">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="Test"/>
-                                                        <Style.Triggers>
-                                                            <!-- Input test, 2nd phase: the recording is being played back. -->
-                                                            <DataTrigger Binding="{Binding IsPlayingBack}" Value="True">
-                                                                <Setter Property="Text" Value="Playback"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                            <TextBlock Margin="5,0,0,0" VerticalAlignment="Center" FontSize="11"
-                                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="&#xE768;"/>
-                                                        <Setter Property="Foreground" Value="#2E7D32"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsTesting}" Value="True">
-                                                                <Setter Property="Text" Value="&#xE71A;"/>
-                                                                <Setter Property="Foreground" Value="#C62828"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
+                                <Button Click="TestButton_Click" MinWidth="92" HorizontalAlignment="Left">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource FlatButton}">
+                                            <Setter Property="ToolTip" Value="Start test"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsTesting}" Value="True">
+                                                    <Setter Property="ToolTip" Value="Stop test"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="Test"/>
+                                                    <Style.Triggers>
+                                                        <!-- Input test, 2nd phase: the recording is being played back. -->
+                                                        <DataTrigger Binding="{Binding IsPlayingBack}" Value="True">
+                                                            <Setter Property="Text" Value="Playback"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" FontSize="10"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="&#xE768;"/>
+                                                    <Setter Property="Foreground" Value="{StaticResource PositiveGlyph}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsTesting}" Value="True">
+                                                            <Setter Property="Text" Value="&#xE71A;"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource NegativeGlyph}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Button>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
+            </Border>
 
             <GridSplitter Grid.Row="1" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Center"
                           Background="Transparent" ResizeBehavior="PreviousAndNext" ShowsPreview="False"

@@ -16,11 +16,20 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
 
     public string DirectionText => Device.Direction == AudioDirection.Output ? "Output" : "Input";
 
-    public string StateText => Device.State.ToString();
+    public string StateText => Device.State switch
+    {
+        DeviceConnectionState.NotPresent => "Not present",
+        var state => state.ToString(),
+    };
+
+    public bool IsActive => Device.State == DeviceConnectionState.Active;
+
+    /// <summary>Secondary line under the device name in the list, e.g. "Output · Active".</summary>
+    public string Subtitle => $"{DirectionText} · {StateText}";
 
     public string DefaultBadge => (Device.IsDefaultDevice, Device.IsDefaultCommunicationsDevice) switch
     {
-        (true, true) => "Default + Comms",
+        (true, true) => "Default · Comms",
         (true, false) => "Default",
         (false, true) => "Comms",
         (false, false) => "",
