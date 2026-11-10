@@ -1,4 +1,5 @@
 using System.IO;
+using AudioDeviceDebugger.Interop;
 using AudioDeviceDebugger.Models;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -112,15 +113,10 @@ public sealed class AudioTestService : IAudioTestService
         }
     }
 
+    // Not NAudio's device.FriendlyName — see EndpointPropertyReader for why that's slow.
     private static string SafeName(MMDevice device)
     {
-        try
-        {
-            return device.FriendlyName;
-        }
-        catch
-        {
-            return device.ID;
-        }
+        using var reader = new EndpointPropertyReader();
+        return reader.TryGetString(device.ID, PropertyKeys.PKEY_Device_FriendlyName) ?? device.ID;
     }
 }

@@ -1,3 +1,4 @@
+using AudioDeviceDebugger.Interop;
 using AudioDeviceDebugger.Models;
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
@@ -7,6 +8,7 @@ namespace AudioDeviceDebugger.Services;
 public sealed class DeviceEnumerationService : IDeviceEnumerationService
 {
     private readonly MMDeviceEnumerator _enumerator = new();
+    private readonly EndpointPropertyReader _propertyReader = new();
     private readonly NotificationClient _notificationClient;
     private bool _disposed;
 
@@ -63,17 +65,9 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
         }
     }
 
-    private static string SafeFriendlyName(MMDevice device)
-    {
-        try
-        {
-            return device.FriendlyName;
-        }
-        catch
-        {
-            return device.ID;
-        }
-    }
+    // Not NAudio's device.FriendlyName — see EndpointPropertyReader for why that's ~450 ms per device.
+    private string SafeFriendlyName(MMDevice device) =>
+        _propertyReader.TryGetString(device.ID, PropertyKeys.PKEY_Device_FriendlyName) ?? device.ID;
 
     private static DeviceConnectionState MapState(DeviceState state) => state switch
     {
@@ -99,6 +93,7 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
             // Best-effort; enumerator is being torn down regardless.
         }
         _enumerator.Dispose();
+        _propertyReader.Dispose();
     }
 
     /// <summary>

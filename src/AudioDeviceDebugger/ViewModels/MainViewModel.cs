@@ -16,6 +16,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly ILevelMeterService _levelMeterService;
     private readonly IEndpointVolumeService _volumeService;
     private readonly Dispatcher _dispatcher;
+    private readonly DispatcherTimer _refreshDebounce;
 
     public MainViewModel(
         IDeviceEnumerationService enumerationService,
@@ -32,6 +33,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _levelMeterService = levelMeterService;
         _volumeService = volumeService;
         _dispatcher = Dispatcher.CurrentDispatcher;
+
+        // A single default-device change fires several IMMNotificationClient callbacks (one per role/flow);
+        // collapse each burst into one Refresh instead of rebuilding the list for every callback.
+        _refreshDebounce = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(150),
+        };
+        _refreshDebounce.Tick += (_, _) =>
+        {
+            _refreshDebounce.Stop();
+            Refresh();
+        };
 
         _enumerationService.DevicesChanged += OnDevicesChanged;
         _levelMeterService.LevelChanged += OnLevelChanged;
@@ -149,8 +162,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
 
         // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the Role column
-        // reflects what Windows actually has now.
-        Refresh();
+        // reflects what Windows actually has now. Debounced: the change also triggers device notifications.
+        RequestRefresh();
+    }
+
+    /// <summary>Schedules a Refresh shortly from now, restarting the delay if one is already pending.</summary>
+    private void RequestRefresh()
+    {
+        _refreshDebounce.Stop();
+        _refreshDebounce.Start();
     }
 
     /// <summary>Starts a test on the row's device, or — if one is already running there — stops its current
@@ -257,7 +277,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             Devices.FirstOrDefault(d => d.Device.Id == e.DeviceId)?.ApplyVolumeState(e.State));
     }
 
-    private void OnDevicesChanged(object? sender, EventArgs e) => _dispatcher.BeginInvoke(Refresh);
+    private void OnDevicesChanged(object? sender, EventArgs e) => _dispatcher.BeginInvoke(RequestRefresh);
 
     private void OnLevelChanged(object? sender, DeviceLevelChangedEventArgs e)
     {
@@ -299,6 +319,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public void Dispose()
     {
+        _refreshDebounce.Stop();
         foreach (var session in _activeTests.Values)
         {
             session.Stop();
