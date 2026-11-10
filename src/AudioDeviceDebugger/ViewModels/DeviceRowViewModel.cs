@@ -55,5 +55,77 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsOutput => Device.Direction == AudioDirection.Output;
+
+    private bool _hasVolume;
+
+    /// <summary>True when the endpoint exposes a volume control (i.e. it's active).</summary>
+    public bool HasVolume
+    {
+        get => _hasVolume;
+        private set
+        {
+            if (_hasVolume == value) return;
+            _hasVolume = value;
+            OnPropertyChanged(nameof(HasVolume));
+        }
+    }
+
+    private double _volumePercent;
+
+    /// <summary>Master volume, 0–100. Setting it (from the slider) raises <see cref="VolumeEditedByUser"/>.</summary>
+    public double VolumePercent
+    {
+        get => _volumePercent;
+        set
+        {
+            if (_volumePercent == value) return;
+            _volumePercent = value;
+            OnPropertyChanged(nameof(VolumePercent));
+            VolumeEditedByUser?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private bool _isMuted;
+
+    /// <summary>Endpoint mute. Setting it (from the mute button) raises <see cref="MuteEditedByUser"/>.</summary>
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (_isMuted == value) return;
+            _isMuted = value;
+            OnPropertyChanged(nameof(IsMuted));
+            MuteEditedByUser?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public event EventHandler? VolumeEditedByUser;
+    public event EventHandler? MuteEditedByUser;
+
+    /// <summary>Updates volume/mute from the device itself (initial read or an external change) without
+    /// raising the "edited by user" events, so it doesn't get written straight back.</summary>
+    public void ApplyVolumeState(EndpointVolumeState? state)
+    {
+        HasVolume = state is not null;
+        if (state is not { } s) return;
+
+        double percent = Math.Round(s.Volume * 100.0, 1);
+        if (_volumePercent != percent)
+        {
+            _volumePercent = percent;
+            OnPropertyChanged(nameof(VolumePercent));
+        }
+        if (_isMuted != s.Muted)
+        {
+            _isMuted = s.Muted;
+            OnPropertyChanged(nameof(IsMuted));
+        }
+    }
+
+    private void OnPropertyChanged(string propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }

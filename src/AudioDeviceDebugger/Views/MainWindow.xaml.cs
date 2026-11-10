@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     private readonly IDefaultDeviceService _defaultDeviceService;
     private readonly IAudioTestService _testService;
     private readonly ILevelMeterService _levelMeterService;
+    private readonly IEndpointVolumeService _volumeService;
     private readonly MainViewModel _viewModel;
 
     public MainWindow()
@@ -25,8 +26,9 @@ public partial class MainWindow : Window
         _defaultDeviceService = new DefaultDeviceService();
         _testService = new AudioTestService();
         _levelMeterService = new LevelMeterService();
+        _volumeService = new EndpointVolumeService();
 
-        _viewModel = new MainViewModel(_enumerationService, _defaultDeviceService, _detailsService, _testService, _levelMeterService);
+        _viewModel = new MainViewModel(_enumerationService, _defaultDeviceService, _detailsService, _testService, _levelMeterService, _volumeService);
         _viewModel.SelectedDeviceLevelChanged += (_, sample) => DetailGraph.AddSample(sample.MasterPeak);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
@@ -46,6 +48,7 @@ public partial class MainWindow : Window
     {
         _viewModel.Dispose();
         _levelMeterService.Dispose();
+        _volumeService.Dispose();
         _enumerationService.Dispose();
         (_detailsService as IDisposable)?.Dispose();
     }

@@ -14,6 +14,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly IDeviceDetailsService _detailsService;
     private readonly IAudioTestService _testService;
     private readonly ILevelMeterService _levelMeterService;
+    private readonly IEndpointVolumeService _volumeService;
     private readonly Dispatcher _dispatcher;
 
     public MainViewModel(
@@ -21,17 +22,20 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         IDefaultDeviceService defaultDeviceService,
         IDeviceDetailsService detailsService,
         IAudioTestService testService,
-        ILevelMeterService levelMeterService)
+        ILevelMeterService levelMeterService,
+        IEndpointVolumeService volumeService)
     {
         _enumerationService = enumerationService;
         _defaultDeviceService = defaultDeviceService;
         _detailsService = detailsService;
         _testService = testService;
         _levelMeterService = levelMeterService;
+        _volumeService = volumeService;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
         _enumerationService.DevicesChanged += OnDevicesChanged;
         _levelMeterService.LevelChanged += OnLevelChanged;
+        _volumeService.VolumeChanged += OnExternalVolumeChanged;
 
         Refresh();
     }
@@ -85,16 +89,26 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             _levelMeterService.StopMonitoring(stale.Device.Id);
         }
 
+        var activeIds = latest.Where(d => d.State == DeviceConnectionState.Active).Select(d => d.Id).ToHashSet();
+        foreach (var id in _volumeService.MonitoredDeviceIds.Where(id => !activeIds.Contains(id)).ToList())
+        {
+            _volumeService.StopMonitoring(id);
+        }
+
         Devices.Clear();
         foreach (var info in latest
                      .OrderBy(d => d.Direction)
                      .ThenBy(d => d.FriendlyName, StringComparer.OrdinalIgnoreCase))
         {
-            Devices.Add(new DeviceRowViewModel(info) { IsTesting = _activeTests.ContainsKey(info.Id) });
+            var row = new DeviceRowViewModel(info) { IsTesting = _activeTests.ContainsKey(info.Id) };
             if (info.State == DeviceConnectionState.Active)
             {
                 _levelMeterService.StartMonitoring(info.Id, TimeSpan.FromMilliseconds(100));
+                row.ApplyVolumeState(_volumeService.StartMonitoring(info.Id));
             }
+            row.VolumeEditedByUser += OnRowVolumeEdited;
+            row.MuteEditedByUser += OnRowMuteEdited;
+            Devices.Add(row);
         }
 
         SelectedDevice = Devices.FirstOrDefault(d => d.Device.Id == previousId) ?? Devices.FirstOrDefault();
@@ -210,6 +224,39 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         });
     }
 
+    private void OnRowVolumeEdited(object? sender, EventArgs e)
+    {
+        if (sender is not DeviceRowViewModel row) return;
+        try
+        {
+            _volumeService.SetVolume(row.Device.Id, (float)(row.VolumePercent / 100.0));
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Failed to set volume on \"{row.Device.FriendlyName}\": {ex.Message}");
+        }
+    }
+
+    private void OnRowMuteEdited(object? sender, EventArgs e)
+    {
+        if (sender is not DeviceRowViewModel row) return;
+        try
+        {
+            _volumeService.SetMute(row.Device.Id, row.IsMuted);
+            SetStatus($"{(row.IsMuted ? "Muted" : "Unmuted")} \"{row.Device.FriendlyName}\".");
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Failed to {(row.IsMuted ? "mute" : "unmute")} \"{row.Device.FriendlyName}\": {ex.Message}");
+        }
+    }
+
+    private void OnExternalVolumeChanged(object? sender, EndpointVolumeChangedEventArgs e)
+    {
+        _dispatcher.BeginInvoke(() =>
+            Devices.FirstOrDefault(d => d.Device.Id == e.DeviceId)?.ApplyVolumeState(e.State));
+    }
+
     private void OnDevicesChanged(object? sender, EventArgs e) => _dispatcher.BeginInvoke(Refresh);
 
     private void OnLevelChanged(object? sender, DeviceLevelChangedEventArgs e)
@@ -259,6 +306,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
         _enumerationService.DevicesChanged -= OnDevicesChanged;
         _levelMeterService.LevelChanged -= OnLevelChanged;
+        _volumeService.VolumeChanged -= OnExternalVolumeChanged;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

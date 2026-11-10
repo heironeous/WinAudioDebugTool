@@ -4,6 +4,9 @@
         xmlns:local="clr-namespace:AudioDeviceDebugger.Views"
         Title="Audio Device Debugger" Height="800" Width="1500" MinWidth="1000" MinHeight="500"
         Background="#2D2D30">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+    </Window.Resources>
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -56,6 +59,67 @@
                             <DataTemplate>
                                 <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentPeak, Mode=OneWay}"
                                              Height="14" Foreground="#00E676"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Volume" Width="190">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid Visibility="{Binding HasVolume, Converter={StaticResource BoolToVisibility}}" Margin="2,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="38"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ToggleButton Grid.Column="0" IsChecked="{Binding IsMuted, Mode=TwoWay}"
+                                                  Width="26" Height="22" Margin="0,0,4,0" Padding="0">
+                                        <ToggleButton.Style>
+                                            <Style TargetType="ToggleButton">
+                                                <Setter Property="ToolTip" Value="Mute"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                                        <Setter Property="ToolTip" Value="Unmute"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ToggleButton.Style>
+                                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <!-- Output: speaker / speaker-muted. Input: mic / mic-off. -->
+                                                    <Setter Property="Text" Value="&#xE720;"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsOutput}" Value="True">
+                                                            <Setter Property="Text" Value="&#xE767;"/>
+                                                        </DataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding IsOutput}" Value="True"/>
+                                                                <Condition Binding="{Binding IsMuted}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="&#xE74F;"/>
+                                                            <Setter Property="Foreground" Value="#C62828"/>
+                                                        </MultiDataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding IsOutput}" Value="False"/>
+                                                                <Condition Binding="{Binding IsMuted}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="&#xEC54;"/>
+                                                            <Setter Property="Foreground" Value="#C62828"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </ToggleButton>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" VerticalAlignment="Center"
+                                            Value="{Binding VolumePercent, Mode=TwoWay}"
+                                            IsMoveToPointEnabled="True" SmallChange="1" LargeChange="10"/>
+                                    <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                               Text="{Binding VolumePercent, StringFormat={}{0:0}%}"/>
+                                </Grid>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

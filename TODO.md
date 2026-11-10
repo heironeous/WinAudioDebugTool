@@ -46,6 +46,14 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Clear pass/fail + error reporting if a device fails to open/start
       (shown in the bottom status bar)
 
+## Volume control
+- [x] Per-device volume slider (0–100%) + mute toggle in every active row,
+      via `IAudioEndpointVolume` (`EndpointVolumeService`) — same setting as
+      Windows' volume flyout; mic level for inputs
+- [x] Stays in sync with external changes (flyout, media keys, other apps)
+      via `OnVolumeNotification`; own changes are tagged with an event-context
+      GUID so they don't echo back into the slider while dragging
+
 ## Live level metering
 - [x] Real-time peak-level meter per device using `IAudioMeterInformation`
       (works for every device without opening an exclusive stream) —
