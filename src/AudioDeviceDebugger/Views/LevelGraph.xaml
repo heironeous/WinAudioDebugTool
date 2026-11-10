@@ -1,0 +1,8 @@
+<UserControl x:Class="AudioDeviceDebugger.Views.LevelGraph"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="16" MinWidth="40" Background="#1E1E1E">
+    <Grid ClipToBounds="True">
+        <Polyline x:Name="GraphLine" Stroke="#00E676" StrokeThickness="1.25" />
+    </Grid>
+</UserControl>

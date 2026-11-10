@@ -44,12 +44,16 @@ means **implemented and committed**, not "verified on real hardware" — see
       (`TestOutcome`; UI surfacing in MainWindow task)
 
 ## Live level metering
-- [ ] Real-time peak-level meter per device using `IAudioMeterInformation`
-      (works for every device without opening an exclusive stream)
-- [ ] Rolling graph (time-series, not just a single bar) for the selected
-      device
-- [ ] Simultaneous mini-meters next to every device in the list
-- [ ] Per-channel peak levels where the endpoint reports more than stereo
+- [x] Real-time peak-level meter per device using `IAudioMeterInformation`
+      (works for every device without opening an exclusive stream) —
+      `LevelMeterService`
+- [x] Rolling graph (time-series, not just a single bar) control —
+      `LevelGraph` (used both as the big detail-panel graph and the small
+      per-row meter; wiring into MainWindow pending)
+- [x] Simultaneous mini-meters next to every device in the list (same
+      `LevelGraph` control, small size; wiring into MainWindow pending)
+- [x] Per-channel peak levels where the endpoint reports more than stereo —
+      `LevelSample.ChannelPeaks` (UI surfacing pending)
 
 ## Packaging
 - [ ] `dotnet publish` profile for a single self-contained `.exe`
