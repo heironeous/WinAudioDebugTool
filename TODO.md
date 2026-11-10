@@ -13,11 +13,11 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] `README.md` describing layout, build, run, and test instructions
 
 ## Device enumeration
-- [ ] Enumerate all active output (render) devices
-- [ ] Enumerate all active input (capture) devices
-- [ ] Include disabled / unplugged / not-present devices (with state shown)
-- [ ] "Refresh" button that re-enumerates devices and diffs against current list
-- [ ] Auto-refresh on Windows device change notifications (plug/unplug events)
+- [x] Enumerate all active output (render) devices
+- [x] Enumerate all active input (capture) devices
+- [x] Include disabled / unplugged / not-present devices (with state shown)
+- [ ] "Refresh" button that re-enumerates devices and diffs against current list (service ready; UI wiring in MainWindow task)
+- [ ] Auto-refresh on Windows device change notifications (plug/unplug events) (service raises `DevicesChanged`; UI wiring in MainWindow task)
 
 ## Default device roles
 - [ ] Show current default device for Render / Multimedia role
