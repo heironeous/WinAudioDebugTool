@@ -6,11 +6,11 @@ means **implemented and committed**, not "verified on real hardware" — see
 `README.md` for the manual Windows test pass this still needs.
 
 ## Project scaffolding
-- [ ] Git repository initialized (`Aral Kaymaz` / `aralcan@hotmail.com`)
-- [ ] `.gitignore` for .NET build artifacts
-- [ ] Solution + WPF project scaffolding (`.sln`, `.csproj`)
-- [ ] NAudio dependency wired up for Core Audio access
-- [ ] `README.md` describing layout, build, run, and test instructions
+- [x] Git repository initialized (`Aral Kaymaz` / `aralcan@hotmail.com`)
+- [x] `.gitignore` for .NET build artifacts
+- [x] Solution + WPF project scaffolding (`.sln`, `.csproj`)
+- [x] NAudio dependency wired up for Core Audio access
+- [x] `README.md` describing layout, build, run, and test instructions
 
 ## Device enumeration
 - [ ] Enumerate all active output (render) devices
