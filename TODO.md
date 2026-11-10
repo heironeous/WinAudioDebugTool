@@ -29,12 +29,11 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [ ] Visual indicator (badge/icon) in the device list for current defaults (UI task)
 
 ## Device details panel
-- [ ] Friendly name, description, enumerator/interface name
-- [ ] Endpoint ID (GUID string) and adapter/container info
-- [ ] Data flow (Render/Capture) and device state
-- [ ] Default format: sample rate, bit depth, channel count
-- [ ] Shared-mode mix format vs. exclusive-mode supported formats
-- [ ] Raw property store dump (all discoverable `PROPERTYKEY` values)
+- [x] Friendly name, endpoint ID, data flow, device state
+- [x] Default format: sample rate, bit depth, channel count (shared-mode mix format)
+- [x] Shared-mode mix format vs. exclusive-mode supported formats
+- [x] Raw property store dump (all discoverable `PROPERTYKEY` values, via `device.Properties`)
+- [ ] Details panel rendering in the UI (DeviceDetailsService is ready; wiring in MainWindow task)
 
 ## Testing devices
 - [ ] "Test Output" — play a generated tone (sine sweep) through the selected
