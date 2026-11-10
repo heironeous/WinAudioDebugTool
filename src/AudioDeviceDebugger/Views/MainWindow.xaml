@@ -1,0 +1,99 @@
+<Window x:Class="AudioDeviceDebugger.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:AudioDeviceDebugger.Views"
+        Title="Audio Device Debugger" Height="760" Width="1280"
+        Background="#2D2D30">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+            <Button x:Name="RefreshButton" Content="Refresh" Click="RefreshButton_Click" Padding="12,4" Margin="0,0,8,0"/>
+            <TextBlock Text="Output and input devices, with current defaults, test actions, and live levels."
+                       Foreground="Gray" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <DataGrid x:Name="DeviceGrid"
+                      Grid.Column="0"
+                      ItemsSource="{Binding Devices}"
+                      SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      HeadersVisibility="Column"
+                      Margin="0,0,8,0">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Dir" Binding="{Binding DirectionText}" Width="50"/>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Device.FriendlyName}" Width="*"/>
+                    <DataGridTextColumn Header="State" Binding="{Binding StateText}" Width="70"/>
+                    <DataGridTextColumn Header="Role" Binding="{Binding DefaultBadge}" Width="95"/>
+                    <DataGridTemplateColumn Header="Level" Width="80">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ProgressBar Minimum="0" Maximum="1" Value="{Binding CurrentPeak, Mode=OneWay}"
+                                             Height="14" Foreground="#00E676"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Actions" Width="220">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Test" Click="TestButton_Click" Margin="2" Padding="6,2"/>
+                                    <Button Content="Set Default" Click="SetDefaultButton_Click" Margin="2" Padding="6,2"/>
+                                    <Button Content="Set Comms" Click="SetCommsButton_Click" Margin="2" Padding="6,2"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                    <TextBlock Text="{Binding SelectedDevice.Device.FriendlyName}" FontSize="16" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="{Binding SelectedDevice.Device.Id}" FontSize="10" Foreground="Gray" TextWrapping="Wrap"/>
+                    <TextBlock Foreground="White" Margin="0,4,0,0">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="Shared mode: {0}&#x0a;Exclusive mode: {1}">
+                                <Binding Path="SelectedDeviceDetails.SharedModeFormat"/>
+                                <Binding Path="SelectedDeviceDetails.ExclusiveModeFormat"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </StackPanel>
+
+                <local:LevelGraph x:Name="DetailGraph" Grid.Row="1" Height="110" Margin="0,0,0,8"/>
+
+                <ListView Grid.Row="2" ItemsSource="{Binding SelectedDeviceDetails.Properties}">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Property" DisplayMemberBinding="{Binding Key}" Width="280"/>
+                            <GridViewColumn Header="Value" DisplayMemberBinding="{Binding Value}" Width="380"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
+        </Grid>
+
+        <Border Grid.Row="2" Margin="0,8,0,0" Padding="6" Background="#1E1E1E">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="White"/>
+        </Border>
+    </Grid>
+</Window>

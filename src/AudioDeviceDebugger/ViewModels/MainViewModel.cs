@@ -1,0 +1,211 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows.Threading;
+using AudioDeviceDebugger.Models;
+using AudioDeviceDebugger.Services;
+
+namespace AudioDeviceDebugger.ViewModels;
+
+public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
+{
+    private readonly IDeviceEnumerationService _enumerationService;
+    private readonly IDefaultDeviceService _defaultDeviceService;
+    private readonly IDeviceDetailsService _detailsService;
+    private readonly IAudioTestService _testService;
+    private readonly ILevelMeterService _levelMeterService;
+    private readonly Dispatcher _dispatcher;
+
+    public MainViewModel(
+        IDeviceEnumerationService enumerationService,
+        IDefaultDeviceService defaultDeviceService,
+        IDeviceDetailsService detailsService,
+        IAudioTestService testService,
+        ILevelMeterService levelMeterService)
+    {
+        _enumerationService = enumerationService;
+        _defaultDeviceService = defaultDeviceService;
+        _detailsService = detailsService;
+        _testService = testService;
+        _levelMeterService = levelMeterService;
+        _dispatcher = Dispatcher.CurrentDispatcher;
+
+        _enumerationService.DevicesChanged += OnDevicesChanged;
+        _levelMeterService.LevelChanged += OnLevelChanged;
+
+        Refresh();
+    }
+
+    public ObservableCollection<DeviceRowViewModel> Devices { get; } = new();
+
+    private DeviceRowViewModel? _selectedDevice;
+    public DeviceRowViewModel? SelectedDevice
+    {
+        get => _selectedDevice;
+        set
+        {
+            if (!SetField(ref _selectedDevice, value)) return;
+            LoadSelectedDeviceDetails(value);
+        }
+    }
+
+    private DeviceDetails? _selectedDeviceDetails;
+    public DeviceDetails? SelectedDeviceDetails
+    {
+        get => _selectedDeviceDetails;
+        private set => SetField(ref _selectedDeviceDetails, value);
+    }
+
+    private string? _statusMessage;
+    public string? StatusMessage
+    {
+        get => _statusMessage;
+        private set => SetField(ref _statusMessage, value);
+    }
+
+    private bool _isBusy;
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set => SetField(ref _isBusy, value);
+    }
+
+    /// <summary>Raised on the UI thread with a fresh sample whenever the *currently selected* device
+    /// reports a new level — the view wires this straight to the big detail-panel graph.</summary>
+    public event EventHandler<LevelSample>? SelectedDeviceLevelChanged;
+
+    public void Refresh()
+    {
+        string? previousId = SelectedDevice?.Device.Id;
+        var latest = _enumerationService.GetDevices();
+        var latestIds = latest.Select(d => d.Id).ToHashSet();
+
+        foreach (var stale in Devices.Where(row => !latestIds.Contains(row.Device.Id)).ToList())
+        {
+            _levelMeterService.StopMonitoring(stale.Device.Id);
+        }
+
+        Devices.Clear();
+        foreach (var info in latest
+                     .OrderBy(d => d.Direction)
+                     .ThenBy(d => d.FriendlyName, StringComparer.OrdinalIgnoreCase))
+        {
+            Devices.Add(new DeviceRowViewModel(info));
+            if (info.State == DeviceConnectionState.Active)
+            {
+                _levelMeterService.StartMonitoring(info.Id, TimeSpan.FromMilliseconds(100));
+            }
+        }
+
+        SelectedDevice = Devices.FirstOrDefault(d => d.Device.Id == previousId) ?? Devices.FirstOrDefault();
+    }
+
+    public void SetAsDefault(DeviceRowViewModel row)
+    {
+        try
+        {
+            _defaultDeviceService.SetDefaultDevice(row.Device.Id);
+            SetStatus($"Set \"{row.Device.FriendlyName}\" as the default device.");
+            Refresh();
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Failed to set default device: {ex.Message}");
+        }
+    }
+
+    public void SetAsDefaultCommunications(DeviceRowViewModel row)
+    {
+        try
+        {
+            _defaultDeviceService.SetDefaultCommunicationsDevice(row.Device.Id);
+            SetStatus($"Set \"{row.Device.FriendlyName}\" as the default communications device.");
+            Refresh();
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Failed to set default communications device: {ex.Message}");
+        }
+    }
+
+    public async Task RunTestAsync(DeviceRowViewModel row)
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            var outcome = row.Device.Direction == AudioDirection.Output
+                ? await _testService.PlayTestToneAsync(row.Device.Id)
+                : await _testService.RecordAndPlaybackAsync(row.Device.Id, null);
+
+            SetStatus(outcome.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void LoadSelectedDeviceDetails(DeviceRowViewModel? row)
+    {
+        SelectedDeviceDetails = null;
+        if (row is null) return;
+
+        string id = row.Device.Id;
+        Task.Run(() =>
+        {
+            try
+            {
+                var details = _detailsService.GetDetails(id);
+                _dispatcher.BeginInvoke(() =>
+                {
+                    if (SelectedDevice?.Device.Id == id)
+                    {
+                        SelectedDeviceDetails = details;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _dispatcher.BeginInvoke(() => SetStatus($"Couldn't load device details: {ex.Message}"));
+            }
+        });
+    }
+
+    private void OnDevicesChanged(object? sender, EventArgs e) => _dispatcher.BeginInvoke(Refresh);
+
+    private void OnLevelChanged(object? sender, DeviceLevelChangedEventArgs e)
+    {
+        _dispatcher.BeginInvoke(() =>
+        {
+            var row = Devices.FirstOrDefault(d => d.Device.Id == e.DeviceId);
+            if (row is not null)
+            {
+                row.CurrentPeak = e.Sample.MasterPeak;
+            }
+
+            if (SelectedDevice?.Device.Id == e.DeviceId)
+            {
+                SelectedDeviceLevelChanged?.Invoke(this, e.Sample);
+            }
+        });
+    }
+
+    private void SetStatus(string message) => StatusMessage = message;
+
+    public void Dispose()
+    {
+        _enumerationService.DevicesChanged -= OnDevicesChanged;
+        _levelMeterService.LevelChanged -= OnLevelChanged;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        return true;
+    }
+}
