@@ -63,31 +63,53 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private readonly ICollectionView _devicesView;
 
-    private bool _showInactiveDevices;
+    // Visibility filters per non-active state. Active devices are always shown. Defaults: Disabled and NotPresent
+    // (mostly stale endpoints from devices used once) hidden; Unplugged (real jacks with nothing plugged in) shown.
+    private bool _showDisabledDevices;
+    private bool _showNotPresentDevices;
+    private bool _showUnpluggedDevices = true;
 
-    /// <summary>When false, Disabled and NotPresent endpoints are hidden from the list (Unplugged ones stay —
-    /// they're real jacks with nothing plugged in).</summary>
-    public bool ShowInactiveDevices
+    public bool ShowDisabledDevices
     {
-        get => _showInactiveDevices;
-        set
+        get => _showDisabledDevices;
+        set { if (SetField(ref _showDisabledDevices, value)) ApplyDeviceFilter(); }
+    }
+
+    public bool ShowNotPresentDevices
+    {
+        get => _showNotPresentDevices;
+        set { if (SetField(ref _showNotPresentDevices, value)) ApplyDeviceFilter(); }
+    }
+
+    public bool ShowUnpluggedDevices
+    {
+        get => _showUnpluggedDevices;
+        set { if (SetField(ref _showUnpluggedDevices, value)) ApplyDeviceFilter(); }
+    }
+
+    /// <summary>Number of devices in each state, shown next to its checkbox whether or not it's ticked.</summary>
+    public int DisabledDeviceCount => CountInState(DeviceConnectionState.Disabled);
+    public int NotPresentDeviceCount => CountInState(DeviceConnectionState.NotPresent);
+    public int UnpluggedDeviceCount => CountInState(DeviceConnectionState.Unplugged);
+
+    private int CountInState(DeviceConnectionState state) => Devices.Count(row => row.Device.State == state);
+
+    private void ApplyDeviceFilter()
+    {
+        _devicesView.Refresh();
+        if (SelectedDevice is null || !IsShown(SelectedDevice))
         {
-            if (!SetField(ref _showInactiveDevices, value)) return;
-            _devicesView.Refresh();
-            OnPropertyChanged(nameof(HiddenDeviceCount));
-            if (SelectedDevice is null || !IsShown(SelectedDevice))
-            {
-                SelectedDevice = FirstShownDevice();
-            }
+            SelectedDevice = FirstShownDevice();
         }
     }
 
-    /// <summary>How many devices the "show inactive" filter is currently hiding.</summary>
-    public int HiddenDeviceCount => Devices.Count(row => !IsShown(row));
-
-    private bool IsShown(DeviceRowViewModel row) =>
-        _showInactiveDevices
-        || row.Device.State is not (DeviceConnectionState.Disabled or DeviceConnectionState.NotPresent);
+    private bool IsShown(DeviceRowViewModel row) => row.Device.State switch
+    {
+        DeviceConnectionState.Disabled => _showDisabledDevices,
+        DeviceConnectionState.NotPresent => _showNotPresentDevices,
+        DeviceConnectionState.Unplugged => _showUnpluggedDevices,
+        _ => true,
+    };
 
     private DeviceRowViewModel? FirstShownDevice() => Devices.FirstOrDefault(IsShown);
 
@@ -162,7 +184,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
 
         SelectedDevice = Devices.FirstOrDefault(d => d.Device.Id == previousId && IsShown(d)) ?? FirstShownDevice();
-        OnPropertyChanged(nameof(HiddenDeviceCount));
+        OnPropertyChanged(nameof(DisabledDeviceCount));
+        OnPropertyChanged(nameof(NotPresentDeviceCount));
+        OnPropertyChanged(nameof(UnpluggedDeviceCount));
     }
 
     /// <summary>Default roles can only be assigned to an endpoint that's currently active — Windows rejects

@@ -27,12 +27,29 @@
                     IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
                     ToolTip="Make the selected device both the default and the default communications device"/>
             <Border Width="1" Background="#555" Margin="0,2,8,2"/>
-            <CheckBox IsChecked="{Binding ShowInactiveDevices}" VerticalAlignment="Center" Margin="0,0,12,0"
+            <TextBlock Text="Show:" Foreground="Gray" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <CheckBox IsChecked="{Binding ShowDisabledDevices}" VerticalAlignment="Center" Margin="0,0,10,0"
                       Foreground="White"
-                      ToolTip="Show endpoints Windows reports as Disabled or NotPresent (e.g. headsets that were used once and aren't connected)">
+                      ToolTip="Show endpoints disabled in Windows Sound settings">
                 <TextBlock>
-                    <Run Text="Show disabled / not-present devices"/>
-                    <Run Text="{Binding HiddenDeviceCount, Mode=OneWay, StringFormat='({0} hidden)'}" Foreground="Gray"/>
+                    <Run Text="Disabled"/>
+                    <Run Text="{Binding DisabledDeviceCount, Mode=OneWay, StringFormat='({0})'}" Foreground="Gray"/>
+                </TextBlock>
+            </CheckBox>
+            <CheckBox IsChecked="{Binding ShowNotPresentDevices}" VerticalAlignment="Center" Margin="0,0,10,0"
+                      Foreground="White"
+                      ToolTip="Show endpoints whose hardware isn't connected (e.g. headsets that were used once)">
+                <TextBlock>
+                    <Run Text="Not present"/>
+                    <Run Text="{Binding NotPresentDeviceCount, Mode=OneWay, StringFormat='({0})'}" Foreground="Gray"/>
+                </TextBlock>
+            </CheckBox>
+            <CheckBox IsChecked="{Binding ShowUnpluggedDevices}" VerticalAlignment="Center" Margin="0,0,12,0"
+                      Foreground="White"
+                      ToolTip="Show endpoints whose hardware is present but has nothing plugged into the jack">
+                <TextBlock>
+                    <Run Text="Unplugged"/>
+                    <Run Text="{Binding UnpluggedDeviceCount, Mode=OneWay, StringFormat='({0})'}" Foreground="Gray"/>
                 </TextBlock>
             </CheckBox>
             <TextBlock VerticalAlignment="Center" Foreground="Gray">
