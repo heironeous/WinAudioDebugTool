@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
 
 namespace AudioDeviceDebugger.Interop;
@@ -16,40 +17,40 @@ namespace AudioDeviceDebugger.Interop;
 internal interface IPolicyConfig
 {
     [PreserveSig]
-    int GetMixFormat(string deviceId, IntPtr ppFormat);
+    int GetMixFormat([MarshalAs(UnmanagedType.LPWStr)] string deviceId, IntPtr ppFormat);
 
     [PreserveSig]
-    int GetDeviceFormat(string deviceId, bool bDefault, IntPtr ppFormat);
+    int GetDeviceFormat([MarshalAs(UnmanagedType.LPWStr)] string deviceId, bool bDefault, IntPtr ppFormat);
 
     [PreserveSig]
-    int ResetDeviceFormat(string deviceId);
+    int ResetDeviceFormat([MarshalAs(UnmanagedType.LPWStr)] string deviceId);
 
     [PreserveSig]
-    int SetDeviceFormat(string deviceId, IntPtr pEndpointFormat, IntPtr pMixFormat);
+    int SetDeviceFormat([MarshalAs(UnmanagedType.LPWStr)] string deviceId, IntPtr pEndpointFormat, IntPtr pMixFormat);
 
     [PreserveSig]
-    int GetProcessingPeriod(string deviceId, bool bDefault, IntPtr pmftDefaultPeriod, IntPtr pmftMinimumPeriod);
+    int GetProcessingPeriod([MarshalAs(UnmanagedType.LPWStr)] string deviceId, bool bDefault, IntPtr pmftDefaultPeriod, IntPtr pmftMinimumPeriod);
 
     [PreserveSig]
-    int SetProcessingPeriod(string deviceId, IntPtr pmftPeriod);
+    int SetProcessingPeriod([MarshalAs(UnmanagedType.LPWStr)] string deviceId, IntPtr pmftPeriod);
 
     [PreserveSig]
-    int GetShareMode(string deviceId, IntPtr pMode);
+    int GetShareMode([MarshalAs(UnmanagedType.LPWStr)] string deviceId, IntPtr pMode);
 
     [PreserveSig]
-    int SetShareMode(string deviceId, IntPtr mode);
+    int SetShareMode([MarshalAs(UnmanagedType.LPWStr)] string deviceId, IntPtr mode);
 
     [PreserveSig]
-    int GetPropertyValue(string deviceId, bool bFxStore, ref PropertyKey key, IntPtr pv);
+    int GetPropertyValue([MarshalAs(UnmanagedType.LPWStr)] string deviceId, bool bFxStore, ref PropertyKey key, IntPtr pv);
 
     [PreserveSig]
-    int SetPropertyValue(string deviceId, bool bFxStore, ref PropertyKey key, IntPtr pv);
+    int SetPropertyValue([MarshalAs(UnmanagedType.LPWStr)] string deviceId, bool bFxStore, ref PropertyKey key, IntPtr pv);
 
     [PreserveSig]
-    int SetDefaultEndpoint(string deviceId, NAudio.CoreAudioApi.Role role);
+    int SetDefaultEndpoint([MarshalAs(UnmanagedType.LPWStr)] string deviceId, NAudio.CoreAudioApi.Role role);
 
     [PreserveSig]
-    int SetEndpointVisibility(string deviceId, bool bVisible);
+    int SetEndpointVisibility([MarshalAs(UnmanagedType.LPWStr)] string deviceId, bool bVisible);
 }
 
 /// <summary>Activates the undocumented CPolicyConfigClient COM object and exposes the one call we need.</summary>

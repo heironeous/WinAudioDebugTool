@@ -1,6 +1,8 @@
+using System.IO;
 using AudioDeviceDebugger.Models;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 
 namespace AudioDeviceDebugger.Services;
 

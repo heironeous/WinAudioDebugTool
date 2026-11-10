@@ -31,7 +31,7 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
         string? defaultId = TryGetDefaultEndpointId(dataFlow, Role.Multimedia);
         string? defaultCommsId = TryGetDefaultEndpointId(dataFlow, Role.Communications);
 
-        using var collection = _enumerator.EnumerateAudioEndPoints(dataFlow, DeviceState.All);
+        var collection = _enumerator.EnumerateAudioEndPoints(dataFlow, DeviceState.All);
         foreach (var device in collection)
         {
             using (device)

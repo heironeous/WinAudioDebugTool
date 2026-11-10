@@ -1,5 +1,5 @@
-using System.Timers;
 using AudioDeviceDebugger.Models;
+using Timer = System.Timers.Timer;
 using NAudio.CoreAudioApi;
 
 namespace AudioDeviceDebugger.Services;

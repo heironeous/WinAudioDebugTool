@@ -44,7 +44,7 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
         {
             var mix = device.AudioClient.MixFormat;
             bool supported = device.AudioClient.IsFormatSupported(
-                AudioClientShareMode.Exclusive, mix, out WaveFormat? closestMatch);
+                AudioClientShareMode.Exclusive, mix, out WaveFormatExtensible? closestMatch);
 
             if (supported)
             {
@@ -80,8 +80,8 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
                     var prop = store[i];
                     entries.Add(new PropertyEntry
                     {
-                        Key = prop.Key.ToString() ?? $"property[{i}]",
-                        Value = prop.Value?.ToString() ?? "(null)",
+                        Key = FormatKey(prop.Key),
+                        Value = FormatValue(prop.Value),
                     });
                 }
                 catch
@@ -98,6 +98,31 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
 
         return entries;
     }
+
+    /// <summary>Well-known PKEY names exposed by NAudio's <see cref="PropertyKeys"/>, keyed by (fmtid, pid).</summary>
+    private static readonly Dictionary<(Guid, int), string> KnownKeyNames = typeof(PropertyKeys)
+        .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+        .Where(f => f.FieldType == typeof(PropertyKey))
+        .Select(f => (Key: (PropertyKey)f.GetValue(null)!, f.Name))
+        .GroupBy(x => (x.Key.formatId, x.Key.propertyId))
+        .ToDictionary(g => g.Key, g => g.First().Name);
+
+    private static string FormatKey(PropertyKey key)
+    {
+        string raw = $"{{{key.formatId}}},{key.propertyId}";
+        return KnownKeyNames.TryGetValue((key.formatId, key.propertyId), out var name)
+            ? $"{name}  {raw}"
+            : raw;
+    }
+
+    private static string FormatValue(object? value) => value switch
+    {
+        null => "(null)",
+        byte[] bytes when bytes.Length <= 64 => $"byte[{bytes.Length}] {Convert.ToHexString(bytes)}",
+        byte[] bytes => $"byte[{bytes.Length}] {Convert.ToHexString(bytes, 0, 64)}…",
+        string[] strings => string.Join("; ", strings),
+        _ => value.ToString() ?? "(null)",
+    };
 
     private static string SafeGet(Func<string> getter, string fallback)
     {
