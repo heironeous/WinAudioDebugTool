@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Data;
 using System.Windows.Threading;
 using AudioDeviceDebugger.Models;
 using AudioDeviceDebugger.Services;
@@ -50,10 +51,45 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _levelMeterService.LevelChanged += OnLevelChanged;
         _volumeService.VolumeChanged += OnExternalVolumeChanged;
 
+        // The DataGrid binds to Devices, which WPF shows through this default view — filtering it hides rows
+        // without removing them, so metering / volume / running tests are unaffected.
+        _devicesView = CollectionViewSource.GetDefaultView(Devices);
+        _devicesView.Filter = item => item is DeviceRowViewModel row && IsShown(row);
+
         Refresh();
     }
 
     public ObservableCollection<DeviceRowViewModel> Devices { get; } = new();
+
+    private readonly ICollectionView _devicesView;
+
+    private bool _showInactiveDevices;
+
+    /// <summary>When false, Disabled and NotPresent endpoints are hidden from the list (Unplugged ones stay —
+    /// they're real jacks with nothing plugged in).</summary>
+    public bool ShowInactiveDevices
+    {
+        get => _showInactiveDevices;
+        set
+        {
+            if (!SetField(ref _showInactiveDevices, value)) return;
+            _devicesView.Refresh();
+            OnPropertyChanged(nameof(HiddenDeviceCount));
+            if (SelectedDevice is null || !IsShown(SelectedDevice))
+            {
+                SelectedDevice = FirstShownDevice();
+            }
+        }
+    }
+
+    /// <summary>How many devices the "show inactive" filter is currently hiding.</summary>
+    public int HiddenDeviceCount => Devices.Count(row => !IsShown(row));
+
+    private bool IsShown(DeviceRowViewModel row) =>
+        _showInactiveDevices
+        || row.Device.State is not (DeviceConnectionState.Disabled or DeviceConnectionState.NotPresent);
+
+    private DeviceRowViewModel? FirstShownDevice() => Devices.FirstOrDefault(IsShown);
 
     /// <summary>Per-channel peaks for the currently selected device, for endpoints that report more than
     /// stereo (e.g. 5.1 surround). Resized in place as samples for the selection arrive.</summary>
@@ -124,7 +160,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             Devices.Add(row);
         }
 
-        SelectedDevice = Devices.FirstOrDefault(d => d.Device.Id == previousId) ?? Devices.FirstOrDefault();
+        SelectedDevice = Devices.FirstOrDefault(d => d.Device.Id == previousId && IsShown(d)) ?? FirstShownDevice();
+        OnPropertyChanged(nameof(HiddenDeviceCount));
     }
 
     /// <summary>Default roles can only be assigned to an endpoint that's currently active — Windows rejects

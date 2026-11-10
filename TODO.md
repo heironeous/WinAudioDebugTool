@@ -17,6 +17,8 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Enumerate all active input (capture) devices
 - [x] Include disabled / unplugged / not-present devices (with state shown)
 - [x] "Refresh" button that re-enumerates devices and diffs against current list
+- [x] Toolbar checkbox to show/hide Disabled + NotPresent devices (hidden by
+      default, with a "(N hidden)" count; Unplugged devices always shown)
 - [x] Auto-refresh on Windows device change notifications (plug/unplug events)
 
 ## Default device roles
