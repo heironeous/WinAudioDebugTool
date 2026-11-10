@@ -34,6 +34,7 @@ public partial class MainWindow : Window
 
         DataContext = _viewModel;
         Closed += OnClosed;
+        ApplyPropertiesPanelLayout();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -41,6 +42,39 @@ public partial class MainWindow : Window
         if (e.PropertyName == nameof(MainViewModel.SelectedDevice))
         {
             DetailGraph.Clear();
+        }
+        else if (e.PropertyName == nameof(MainViewModel.IsPropertiesPanelOpen))
+        {
+            ApplyPropertiesPanelLayout();
+        }
+    }
+
+    // Width the property table had when last open (keeps the user's splitter position across collapse/expand).
+    private GridLength _propertiesColumnWidth = new(3, GridUnitType.Star);
+    private const double PropertiesColumnMinWidth = 400;
+
+    /// <summary>Collapses the property table to zero width (just the toggle strip remains at the right edge) or
+    /// restores it. Done here rather than in XAML because the GridSplitter writes local Width values that would
+    /// override style triggers.</summary>
+    private void ApplyPropertiesPanelLayout()
+    {
+        if (_viewModel.IsPropertiesPanelOpen)
+        {
+            PropertiesColumn.MinWidth = PropertiesColumnMinWidth;
+            PropertiesColumn.Width = _propertiesColumnWidth;
+            PropertiesSplitter.Visibility = Visibility.Visible;
+            PropertiesList.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            if (PropertiesColumn.Width.Value > 0)
+            {
+                _propertiesColumnWidth = PropertiesColumn.Width;
+            }
+            PropertiesColumn.MinWidth = 0;
+            PropertiesColumn.Width = new GridLength(0);
+            PropertiesSplitter.Visibility = Visibility.Collapsed;
+            PropertiesList.Visibility = Visibility.Collapsed;
         }
     }
 

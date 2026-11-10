@@ -13,10 +13,10 @@ public sealed class AudioTestService : IAudioTestService
     private static readonly TimeSpan RecordDuration = TimeSpan.FromSeconds(5);
 
     public AudioTestSession StartTestTone(string outputDeviceId) =>
-        new(session => PlayTestTone(outputDeviceId, session));
+        new(AudioTestPhase.PlayingTone, session => PlayTestTone(outputDeviceId, session));
 
     public AudioTestSession StartRecordAndPlayback(string inputDeviceId, string? outputDeviceId) =>
-        new(session => RecordAndPlayback(inputDeviceId, outputDeviceId, session));
+        new(AudioTestPhase.Recording, session => RecordAndPlayback(inputDeviceId, outputDeviceId, session));
 
     private static TestOutcome PlayTestTone(string outputDeviceId, AudioTestSession session)
     {
@@ -26,8 +26,11 @@ public sealed class AudioTestService : IAudioTestService
             using var device = enumerator.GetDevice(outputDeviceId);
             string deviceName = SafeName(device);
 
+            // Generate the tone directly in the device's shared-mode mix format: shared-mode WASAPI won't open a
+            // stream whose channel count differs from the device's (e.g. stereo on a 5.1 or mono endpoint).
+            var mix = GetMixFormat(device);
             using var output = new WasapiOut(device, AudioClientShareMode.Shared, true, 100);
-            var tone = new SignalGenerator(44100, 2)
+            var tone = new SignalGenerator(mix.SampleRate, mix.Channels)
             {
                 Type = SignalGeneratorType.Sin,
                 Frequency = 440,
@@ -37,7 +40,7 @@ public sealed class AudioTestService : IAudioTestService
             output.Init(tone);
             var started = DateTime.UtcNow;
             output.Play();
-            bool stopped = session.CurrentPhase.WaitHandle.WaitOne(ToneDuration);
+            bool stopped = session.CurrentStopToken.WaitHandle.WaitOne(ToneDuration);
             output.Stop();
 
             return stopped
@@ -67,7 +70,7 @@ public sealed class AudioTestService : IAudioTestService
             capture.RecordingStopped += (_, _) => captureStopped.Set();
 
             capture.StartRecording();
-            bool recordingStoppedEarly = session.CurrentPhase.WaitHandle.WaitOne(RecordDuration);
+            bool recordingStoppedEarly = session.CurrentStopToken.WaitHandle.WaitOne(RecordDuration);
             capture.StopRecording();
             captureStopped.Wait(TimeSpan.FromSeconds(2));
 
@@ -80,7 +83,7 @@ public sealed class AudioTestService : IAudioTestService
             recorded.Position = 0;
 
             // Phase 2: play back what was captured — even if recording was stopped early.
-            var playbackToken = session.BeginNextPhase();
+            var playbackToken = session.BeginPhase(AudioTestPhase.PlayingBack);
 
             using var outputDevice = outputDeviceId is null
                 ? enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)
@@ -89,7 +92,7 @@ public sealed class AudioTestService : IAudioTestService
 
             using var playback = new WasapiOut(outputDevice, AudioClientShareMode.Shared, true, 100);
             var rawStream = new RawSourceWaveStream(recorded, capture.WaveFormat);
-            playback.Init(rawStream);
+            playback.Init(ConvertToMixFormat(rawStream.ToSampleProvider(), GetMixFormat(outputDevice)));
 
             using var playbackStopped = new ManualResetEventSlim(false);
             playback.PlaybackStopped += (_, _) => playbackStopped.Set();
@@ -111,6 +114,30 @@ public sealed class AudioTestService : IAudioTestService
         {
             return TestOutcome.Fail($"Microphone test failed: {ex.Message}");
         }
+    }
+
+    private static WaveFormat GetMixFormat(MMDevice device)
+    {
+        using var client = device.AudioClient; // NAudio creates a fresh IAudioClient per access
+        return client.MixFormat;
+    }
+
+    /// <summary>
+    /// Adapts a recording to the output device's mix format. Shared-mode WASAPI rejects a stream whose channel
+    /// count doesn't match the endpoint (E_INVALIDARG) — e.g. a 4-channel mic array played back on stereo speakers —
+    /// so channels are matched first, then the sample rate if it differs.
+    /// </summary>
+    private static ISampleProvider ConvertToMixFormat(ISampleProvider source, WaveFormat mix)
+    {
+        if (source.WaveFormat.Channels != mix.Channels)
+        {
+            source = new ChannelMatchingSampleProvider(source, mix.Channels);
+        }
+        if (source.WaveFormat.SampleRate != mix.SampleRate)
+        {
+            source = new WdlResamplingSampleProvider(source, mix.SampleRate);
+        }
+        return source;
     }
 
     // Not NAudio's device.FriendlyName — see EndpointPropertyReader for why that's slow.

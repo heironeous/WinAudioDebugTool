@@ -136,6 +136,36 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         private set => SetField(ref _selectedDeviceDetails, value);
     }
 
+    private bool _isPropertiesPanelOpen;
+
+    /// <summary>Whether the property table is expanded. The property store is only read while this is true:
+    /// opening it fetches the selected device's properties, closing it drops them.</summary>
+    public bool IsPropertiesPanelOpen
+    {
+        get => _isPropertiesPanelOpen;
+        set
+        {
+            if (!SetField(ref _isPropertiesPanelOpen, value)) return;
+            if (value)
+            {
+                LoadSelectedDeviceProperties(SelectedDevice);
+            }
+            else
+            {
+                SelectedDeviceProperties = null;
+            }
+        }
+    }
+
+    private IReadOnlyList<PropertyEntry>? _selectedDeviceProperties;
+
+    /// <summary>The selected device's property-store dump; null while the panel is closed or still loading.</summary>
+    public IReadOnlyList<PropertyEntry>? SelectedDeviceProperties
+    {
+        get => _selectedDeviceProperties;
+        private set => SetField(ref _selectedDeviceProperties, value);
+    }
+
     private string? _statusMessage;
     public string? StatusMessage
     {
@@ -172,7 +202,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                      .OrderBy(d => d.Direction)
                      .ThenBy(d => d.FriendlyName, StringComparer.OrdinalIgnoreCase))
         {
-            var row = new DeviceRowViewModel(info) { IsTesting = _activeTests.ContainsKey(info.Id) };
+            var row = new DeviceRowViewModel(info);
+            ApplyTestState(row);
             if (info.State == DeviceConnectionState.Active)
             {
                 _levelMeterService.StartMonitoring(info.Id, TimeSpan.FromMilliseconds(100));
@@ -250,11 +281,20 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             ? _testService.StartTestTone(id)
             : _testService.StartRecordAndPlayback(id, null);
 
+        string deviceName = row.Device.FriendlyName;
         _activeTests[id] = session;
-        SetRowTesting(id, true);
+        session.PhaseChanged += (_, phase) => _dispatcher.BeginInvoke(() =>
+        {
+            UpdateRowTestState(id);
+            if (phase == AudioTestPhase.PlayingBack && _activeTests.ContainsKey(id))
+            {
+                SetStatus($"Playing back the recording from \"{deviceName}\"… click stop to end playback.");
+            }
+        });
+        UpdateRowTestState(id);
         SetStatus(row.Device.Direction == AudioDirection.Output
-            ? $"Playing test tone on \"{row.Device.FriendlyName}\"…"
-            : $"Recording from \"{row.Device.FriendlyName}\"… click stop to end recording early and play it back.");
+            ? $"Playing test tone on \"{deviceName}\"…"
+            : $"Recording from \"{deviceName}\"… click stop to end recording early and play it back.");
 
         try
         {
@@ -268,15 +308,23 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         finally
         {
             _activeTests.Remove(id);
-            SetRowTesting(id, false);
+            UpdateRowTestState(id);
         }
     }
 
     // Rows are rebuilt on every Refresh, so a running test is tracked by device ID rather than by row.
-    private void SetRowTesting(string deviceId, bool isTesting)
+    private void UpdateRowTestState(string deviceId)
     {
         var row = Devices.FirstOrDefault(d => d.Device.Id == deviceId);
-        if (row is not null) row.IsTesting = isTesting;
+        if (row is not null) ApplyTestState(row);
+    }
+
+    /// <summary>Syncs a row's Test button (Test ▶ / Test ■ / Playback ■) with any test running on its device.</summary>
+    private void ApplyTestState(DeviceRowViewModel row)
+    {
+        _activeTests.TryGetValue(row.Device.Id, out var session);
+        row.IsTesting = session is not null;
+        row.IsPlayingBack = session?.Phase == AudioTestPhase.PlayingBack;
     }
 
     private void LoadSelectedDeviceDetails(DeviceRowViewModel? row)
@@ -302,6 +350,36 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             catch (Exception ex)
             {
                 _dispatcher.BeginInvoke(() => SetStatus($"Couldn't load device details: {ex.Message}"));
+            }
+        });
+
+        LoadSelectedDeviceProperties(row);
+    }
+
+    /// <summary>Fetches the property dump for <paramref name="row"/> in the background — only if the properties
+    /// panel is open. Results that arrive after the selection changed or the panel closed are discarded.</summary>
+    private void LoadSelectedDeviceProperties(DeviceRowViewModel? row)
+    {
+        SelectedDeviceProperties = null;
+        if (row is null || !IsPropertiesPanelOpen) return;
+
+        string id = row.Device.Id;
+        Task.Run(() =>
+        {
+            try
+            {
+                var properties = _detailsService.GetProperties(id);
+                _dispatcher.BeginInvoke(() =>
+                {
+                    if (IsPropertiesPanelOpen && SelectedDevice?.Device.Id == id)
+                    {
+                        SelectedDeviceProperties = properties;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _dispatcher.BeginInvoke(() => SetStatus($"Couldn't load device properties: {ex.Message}"));
             }
         });
     }

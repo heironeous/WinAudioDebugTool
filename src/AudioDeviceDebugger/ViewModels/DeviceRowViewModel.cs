@@ -55,6 +55,20 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
         }
     }
 
+    private bool _isPlayingBack;
+
+    /// <summary>True while an input test is in its playback phase; the Test button then reads "Playback ■".</summary>
+    public bool IsPlayingBack
+    {
+        get => _isPlayingBack;
+        set
+        {
+            if (_isPlayingBack == value) return;
+            _isPlayingBack = value;
+            OnPropertyChanged(nameof(IsPlayingBack));
+        }
+    }
+
     public bool IsOutput => Device.Direction == AudioDirection.Output;
 
     private bool _hasVolume;

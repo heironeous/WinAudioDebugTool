@@ -14,6 +14,4 @@ public sealed class DeviceDetails
 
     /// <summary>The format exclusive-mode playback/capture would actually use, if it differs from shared mode.</summary>
     public AudioFormatInfo? ExclusiveModeFormat { get; init; }
-
-    public required IReadOnlyList<PropertyEntry> Properties { get; init; }
 }

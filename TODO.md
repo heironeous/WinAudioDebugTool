@@ -39,6 +39,9 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Shared-mode mix format vs. exclusive-mode supported formats
 - [x] Raw property store dump (all discoverable `PROPERTYKEY` values, via `device.Properties`)
 - [x] Details panel rendering in the UI (name, ID, formats, property grid)
+- [x] Layout: device list on top, details below (resizable); property table
+      collapses to a strip at the right edge (collapsed by default) and the
+      property store is only read while the table is open
 - [x] Human-readable property names: compiled-in table of all ~1,550 documented
       PKEY_/DEVPKEY_ keys generated from Win32 metadata
       (`tools/PropertyKeyNameGenerator` → `Interop/PropertyKeyNames.g.cs`) plus a
@@ -52,6 +55,11 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Start/stop toggle on the Test button (▶ / ■): stopping an output test
       ends the tone; stopping an input test ends recording early and still
       plays the capture back (stop again to cut the playback)
+- [x] Input tests show their phase on the button: "Test ■" while recording,
+      "Playback ■" while playing the recording back
+- [x] Test audio is converted to the output's shared-mode mix format (channel
+      count + sample rate), so e.g. a 4-channel mic array plays back on stereo
+      speakers (previously failed with E_INVALIDARG)
 - [x] Clear pass/fail + error reporting if a device fails to open/start
       (shown in the bottom status bar)
 

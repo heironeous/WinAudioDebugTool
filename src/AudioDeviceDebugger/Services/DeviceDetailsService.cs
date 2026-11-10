@@ -12,17 +12,23 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
     public DeviceDetails GetDetails(string deviceId)
     {
         using var device = _enumerator.GetDevice(deviceId);
+        using var reader = new EndpointPropertyReader(); // not device.FriendlyName — see EndpointPropertyReader
 
         return new DeviceDetails
         {
             Id = device.ID,
-            FriendlyName = SafeGet(() => device.FriendlyName, device.ID),
+            FriendlyName = reader.TryGetString(device.ID, PropertyKeys.PKEY_Device_FriendlyName) ?? device.ID,
             Direction = device.DataFlow == DataFlow.Render ? AudioDirection.Output : AudioDirection.Input,
             State = MapState(device.State),
             SharedModeFormat = TryGetSharedModeFormat(device),
             ExclusiveModeFormat = TryGetExclusiveModeFormat(device),
-            Properties = DumpProperties(device),
         };
+    }
+
+    public IReadOnlyList<PropertyEntry> GetProperties(string deviceId)
+    {
+        using var device = _enumerator.GetDevice(deviceId);
+        return DumpProperties(device);
     }
 
     private static AudioFormatInfo? TryGetSharedModeFormat(MMDevice device)
@@ -117,18 +123,6 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
         string[] strings => string.Join("; ", strings),
         _ => value.ToString() ?? "(null)",
     };
-
-    private static string SafeGet(Func<string> getter, string fallback)
-    {
-        try
-        {
-            return getter();
-        }
-        catch
-        {
-            return fallback;
-        }
-    }
 
     private static DeviceConnectionState MapState(DeviceState state) => state switch
     {
