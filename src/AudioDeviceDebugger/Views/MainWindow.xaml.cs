@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using AudioDeviceDebugger.Models;
 using AudioDeviceDebugger.Services;
 using AudioDeviceDebugger.ViewModels;
 
@@ -59,19 +60,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SetDefaultButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { DataContext: DeviceRowViewModel row })
-        {
-            _viewModel.SetAsDefault(row);
-        }
-    }
+    private void SetDefaultButton_Click(object sender, RoutedEventArgs e) =>
+        _viewModel.SetSelectedAsDefault(DefaultRoles.Default);
 
-    private void SetCommsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { DataContext: DeviceRowViewModel row })
-        {
-            _viewModel.SetAsDefaultCommunications(row);
-        }
-    }
+    private void SetCommsButton_Click(object sender, RoutedEventArgs e) =>
+        _viewModel.SetSelectedAsDefault(DefaultRoles.Communications);
+
+    private void SetBothButton_Click(object sender, RoutedEventArgs e) =>
+        _viewModel.SetSelectedAsDefault(DefaultRoles.Both);
 }

@@ -24,8 +24,10 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Show current default device for Render / Communications role
 - [x] Show current default device for Capture / Multimedia role
 - [x] Show current default device for Capture / Communications role
-- [x] "Set Default" button per device row (Console + Multimedia roles)
-- [x] "Set Comms" button per device row (Communications role)
+- [x] "Set Default" toolbar button for the selected device (Console + Multimedia roles)
+- [x] "Set Comms" toolbar button for the selected device (Communications role)
+- [x] "Set Both" toolbar button (Default + Communications in one click);
+      all three are disabled unless the selected device is Active
 - [x] Visual indicator in the device list for current defaults ("Role" column badge)
 
 ## Device details panel

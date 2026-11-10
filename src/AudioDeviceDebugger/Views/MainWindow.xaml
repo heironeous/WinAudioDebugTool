@@ -13,8 +13,21 @@
 
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
             <Button x:Name="RefreshButton" Content="Refresh" Click="RefreshButton_Click" Padding="12,4" Margin="0,0,8,0"/>
-            <TextBlock Text="Output and input devices, with current defaults, test actions, and live levels."
-                       Foreground="Gray" VerticalAlignment="Center"/>
+            <Border Width="1" Background="#555" Margin="0,2,8,2"/>
+            <Button Content="Set Default" Click="SetDefaultButton_Click" Padding="12,4" Margin="0,0,4,0"
+                    IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="Make the selected device the default device (Console + Multimedia roles)"/>
+            <Button Content="Set Comms" Click="SetCommsButton_Click" Padding="12,4" Margin="0,0,4,0"
+                    IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="Make the selected device the default communications device"/>
+            <Button Content="Set Both" Click="SetBothButton_Click" Padding="12,4" Margin="0,0,8,0"
+                    IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="Make the selected device both the default and the default communications device"/>
+            <TextBlock VerticalAlignment="Center" Foreground="Gray">
+                <Run Text="Selected:"/>
+                <Run Text="{Binding SelectedDevice.Device.FriendlyName, Mode=OneWay, FallbackValue='(none)'}" Foreground="White"/>
+                <Run Text="{Binding SelectedDevice.StateText, Mode=OneWay, StringFormat='({0})', FallbackValue=''}"/>
+            </TextBlock>
         </StackPanel>
 
         <Grid Grid.Row="1">
@@ -46,7 +59,7 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Actions" Width="220">
+                    <DataGridTemplateColumn Header="Test" Width="72">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
@@ -80,8 +93,6 @@
                                             </TextBlock>
                                         </StackPanel>
                                     </Button>
-                                    <Button Content="Set Default" Click="SetDefaultButton_Click" Margin="2" Padding="6,2"/>
-                                    <Button Content="Set Comms" Click="SetCommsButton_Click" Margin="2" Padding="6,2"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

@@ -49,6 +49,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         set
         {
             if (!SetField(ref _selectedDevice, value)) return;
+            OnPropertyChanged(nameof(CanSetDefaults));
             LoadSelectedDeviceDetails(value);
         }
     }
@@ -99,32 +100,43 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         SelectedDevice = Devices.FirstOrDefault(d => d.Device.Id == previousId) ?? Devices.FirstOrDefault();
     }
 
-    public void SetAsDefault(DeviceRowViewModel row)
-    {
-        try
-        {
-            _defaultDeviceService.SetDefaultDevice(row.Device.Id);
-            SetStatus($"Set \"{row.Device.FriendlyName}\" as the default device.");
-            Refresh();
-        }
-        catch (Exception ex)
-        {
-            SetStatus($"Failed to set default device: {ex.Message}");
-        }
-    }
+    /// <summary>Default roles can only be assigned to an endpoint that's currently active — Windows rejects
+    /// disabled / unplugged / not-present ones.</summary>
+    public bool CanSetDefaults => SelectedDevice?.Device.State == DeviceConnectionState.Active;
 
-    public void SetAsDefaultCommunications(DeviceRowViewModel row)
+    /// <summary>Assigns the given default role(s) to the currently selected device.</summary>
+    public void SetSelectedAsDefault(DefaultRoles roles)
     {
+        var row = SelectedDevice;
+        if (row is null || roles == DefaultRoles.None) return;
+
+        string roleText = roles switch
+        {
+            DefaultRoles.Default => "default device",
+            DefaultRoles.Communications => "default communications device",
+            _ => "default and default communications device",
+        };
+
         try
         {
-            _defaultDeviceService.SetDefaultCommunicationsDevice(row.Device.Id);
-            SetStatus($"Set \"{row.Device.FriendlyName}\" as the default communications device.");
-            Refresh();
+            if (roles.HasFlag(DefaultRoles.Default))
+            {
+                _defaultDeviceService.SetDefaultDevice(row.Device.Id);
+            }
+            if (roles.HasFlag(DefaultRoles.Communications))
+            {
+                _defaultDeviceService.SetDefaultCommunicationsDevice(row.Device.Id);
+            }
+            SetStatus($"Set \"{row.Device.FriendlyName}\" as the {roleText}.");
         }
         catch (Exception ex)
         {
-            SetStatus($"Failed to set default communications device: {ex.Message}");
+            SetStatus($"Failed to set \"{row.Device.FriendlyName}\" as the {roleText}: {ex.Message}");
         }
+
+        // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the Role column
+        // reflects what Windows actually has now.
+        Refresh();
     }
 
     /// <summary>Starts a test on the row's device, or — if one is already running there — stops its current
@@ -255,7 +267,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return false;
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
         return true;
     }
+
+    private void OnPropertyChanged(string? propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
