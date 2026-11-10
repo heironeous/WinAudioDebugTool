@@ -22,10 +22,12 @@ means **implemented and committed**, not "verified on real hardware" — see
       Not present hidden by default, Unplugged shown; Active always shown)
 - [x] Auto-refresh on Windows device change notifications (plug/unplug events)
 
-- [x] Flat, dark device list (`Views/DeviceListStyles.xaml`): name + "Output ·
+- [x] Flat, dark device list (`Views/Theme.xaml`): name + "Output ·
       Active" subtitle, quiet uppercase headers, hairline row separators,
       subtle hover/selection, dimmed inactive rows, thin meter/slider, flat
       mute and Test buttons; no images or shadows
+- [x] Same flat theme for the toolbar buttons, Show: checkboxes, the
+      PROPERTIES strip toggle, the level graph panel and the per-channel bars
 
 ## Default device roles
 - [x] Show current default device for Render / Multimedia role

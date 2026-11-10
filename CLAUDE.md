@@ -93,7 +93,7 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
    (−60…0 dBFS). The property store is only read while the property panel is open (it's the expensive part of
    selection).
 10. WPF projects' implicit usings exclude `System.IO`; `Timer` is ambiguous (System.Timers vs System.Threading).
-11. **The device list is restyled** (`Views/DeviceListStyles.xaml`, flat dark theme). The DataGrid coerces
+11. **The UI uses a flat dark theme** (`Views/Theme.xaml`: list, buttons, checkboxes, meters, strip toggle). The DataGrid coerces
     `DataGridRow.Background` to its `RowBackground`, so row-level hover/selection triggers do nothing — those colours
     are drawn in the `ListCell` template instead. Setting `CellStyle` doesn't remove the theme style's triggers, so
     pin `Foreground` or the selected row's text turns near-black ("inactive selection" colour). Thin icon glyphs get

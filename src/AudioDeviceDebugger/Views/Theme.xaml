@@ -198,6 +198,91 @@
         </Setter>
     </Style>
 
+    <!-- Checkbox: rounded square outline; filled with the accent and a check glyph when ticked. -->
+    <SolidColorBrush x:Key="CheckOutline" Color="#6A6A70"/>
+    <SolidColorBrush x:Key="CheckOutlineHover" Color="#9A9AA0"/>
+    <Style x:Key="FlatCheckBox" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource ListText}"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Border x:Name="Box" Width="16" Height="16" CornerRadius="3" BorderThickness="1.5"
+                                BorderBrush="{StaticResource CheckOutline}" Background="Transparent" VerticalAlignment="Center">
+                            <TextBlock x:Name="Check" Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="10" Foreground="{StaticResource ListBackground}" Visibility="Collapsed"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource CheckOutlineHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource ListAccent}"/>
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource ListAccent}"/>
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Vertical meter (per-channel bars): the horizontal flat meter rotated, so ProgressBar's indicator sizing
+         (which always sets PART_Indicator.Width) fills bottom-up. -->
+    <Style x:Key="FlatMeterVertical" TargetType="ProgressBar">
+        <Setter Property="Foreground" Value="{StaticResource MeterFill}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid>
+                        <Grid.LayoutTransform>
+                            <RotateTransform Angle="-90"/>
+                        </Grid.LayoutTransform>
+                        <Border x:Name="PART_Track" CornerRadius="3" Background="{StaticResource ControlTrack}"/>
+                        <Border x:Name="PART_Indicator" CornerRadius="3" HorizontalAlignment="Left"
+                                Background="{TemplateBinding Foreground}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Tall strip toggle at a panel edge (Properties): flat panel matching the list border, subtle text. -->
+    <Style x:Key="FlatStripToggle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource ListSubtleText}"/>
+        <Setter Property="Background" Value="{StaticResource ListBackground}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource ListBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Bd" CornerRadius="6" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlHover}"/>
+                            <Setter Property="Foreground" Value="{StaticResource ListText}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlPressed}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Borderless icon toggle (mute). -->
     <Style x:Key="FlatIconToggle" TargetType="ToggleButton">
         <Setter Property="Foreground" Value="{StaticResource ListText}"/>
