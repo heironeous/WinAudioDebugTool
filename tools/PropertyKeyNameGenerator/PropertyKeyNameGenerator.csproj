@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Regenerates src/AudioDeviceDebugger/Interop/PropertyKeyNames.g.cs: the compiled-in table of every documented
+    PROPERTYKEY / DEVPROPKEY (PKEY_* / DEVPKEY_*) in the Windows SDK, read from Microsoft's Win32 metadata.
+    Run from the repo root:  dotnet run (double-dash)project tools/PropertyKeyNameGenerator
+
+    Bump the Win32Metadata version below and re-run to pick up keys from newer SDKs.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Only the .winmd file is needed (read as data); nothing from the package is compiled in or copied. -->
+    <PackageReference Include="Microsoft.Windows.SDK.Win32Metadata" Version="71.0.45-preview"
+                      GeneratePathProperty="true" ExcludeAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>Win32MetadataPackageDir</_Parameter1>
+      <_Parameter2>$(PkgMicrosoft_Windows_SDK_Win32Metadata)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

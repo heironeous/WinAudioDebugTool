@@ -1,3 +1,4 @@
+using AudioDeviceDebugger.Interop;
 using AudioDeviceDebugger.Models;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -78,9 +79,14 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
                 try
                 {
                     var prop = store[i];
+                    var (formatId, propertyId) = (prop.Key.formatId, prop.Key.propertyId);
+                    string raw = PropertyKeyNames.FormatRaw(formatId, propertyId);
+                    string? symbol = PropertyKeyNames.TryGetSymbol(formatId, propertyId);
                     entries.Add(new PropertyEntry
                     {
-                        Key = FormatKey(prop.Key),
+                        Name = symbol is null ? raw : PropertyKeyNames.ToDisplayName(symbol),
+                        RawKey = raw,
+                        Symbol = symbol,
                         Value = FormatValue(prop.Value),
                     });
                 }
@@ -96,23 +102,11 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
             // Property store unavailable for this device state.
         }
 
-        return entries;
-    }
-
-    /// <summary>Well-known PKEY names exposed by NAudio's <see cref="PropertyKeys"/>, keyed by (fmtid, pid).</summary>
-    private static readonly Dictionary<(Guid, int), string> KnownKeyNames = typeof(PropertyKeys)
-        .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-        .Where(f => f.FieldType == typeof(PropertyKey))
-        .Select(f => (Key: (PropertyKey)f.GetValue(null)!, f.Name))
-        .GroupBy(x => (x.Key.formatId, x.Key.propertyId))
-        .ToDictionary(g => g.Key, g => g.First().Name);
-
-    private static string FormatKey(PropertyKey key)
-    {
-        string raw = $"{{{key.formatId}}},{key.propertyId}";
-        return KnownKeyNames.TryGetValue((key.formatId, key.propertyId), out var name)
-            ? $"{name}  {raw}"
-            : raw;
+        // Named properties first (alphabetical), then the unrecognised raw keys.
+        return entries
+            .OrderBy(e => e.IsKnown ? 0 : 1)
+            .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static string FormatValue(object? value) => value switch

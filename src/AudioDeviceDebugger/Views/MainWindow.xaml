@@ -222,8 +222,37 @@
                 <ListView Grid.Row="3" ItemsSource="{Binding SelectedDeviceDetails.Properties}">
                     <ListView.View>
                         <GridView>
-                            <GridViewColumn Header="Property" DisplayMemberBinding="{Binding Key}" Width="280"/>
-                            <GridViewColumn Header="Value" DisplayMemberBinding="{Binding Value}" Width="380"/>
+                            <GridViewColumn Header="Property" Width="260">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <!-- Unknown keys show their raw UID, greyed so named ones stand out. -->
+                                        <TextBlock Text="{Binding Name}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="ToolTip" Value="{Binding Symbol}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsKnown}" Value="False">
+                                                            <Setter Property="Foreground" Value="Gray"/>
+                                                            <Setter Property="ToolTip" Value="Not in the property-key name table"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Value" DisplayMemberBinding="{Binding Value}" Width="320"/>
+                            <GridViewColumn Header="Key" Width="330">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Foreground="Gray">
+                                            <Run Text="{Binding Symbol, Mode=OneWay}"/>
+                                            <Run Text="{Binding RawKey, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
                         </GridView>
                     </ListView.View>
                 </ListView>

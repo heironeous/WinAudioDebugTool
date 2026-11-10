@@ -88,6 +88,24 @@ The output executable will be at:
 src\AudioDeviceDebugger\bin\Release\net8.0-windows\win-x64\publish\AudioDeviceDebugger.exe
 ```
 
+### Property-key names
+
+The details panel shows each endpoint property by a readable name ("Device: Friendly Name") instead of its raw
+`{fmtid},pid`. The names come from a table compiled into the app:
+
+- `src/AudioDeviceDebugger/Interop/PropertyKeyNames.g.cs`: **generated**, every documented `PKEY_*` /
+  `DEVPKEY_*` in the Windows SDK (~1,550 keys), read from Microsoft's
+  [Win32 metadata](https://www.nuget.org/packages/Microsoft.Windows.SDK.Win32Metadata) package. Don't edit by hand;
+  regenerate from the repo root with:
+
+  ```powershell
+  dotnet run --project tools/PropertyKeyNameGenerator
+  ```
+
+  (Bump the package version in `tools/PropertyKeyNameGenerator/PropertyKeyNameGenerator.csproj` to pick up newer SDKs.)
+- `src/AudioDeviceDebugger/Interop/PropertyKeyNames.cs`: **hand-maintained** `ManualNames` for undocumented keys.
+  Only add a key once its meaning is confirmed. Unknown keys are shown by their raw `{fmtid},pid`.
+
 ## Running
 
 Just launch the published `.exe`, or run `dotnet run` from

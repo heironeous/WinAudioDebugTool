@@ -38,6 +38,12 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Shared-mode mix format vs. exclusive-mode supported formats
 - [x] Raw property store dump (all discoverable `PROPERTYKEY` values, via `device.Properties`)
 - [x] Details panel rendering in the UI (name, ID, formats, property grid)
+- [x] Human-readable property names: compiled-in table of all ~1,550 documented
+      PKEY_/DEVPKEY_ keys generated from Win32 metadata
+      (`tools/PropertyKeyNameGenerator` → `Interop/PropertyKeyNames.g.cs`) plus a
+      manual table for confirmed undocumented keys; unknown keys keep their UID
+- [ ] Name more undocumented endpoint keys (~185 distinct on the dev machine,
+      e.g. `{b3f8fa53-0004-438e-9003-51a46e139bfc},*`) once their meaning is confirmed
 
 ## Testing devices
 - [x] "Test" button per device row — plays a tone for outputs, records 5s
