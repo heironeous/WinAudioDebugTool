@@ -10,10 +10,11 @@ Built for the "why isn't my mic/speaker working", "which of these five USB heads
 does my headset sound terrible in calls" situations, where Windows' own Sound settings only give you a name and a
 default toggle.
 
-![Audio Device Debugger: the device list with roles, live levels and volume, and the details of a laptop mic array — level graph, per-channel meters and the PROCESSES tab showing which apps have it open](docs/images/screenshot.png)
+![Audio Device Debugger: the device list with Default and Comms roles, live levels and volume, and the details of a USB headset microphone with its level graph and the RAW RECORDING tab open](docs/images/screenshot.png)
 
-*The device list (roles, live levels, volume and mute, Test buttons) and, below it, the selected laptop mic array:
-its formats, rolling dB level graph, per-channel meters, and the PROCESSES tab listing the apps that have it open.*
+*The device list (Default and Comms roles, live levels, volume and mute, Test buttons) and, below it, the selected
+USB headset microphone: its format, rolling dB level graph, channel meter, and the RAW RECORDING tab, ready to record
+it raw and as call apps receive it.*
 
 ## Features
 
