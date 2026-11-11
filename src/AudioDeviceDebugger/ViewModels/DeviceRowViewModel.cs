@@ -27,14 +27,6 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
     /// <summary>Secondary line under the device name in the list, e.g. "Output · Active".</summary>
     public string Subtitle => $"{DirectionText} · {StateText}";
 
-    public string DefaultBadge => (Device.IsDefaultDevice, Device.IsDefaultCommunicationsDevice) switch
-    {
-        (true, true) => "Default · Comms",
-        (true, false) => "Default",
-        (false, true) => "Comms",
-        (false, false) => "",
-    };
-
     private double _currentPeak;
 
     /// <summary>Latest IAudioMeterInformation reading, linear 0.0–1.0. Updated on the UI thread by MainViewModel.</summary>

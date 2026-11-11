@@ -119,7 +119,15 @@
                     <DataGridTemplateColumn Header="ROLE" Width="120">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding DefaultBadge}" FontSize="12" Foreground="{StaticResource ListAccent}"/>
+                                <!-- One line per role, like the name/subtitle lines of the DEVICE column. -->
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Default" FontSize="12" Foreground="{StaticResource ListAccent}"
+                                               ToolTip="Default device: what music, videos and most apps use"
+                                               Visibility="{Binding Device.IsDefaultDevice, Converter={StaticResource BoolToVisibility}}"/>
+                                    <TextBlock Text="Comms" FontSize="12" Foreground="{StaticResource ListAccent}" Margin="0,2,0,0"
+                                               ToolTip="Default communications device: what call apps (Teams, Webex…) use"
+                                               Visibility="{Binding Device.IsDefaultCommunicationsDevice, Converter={StaticResource BoolToVisibility}}"/>
+                                </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

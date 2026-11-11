@@ -170,8 +170,8 @@ verification notes for the larger features are in
 - [x] Four tabs at the right edge — PROPERTIES, EVENTS, PROCESSES, RAW
       RECORDING; one open at a time, clicking the open tab collapses it
 - [x] Tab labels hide (icons only) when the strip is too short for all four
-- [ ] Cosmetic: the Role column truncates "Default + Comms" to
-      "Default + Comm" (column width 95)
+- [x] Role column shows "Default" and "Comms" on separate lines (each with a
+      tooltip), matching the name/subtitle lines; row height unchanged
 
 ## Roadmap
 
