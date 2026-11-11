@@ -1,9 +1,10 @@
-# Builds every push to main and, if the build succeeds, tags the commit with the next version (vX.Y.Z).
+# Builds every push to main into a ready-to-run, self-contained AudioDeviceDebugger.exe and, if that succeeds, tags
+# the commit with the next version (vX.Y.Z) and publishes a GitHub Release for the tag with the exe attached.
 # The version comes from the conventional-commit subjects since the last tag (see .github/scripts/next-version.sh):
 # feat -> minor, breaking (type!: / BREAKING CHANGE) -> major, anything else -> patch.
 # Pushes that only change documentation (Markdown files, docs/) don't run at all, so they get no tag; their commits
 # are covered by the next tag. A push that changes docs *and* anything else runs as usual.
-name: Build and tag
+name: Build, tag and release
 
 on:
   push:
@@ -14,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # push the tag
+  contents: write # push the tag and create the release
 
 # One run at a time, so two quick pushes can't both claim the same version.
 concurrency:
@@ -42,15 +43,30 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Build the app
+      # Single-file, self-contained exe (runs without .NET installed), with the version stamped in.
+      - name: Publish the app
         run: >
-          dotnet build src/AudioDeviceDebugger/AudioDeviceDebugger.csproj -c Release
+          dotnet publish src/AudioDeviceDebugger/AudioDeviceDebugger.csproj
+          -p:PublishProfile=win-x64-selfcontained
           -p:Version=${{ steps.version.outputs.version }}
           -p:FileVersion=${{ steps.version.outputs.version }}.0
           -p:AssemblyVersion=${{ steps.version.outputs.version }}.0
 
       - name: Build the property-key name generator
         run: dotnet build tools/PropertyKeyNameGenerator/PropertyKeyNameGenerator.csproj -c Release
+
+      - name: Package the exe and its checksum
+        id: package
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          mkdir -p dist
+          name="AudioDeviceDebugger-$TAG-win-x64.exe"
+          cp src/AudioDeviceDebugger/bin/Release/net8.0-windows/win-x64/publish/AudioDeviceDebugger.exe "dist/$name"
+          (cd dist && sha256sum "$name" > "$name.sha256")
+          ls -l dist
+          echo "exe=dist/$name" >> "$GITHUB_OUTPUT"
+          echo "sha=dist/$name.sha256" >> "$GITHUB_OUTPUT"
 
       - name: Tag the commit
         if: steps.version.outputs.skip != 'true'
@@ -62,13 +78,32 @@ jobs:
           git tag -a "$TAG" -m "$TAG" "$GITHUB_SHA"
           git push origin "$TAG"
 
+      # Also runs when the commit was already tagged (a re-run), so a release that failed earlier is completed and
+      # its files are replaced with this build's.
+      - name: Publish the release with the exe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          EXE: ${{ steps.package.outputs.exe }}
+          SHA: ${{ steps.package.outputs.sha }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$EXE" "$SHA" --clobber
+          else
+            gh release create "$TAG" "$EXE" "$SHA" --verify-tag --generate-notes \
+              --title "Audio Device Debugger $TAG"
+          fi
+
       - name: Summary
         env:
           TAG: ${{ steps.version.outputs.tag }}
           SKIP: ${{ steps.version.outputs.skip }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           if [ "$SKIP" = "true" ]; then
-            echo "Built $GITHUB_SHA; it was already tagged $TAG." >> "$GITHUB_STEP_SUMMARY"
+            echo "Built $GITHUB_SHA (already tagged $TAG) and refreshed the release files." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Built $GITHUB_SHA and tagged it **$TAG**." >> "$GITHUB_STEP_SUMMARY"
+            echo "Built $GITHUB_SHA, tagged it **$TAG** and published the release." >> "$GITHUB_STEP_SUMMARY"
           fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download: $REPO_URL/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"

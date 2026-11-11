@@ -1,6 +1,6 @@
 # Windows Audio Device Debugger
 
-[![Build and tag](https://github.com/heironeous/WinAudioDebugTool/actions/workflows/build-and-tag.yml/badge.svg)](https://github.com/heironeous/WinAudioDebugTool/actions/workflows/build-and-tag.yml)
+[![Build, tag and release](https://github.com/heironeous/WinAudioDebugTool/actions/workflows/build-and-tag.yml/badge.svg)](https://github.com/heironeous/WinAudioDebugTool/actions/workflows/build-and-tag.yml)
 
 A Windows desktop tool for finding out what's really going on with your audio devices: every input and output
 Windows knows about, which one is the default, who is using it, what format it runs at, what processing Windows
@@ -55,13 +55,27 @@ All levels are shown in dBFS (−60…0 dB).
 - No admin rights needed.
 - The effects list in RAW RECORDING needs Windows 11 (`IAudioEffectsManager`); raw capture needs a driver that
   supports it (the app tells you).
-- To build: the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+- To run the released exe: nothing else — it includes the .NET runtime.
+- To build it yourself: the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ## Getting it
 
-There are no downloadable builds yet — build it from source. Every push to `main` that changes more than
-documentation, and builds successfully, is tagged with a version (`vX.Y.Z`, see
-[Tags](https://github.com/heironeous/WinAudioDebugTool/tags)); check out a tag to build that version.
+### Download
+
+Each version is published on the [Releases](https://github.com/heironeous/WinAudioDebugTool/releases) page.
+Download `AudioDeviceDebugger-vX.Y.Z-win-x64.exe` from the latest release and run it — it's a single, self-contained
+file (about 70 MB, because it includes the .NET runtime): no installer, no admin rights, nothing else to install.
+
+- **Windows SmartScreen** may warn "Windows protected your PC", because the exe isn't code-signed. Click **More
+  info → Run anyway** if you trust the download. Company-managed PCs may block unsigned executables altogether.
+- To check the download wasn't corrupted or altered, compare its hash with the `.sha256` file next to it in the
+  release:
+
+  ```powershell
+  Get-FileHash .\AudioDeviceDebugger-vX.Y.Z-win-x64.exe -Algorithm SHA256
+  ```
+
+### Build from source
 
 ```powershell
 git clone https://github.com/heironeous/WinAudioDebugTool.git
@@ -107,8 +121,8 @@ Every checked item in [TODO.md](TODO.md) was tested by hand on a Windows 11 lapt
 Smart Sound Technology 4-channel mic array and a Jabra Link 390 USB headset dongle. Other hardware — surround setups,
 pro audio interfaces, directly paired Bluetooth headsets — hasn't been tried; reports are welcome.
 
-A GitHub Actions workflow builds every push to `main` on Windows (except documentation-only pushes) and tags it
-with the next version (see "Versioning" below). There are no automated tests yet. Most of the code is a thin layer over live Windows Core Audio calls, which
+A GitHub Actions workflow builds every push to `main` on Windows (except documentation-only pushes), tags it
+with the next version and publishes it as a release (see "Versioning" below). There are no automated tests yet. Most of the code is a thin layer over live Windows Core Audio calls, which
 can't be meaningfully unit-tested without real devices; the pure-logic parts (event log, exporters, level scale,
 channel layout) are candidates for a test project.
 
@@ -126,7 +140,9 @@ A quick manual check after building:
 Versions follow [semantic versioning](https://semver.org/) and are derived from
 [conventional commit](https://www.conventionalcommits.org/) messages by
 `.github/workflows/build-and-tag.yml` (logic in `.github/scripts/next-version.sh`). On each push to `main` the
-workflow builds the app and, if that succeeds, tags the commit with the next version:
+workflow publishes the self-contained exe and, if that succeeds, tags the commit with the next version and creates a
+GitHub Release for the tag with the exe (`AudioDeviceDebugger-vX.Y.Z-win-x64.exe`) and its SHA-256 checksum
+attached. The release notes list the commits since the previous release. The bump is chosen like this:
 
 | Commits since the last tag include… | Bump | Example |
 |---|---|---|

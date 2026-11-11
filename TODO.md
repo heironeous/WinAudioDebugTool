@@ -15,7 +15,8 @@ verification notes for the larger features are in
 - [x] CI: GitHub Actions builds every push to `main` on `windows-latest` and
       tags it `vX.Y.Z` (version bump from conventional commits; see README
       "Versioning"); documentation-only pushes are skipped
-- [ ] Prebuilt releases on GitHub (self-contained `.exe` attached to each tag)
+- [x] Prebuilt releases on GitHub: each tag gets a release with the
+      self-contained `.exe` and its SHA-256 checksum
 - [ ] Code signing of the published executable
 
 ## Device enumeration

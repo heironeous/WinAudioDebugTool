@@ -23,9 +23,11 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   `main`). The maintainer pushes; agents don't.
 - Builds cleanly (0 warnings) and runs on Windows 11; every feature in `TODO.md` that is checked was exercised on
   real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
-  the maintainer's decision. No automated tests, no downloadable releases.
-- CI: `.github/workflows/build-and-tag.yml` builds every push to `main` (windows-latest, .NET 8) and, on success,
-  pushes an annotated tag `vX.Y.Z`. The bump comes from the commit subjects since the last tag
+  the maintainer's decision. No automated tests.
+- CI: `.github/workflows/build-and-tag.yml` publishes every push to `main` (windows-latest, .NET 8) as the
+  single-file self-contained exe (publish profile `win-x64-selfcontained`, version stamped in) and, on success,
+  pushes an annotated tag `vX.Y.Z` and creates a GitHub Release for it with `AudioDeviceDebugger-vX.Y.Z-win-x64.exe`
+  + `.sha256` attached (`gh release create --generate-notes`; a re-run of a tagged commit re-uploads the files). The bump comes from the commit subjects since the last tag
   (`.github/scripts/next-version.sh`): `type!:` / `BREAKING CHANGE` → major, `feat:` → minor, anything else → patch.
   Documentation-only pushes (`**.md`, `docs/**` — `paths-ignore`) don't run the workflow and get no tag.
   So **the commit type matters** — use `feat:` only for user-visible features. Don't create version tags by hand
@@ -172,4 +174,4 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   only with a confirmed meaning.
 - The maintainer asked for explanations, not code, on the headset call-mode ideas (media-vs-call listening test,
   disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
-- Not started: license, automated tests, downloadable releases, code signing.
+- Not started: license, automated tests, code signing (releases are unsigned, so SmartScreen warns).
