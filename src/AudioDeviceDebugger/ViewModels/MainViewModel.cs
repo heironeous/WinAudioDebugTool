@@ -17,6 +17,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly IAudioTestService _testService;
     private readonly ILevelMeterService _levelMeterService;
     private readonly IEndpointVolumeService _volumeService;
+    private readonly IAudioSessionService _sessionService;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _refreshDebounce;
 
@@ -26,7 +27,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         IDeviceDetailsService detailsService,
         IAudioTestService testService,
         ILevelMeterService levelMeterService,
-        IEndpointVolumeService volumeService)
+        IEndpointVolumeService volumeService,
+        IAudioSessionService sessionService)
     {
         _enumerationService = enumerationService;
         _defaultDeviceService = defaultDeviceService;
@@ -34,6 +36,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _testService = testService;
         _levelMeterService = levelMeterService;
         _volumeService = volumeService;
+        _sessionService = sessionService;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
         // A single default-device change fires several IMMNotificationClient callbacks (one per role/flow);
@@ -52,6 +55,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _enumerationService.EndpointNotified += OnEndpointNotified;
         _levelMeterService.LevelChanged += OnLevelChanged;
         _volumeService.VolumeChanged += OnExternalVolumeChanged;
+        _sessionService.SessionsUpdated += OnSessionsUpdated;
+        _sessionService.PeaksUpdated += OnSessionPeaks;
 
         // The DataGrid binds to Devices, which WPF shows through this default view — filtering it hides rows
         // without removing them, so metering / volume / running tests are unaffected.
@@ -226,6 +231,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             // else closes it. A running mic test keeps its own capture open regardless of selection.
             _levelMeterService.SetCaptureStreamDevice(
                 value?.Device.Direction == AudioDirection.Input ? value.Device.Id : null);
+            _sessionService.SetPeakDevice(value?.IsActive == true ? value.Device.Id : null);
+            SyncSelectedSessions();
             LoadSelectedDeviceDetails(value);
         }
     }
@@ -337,10 +344,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                     _lastVolume[info.Id] = (ToPercent(v.Volume), v.Muted);
                 }
             }
+            row.ApplySessions(SessionsOf(info.Id));
             row.VolumeEditedByUser += OnRowVolumeEdited;
             row.MuteEditedByUser += OnRowMuteEdited;
             Devices.Add(row);
         }
+        _sessionService.SetDevices(activeIds);
 
         SelectedDevice = Devices.FirstOrDefault(d => d.Device.Id == previousId && IsShown(d)) ?? FirstShownDevice();
         OnPropertyChanged(nameof(DisabledDeviceCount));
@@ -645,6 +654,150 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void OnDevicesChanged(object? sender, EventArgs e) => _dispatcher.BeginInvoke(RequestRefresh);
 
+    // ---- audio sessions ("used by") -----------------------------------------------------------------------------
+
+    private Dictionary<string, IReadOnlyList<AudioSessionInfo>> _latestSessions = new();
+
+    // Last seen state of every other-app session (key "deviceId|sessionKey"), to log streaming start/stop.
+    private Dictionary<string, AudioSessionInfo> _sessionStates = new();
+    private bool _sessionsBaselined;
+
+    /// <summary>The selected device's sessions for the USED BY list: other apps streaming first, then idle ones,
+    /// system sounds, and this app last.</summary>
+    public ObservableCollection<SessionRowViewModel> SelectedDeviceSessions { get; } = new();
+
+    private bool _showSessions;
+    /// <summary>Whether the USED BY section applies (only active endpoints can have sessions).</summary>
+    public bool ShowSessions
+    {
+        get => _showSessions;
+        private set => SetField(ref _showSessions, value);
+    }
+
+    private string _sessionsSummary = "";
+    public string SessionsSummary
+    {
+        get => _sessionsSummary;
+        private set => SetField(ref _sessionsSummary, value);
+    }
+
+    private static IReadOnlyList<AudioSessionInfo> NoSessions { get; } = Array.Empty<AudioSessionInfo>();
+
+    private IReadOnlyList<AudioSessionInfo> SessionsOf(string deviceId) =>
+        _latestSessions.TryGetValue(deviceId, out var sessions) ? sessions : NoSessions;
+
+    private void OnSessionsUpdated(object? sender, AudioSessionSnapshot snapshot) =>
+        _dispatcher.BeginInvoke(() => ApplySessionSnapshot(snapshot));
+
+    private void ApplySessionSnapshot(AudioSessionSnapshot snapshot)
+    {
+        LogSessionChanges(snapshot);
+        _latestSessions = new Dictionary<string, IReadOnlyList<AudioSessionInfo>>(snapshot.ByDevice);
+        foreach (var row in Devices)
+        {
+            row.ApplySessions(SessionsOf(row.Device.Id));
+        }
+        SyncSelectedSessions();
+    }
+
+    private void OnSessionPeaks(object? sender, AudioSessionPeaks peaks) => _dispatcher.BeginInvoke(() =>
+    {
+        if (SelectedDevice?.Device.Id != peaks.DeviceId) return;
+        foreach (var row in SelectedDeviceSessions)
+        {
+            row.Peak = peaks.PeakByKey.TryGetValue(row.Key, out float peak) ? peak : 0f;
+        }
+    });
+
+    /// <summary>Brings the USED BY list in line with the latest snapshot for the selected device — updating rows in
+    /// place by session key, so live meters and the list position don't jump on every scan.</summary>
+    private void SyncSelectedSessions()
+    {
+        var device = SelectedDevice;
+        bool active = device?.IsActive == true;
+        var ordered = (active ? SessionsOf(device!.Device.Id) : NoSessions)
+            .Where(s => s.State != AudioSessionActivity.Expired)
+            .OrderBy(s => s.IsThisApp)
+            .ThenBy(s => s.IsSystemSounds)
+            .ThenByDescending(s => s.State == AudioSessionActivity.Active)
+            .ThenBy(s => s.AppName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var keys = ordered.Select(s => s.Key).ToHashSet();
+        for (int i = SelectedDeviceSessions.Count - 1; i >= 0; i--)
+        {
+            if (!keys.Contains(SelectedDeviceSessions[i].Key)) SelectedDeviceSessions.RemoveAt(i);
+        }
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            int existing = -1;
+            for (int j = i; j < SelectedDeviceSessions.Count; j++)
+            {
+                if (SelectedDeviceSessions[j].Key == ordered[i].Key) { existing = j; break; }
+            }
+            if (existing < 0)
+            {
+                SelectedDeviceSessions.Insert(i, new SessionRowViewModel(ordered[i]));
+            }
+            else
+            {
+                if (existing != i) SelectedDeviceSessions.Move(existing, i);
+                SelectedDeviceSessions[i].Update(ordered[i]);
+            }
+        }
+
+        ShowSessions = active;
+        var others = ordered.Where(s => !s.IsThisApp && !s.IsSystemSounds).ToList();
+        int streaming = others.Count(s => s.State == AudioSessionActivity.Active);
+        SessionsSummary = others.Count == 0
+            ? "no other app has this device open"
+            : $"{others.Count} app session{(others.Count == 1 ? "" : "s")}, {streaming} streaming";
+    }
+
+    /// <summary>Logs other apps starting / stopping a stream (Active ↔ Inactive, or a streaming session that went
+    /// away). This app's own streams and the system-sounds session (every notification "ding") aren't logged.</summary>
+    private void LogSessionChanges(AudioSessionSnapshot snapshot)
+    {
+        var current = new Dictionary<string, AudioSessionInfo>();
+        foreach (var (deviceId, sessions) in snapshot.ByDevice)
+        {
+            foreach (var s in sessions.Where(s => !s.IsThisApp && !s.IsSystemSounds))
+            {
+                current[$"{deviceId}|{s.Key}"] = s;
+            }
+        }
+
+        foreach (var (key, s) in current)
+        {
+            bool isStreaming = s.State == AudioSessionActivity.Active;
+            bool wasStreaming = _sessionStates.TryGetValue(key, out var previous) && previous.State == AudioSessionActivity.Active;
+            if (isStreaming && !wasStreaming)
+            {
+                string detail = _sessionsBaselined
+                    ? $"{s.AppName} started streaming (PID {s.ProcessId})"
+                    : $"{s.AppName} was already streaming when the log started (PID {s.ProcessId})";
+                LogForDevice(s.DeviceId, AudioEventKind.SessionStarted, AudioEventSource.Windows, detail, snapshot.Timestamp);
+            }
+            else if (!isStreaming && wasStreaming)
+            {
+                string how = s.State == AudioSessionActivity.Expired ? " and closed its session" : "";
+                LogForDevice(s.DeviceId, AudioEventKind.SessionStopped, AudioEventSource.Windows,
+                    $"{s.AppName} stopped streaming{how} (PID {s.ProcessId})", snapshot.Timestamp);
+            }
+        }
+
+        foreach (var (key, previous) in _sessionStates)
+        {
+            if (current.ContainsKey(key) || previous.State != AudioSessionActivity.Active) continue;
+            string why = snapshot.ByDevice.ContainsKey(previous.DeviceId) ? "session closed" : "device no longer active";
+            LogForDevice(previous.DeviceId, AudioEventKind.SessionStopped, AudioEventSource.Windows,
+                $"{previous.AppName} stopped streaming ({why}, PID {previous.ProcessId})", snapshot.Timestamp);
+        }
+
+        _sessionStates = current;
+        _sessionsBaselined = true;
+    }
+
     // ---- event timeline ----------------------------------------------------------------------------------------
 
     private static int ToPercent(double scalar) => (int)Math.Round(scalar * 100.0);
@@ -846,6 +999,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         State = state,
         IsDefaultDevice = info.IsDefaultDevice,
         IsDefaultCommunicationsDevice = info.IsDefaultCommunicationsDevice,
+        FormFactor = info.FormFactor,
     };
 
     private void OnLevelChanged(object? sender, DeviceLevelChangedEventArgs e)
@@ -903,6 +1057,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _enumerationService.EndpointNotified -= OnEndpointNotified;
         _levelMeterService.LevelChanged -= OnLevelChanged;
         _volumeService.VolumeChanged -= OnExternalVolumeChanged;
+        _sessionService.SessionsUpdated -= OnSessionsUpdated;
+        _sessionService.PeaksUpdated -= OnSessionPeaks;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

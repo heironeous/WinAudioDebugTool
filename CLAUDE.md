@@ -64,10 +64,12 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   `DeviceDetailsService` (formats; `GetProperties` separately), `EndpointVolumeService` (volume/mute + external-change
   notifications), `LevelMeterService` (single MTA polling thread), `AudioTestService` + `AudioTestSession` (phased
   tests with Stop), `TestMusic` (procedural test clip), `ChannelMatchingSampleProvider`, `EventLogExporter`
-  (CSV / Markdown / JSON Lines / text). `DeviceEnumerationService.EndpointNotified` carries each
+  (CSV / Markdown / JSON Lines / text), `AudioSessionService` (per-endpoint app sessions — "used by" — polled
+  every 500 ms on its own MTA thread, plus session peaks for the selected device). `DeviceEnumerationService.EndpointNotified` carries each
   IMMNotificationClient callback in detail (for the event log) alongside the coarse `DevicesChanged`.
 - `ViewModels/` — `MainViewModel` (refresh/debounce, filters, selection, tests, side panels, event logging),
-  `DeviceRowViewModel`, `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging). `Models/` — plain data + `LevelScale` (dB conversion).
+  `DeviceRowViewModel`, `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging),
+  `SessionRowViewModel` (USED BY list). `Models/` — plain data + `LevelScale` (dB conversion).
 - `Views/` — `MainWindow` (toolbar 2 lines; device grid top; details bottom: info + `LevelGraph` + channel bars left,
   collapsible right-hand side panel showing either the property table or the EVENTS log — two strip toggles),
   `LevelGraph`.
@@ -106,6 +108,11 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 13. Per-channel tests (`ChannelSegmentsSampleProvider`) report the sounding channel from the audio thread via
     `AudioTestSession.SetChannel` — use `SetChannel`, not `BeginPhase`, for that: `BeginPhase` swaps the stop token,
     so a Stop click would no longer reach the playback loop that is waiting on the original token.
+14. **Audio sessions** (`AudioSessionService`): don't re-enumerate (`RefreshSessions`) inside NAudio's
+    `OnSessionCreated` callback — it re-registers the notification from within it; the callback only requests a
+    rescan. The app's own streams (the selected mic's meter capture, tests) appear as sessions of its own PID —
+    exclude them from "in use" or every selected mic looks busy. Capture-session peaks are real but tiny in a quiet
+    room (−50…−80 dBFS), so the −60 dB meters can look dead; check the dB tooltip before suspecting a bug.
 
 ## Verifying changes (techniques that worked)
 

@@ -43,6 +43,9 @@ public sealed class EventLogViewModel : INotifyPropertyChanged
     private bool _showTests = true;
     public bool ShowTests { get => _showTests; set { if (SetField(ref _showTests, value)) ApplyFilter(); } }
 
+    private bool _showApps = true;
+    public bool ShowApps { get => _showApps; set { if (SetField(ref _showApps, value)) ApplyFilter(); } }
+
     private volatile bool _recordPropertyChanges;
 
     /// <summary>Property-store changes are very chatty, so they're only <em>recorded</em> while this is on (off by
@@ -161,6 +164,7 @@ public sealed class EventLogViewModel : INotifyPropertyChanged
             AudioEventCategory.Defaults => _showDefaults,
             AudioEventCategory.Volume => _showVolume,
             AudioEventCategory.Tests => _showTests,
+            AudioEventCategory.Apps => _showApps,
             AudioEventCategory.Properties => _recordPropertyChanges,
             _ => true,
         };

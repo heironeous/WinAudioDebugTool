@@ -12,6 +12,8 @@ public enum AudioEventKind
     MuteChanged,
     TestStarted,
     TestFinished,
+    SessionStarted,
+    SessionStopped,
     PropertyChanged,
     Error,
 }
@@ -23,6 +25,7 @@ public enum AudioEventCategory
     Defaults,
     Volume,
     Tests,
+    Apps,
     Properties,
     Other,
 }
@@ -77,6 +80,8 @@ public sealed record AudioEvent
         AudioEventKind.MuteChanged => "Mute",
         AudioEventKind.TestStarted => "Test",
         AudioEventKind.TestFinished => "Test",
+        AudioEventKind.SessionStarted => "App",
+        AudioEventKind.SessionStopped => "App",
         AudioEventKind.PropertyChanged => "Property",
         AudioEventKind.Error => "Error",
         _ => Kind.ToString(),
@@ -108,6 +113,7 @@ public sealed record AudioEvent
         AudioEventKind.DefaultChanged or AudioEventKind.DefaultRequested => AudioEventCategory.Defaults,
         AudioEventKind.VolumeChanged or AudioEventKind.MuteChanged => AudioEventCategory.Volume,
         AudioEventKind.TestStarted or AudioEventKind.TestFinished => AudioEventCategory.Tests,
+        AudioEventKind.SessionStarted or AudioEventKind.SessionStopped => AudioEventCategory.Apps,
         AudioEventKind.PropertyChanged => AudioEventCategory.Properties,
         _ => AudioEventCategory.Other,
     };

@@ -51,6 +51,7 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
                     State = MapState(device.State),
                     IsDefaultDevice = string.Equals(device.ID, defaultId, StringComparison.Ordinal),
                     IsDefaultCommunicationsDevice = string.Equals(device.ID, defaultCommsId, StringComparison.Ordinal),
+                    FormFactor = (int?)_propertyReader.TryGetUInt32(device.ID, PropertyKeys.PKEY_AudioEndpoint_FormFactor),
                 });
             }
         }

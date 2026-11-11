@@ -16,6 +16,7 @@ internal sealed class EndpointPropertyReader : IDisposable
 {
     private const int StgmRead = 0;
     private const ushort VtLpwstr = 31;
+    private const ushort VtUi4 = 19;
 
     // Created by CLSID rather than via a [ComImport] class: NAudio already declares a class for this CLSID, and
     // the runtime hands back an RCW of *that* type, which can't be cast to a second ComImport class.
@@ -24,20 +25,26 @@ internal sealed class EndpointPropertyReader : IDisposable
     private IMMDeviceEnumeratorRaw? _enumerator =
         (IMMDeviceEnumeratorRaw)Activator.CreateInstance(Type.GetTypeFromCLSID(ClsidMMDeviceEnumerator, throwOnError: true)!)!;
 
-    public string? TryGetString(string deviceId, PropertyKey key)
+    public string? TryGetString(string deviceId, PropertyKey key) =>
+        Read(deviceId, key, value => value.vt == VtLpwstr ? Marshal.PtrToStringUni(value.pointerValue) : null);
+
+    public uint? TryGetUInt32(string deviceId, PropertyKey key) =>
+        Read<uint?>(deviceId, key, value => value.vt == VtUi4 ? (uint)(value.pointerValue.ToInt64() & 0xFFFFFFFF) : null);
+
+    private T? Read<T>(string deviceId, PropertyKey key, Func<RawPropVariant, T?> convert)
     {
-        if (_enumerator is null) return null;
+        if (_enumerator is null) return default;
 
         IMMDeviceRaw? device = null;
         IPropertyStoreRaw? store = null;
         try
         {
-            if (_enumerator.GetDevice(deviceId, out device) != 0 || device is null) return null;
-            if (device.OpenPropertyStore(StgmRead, out store) != 0 || store is null) return null;
-            if (store.GetValue(ref key, out var value) != 0) return null;
+            if (_enumerator.GetDevice(deviceId, out device) != 0 || device is null) return default;
+            if (device.OpenPropertyStore(StgmRead, out store) != 0 || store is null) return default;
+            if (store.GetValue(ref key, out var value) != 0) return default;
             try
             {
-                return value.vt == VtLpwstr ? Marshal.PtrToStringUni(value.pointerValue) : null;
+                return convert(value);
             }
             finally
             {
@@ -46,7 +53,7 @@ internal sealed class EndpointPropertyReader : IDisposable
         }
         catch
         {
-            return null;
+            return default;
         }
         finally
         {

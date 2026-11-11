@@ -122,91 +122,102 @@ means **implemented and committed**, not "verified on real hardware" — see
 ## Next steps — planned, awaiting approval
 
 Five features chosen from the suggestions list (2026-11-10). **Each needs the
-owner's go-ahead before implementation** — N2 is done (approved first); the
-others are not started. Suggested
+owner's go-ahead before implementation** — N2 and N1 are done; N3–N5 are not
+started. Suggested
 order: N1 → N2 → N3 → N4 → N5. N1 feeds N2 and N5, and N3 feeds N5. The report
 (N5) comes last because it collects everything else. Each feature is its own
 commit, with this file updated in that commit. Every item ends with
 "Decisions needed": questions to settle at approval time.
 
-### N1. "Who's using this device" — audio sessions per endpoint
+### N1. "Who's using this device" — implemented (2026-11-10)
 Goal: show which apps have a stream open on each device, especially the
 headset mic. An app opening the mic is what switches a USB dongle (Jabra Link
 390, Poly BT700) into call mode, so this answers "why does my headset suddenly
 sound bad?" and "who is holding my mic?".
 
-- [ ] **Service** `Services/AudioSessionService.cs`
-      (+ `IAudioSessionService`), with models `Models/AudioSessionInfo.cs`
-      (DeviceId, ProcessId, ProcessName, ExecutablePath, DisplayName, State
-      Active/Inactive/Expired, IsSystemSounds, IsThisApp, Volume, Muted, Peak).
-  - NAudio already wraps the needed APIs (checked in 2.2.1):
-    - `MMDevice.AudioSessionManager.Sessions` lists the sessions (via
-      IAudioSessionManager2).
-    - `AudioSessionControl` provides `GetProcessID`, `State`, `DisplayName`,
-      `IsSystemSoundsSession`, `SimpleAudioVolume` and `AudioMeterInformation`.
-    - `AudioSessionManager.OnSessionCreated` reports new sessions, and
-      `AudioSessionControl.RegisterEventClient` reports state changes,
-      disconnects and volume changes.
-  - **Threading (lesson 3).** Every session object must be created and used on
-    one MTA thread. Either give the service its own MTA worker thread, built
-    like `LevelMeterService`, or share that thread. Getting devices through the
-    enumerator on that thread is fine. Callbacks arrive on system threads, so
-    marshal them to the UI with the dispatcher.
-  - **Notifications plus a fallback poll.** Register `OnSessionCreated` per
-    active endpoint. Windows only starts sending these notifications after the
-    sessions have been listed once, which `RefreshSessions` and `Sessions` do.
-    Register per-session events for state changes. Also re-list the sessions
-    every 2 s as a safety net, because session notifications are known to be
-    unreliable (e.g. after an endpoint is reset). Re-register when devices
-    change (`DevicesChanged`), and release everything when an endpoint goes
-    away.
-  - **Process names.** Use `Process.GetProcessById(pid)` for the name and
-    `MainModule.FileName` for the path. Elevated or protected processes throw
-    *access denied*, so fall back to `QueryFullProcessImageName` with
-    `PROCESS_QUERY_LIMITED_INFORMATION`, then to "PID 1234". If the process
-    has already exited, show "(exited)".
-    - Browsers show up under their audio-service process (e.g. a
-      `chrome.exe`/`msedge.exe` utility process), not per tab. Say so in the
-      tooltip.
-    - PID 0, or the system-sounds session, is labelled "System sounds".
-  - **Mark our own streams.** Sessions with
-    `ProcessId == Environment.ProcessId` are this app's: the silent meter
-    capture on the selected mic, and test streams. Show them as "this app
-    (meter)" / "this app (test)", and leave them out of the "in use" count.
-    Otherwise selecting a mic would always show it as in use.
-  - Cost: only active endpoints have sessions. Enumerate per device, never
-    from the UI thread.
-- [ ] **Device list.** Each row gets an "in use" marker: a small glyph plus a
-      count of active sessions from other apps. Its tooltip lists the apps,
-      e.g. "Teams (active), Chrome (inactive)". On input rows also add a
-      "mic open → headset likely in call mode" hint when the device is a
-      headset. Use the form factor property or the shared container ID to
-      tell.
-- [ ] **Details panel.** Add a "USED BY" section listing every session: app
-      name, PID, state, session volume % and mute, and a mini level meter
-      using `AudioSessionControl.AudioMeterInformation` polled on the same
-      thread. Inactive sessions are dimmed. Expired sessions are removed.
-- [ ] **Events for N2.** Raise `SessionStarted`, `SessionStopped` (on
-      Active↔Inactive changes) and `SessionRemoved`, with device and app.
-- **Limitations to document in the UI.**
+Decisions used (the owner didn't specify, so the proposed defaults apply):
+**read-only** (no control over other apps' volume), and sessions are shown for
+**inputs and outputs**.
+
+- [x] **Service** `Services/AudioSessionService.cs` (+ `IAudioSessionService`),
+      model `Models/AudioSessionInfo.cs`.
+  - One MTA thread; all COM objects live on it (lesson 3).
+  - It keeps one NAudio `AudioSessionManager` per active endpoint, and
+    re-lists every endpoint's sessions **every 500 ms** with
+    `RefreshSessions`. `OnSessionCreated` triggers an immediate rescan. The
+    callback only sets a flag, because re-enumerating inside it would
+    re-register the notification from within itself.
+  - `SessionsUpdated` is raised only when something changed (apps, states,
+    volumes).
+  - For the selected device, the session controls are kept between scans
+    and their peaks are read 10× a second (`PeaksUpdated`).
+  - Nothing is reported before the first `SetDevices`, so sessions already
+    streaming at startup aren't logged as new.
+  - Deviation from the plan: it polls instead of using per-session
+    `IAudioSessionEvents`. A full scan of 4 endpoints costs ~0.5 ms, polling
+    can't miss a lost notification, and the cost is ~0.5 s latency. A
+    stream shorter than that can be missed.
+  - Process names are resolved once per PID and cached:
+    - `Process.GetProcessById` gives the name;
+    - `QueryFullProcessImageName` with `PROCESS_QUERY_LIMITED_INFORMATION`
+      gives the path (it works for elevated processes);
+    - the app name is the executable's FileDescription (e.g. "Webex"), or
+      else the session's display name or the process name;
+    - PID 0 / `IsSystemSoundsSession` is shown as "System sounds";
+    - a process that has exited is marked.
+  - Sessions with `ProcessId == Environment.ProcessId` are flagged
+    `IsThisApp`: the selected mic's meter stream and test streams.
+- [x] **Device list.** The row subtitle gets " · In use by Webex" (+N),
+      accent-coloured, while another app is *streaming* (Active). This app
+      and the system-sounds session don't count.
+  - The subtitle tooltip lists every app session, streaming first, with
+    PIDs.
+  - Headset or handset *input* rows that are in use add the call-mode hint.
+    These are recognised by `PKEY_AudioEndpoint_FormFactor` 5/6, now read
+    into `DeviceInfo.FormFactor` via `EndpointPropertyReader.TryGetUInt32`.
+- [x] **Details panel.** A "USED BY" section under the channel strip, for
+      active devices only.
+  - The header gives a summary ("2 app sessions, 0 streaming").
+  - Each row shows the app, "Streaming"/"Idle", the app's volume in
+    Windows' volume mixer, and a live peak meter. Idle rows are dimmed.
+  - Order: other apps' streaming sessions, then idle ones, then system
+    sounds, then this app.
+  - The row tooltip has the process name, PID, path, what Streaming/Idle
+    means, and a note for browsers (one audio process, not per tab).
+  - Rows are updated in place by session key.
+- [x] **Events for N2.** "App" entries ("Webex started streaming (PID …)",
+      "… stopped streaming", "(session closed)" / "(device no longer
+      active)"), with an "Apps" filter.
+  - Streams already running when the log starts are logged once as "was
+    already streaming when the log started".
+  - This app's own streams and system sounds aren't logged; every
+    notification sound would otherwise make a pair of lines.
+- **Limitations.**
   - Only streams that go through the Windows audio engine show up;
     exclusive-mode streams may not.
-  - Sessions show what is open on the *Windows endpoint*. A dongle's
-    Bluetooth link state is still invisible; this only shows what usually
-    triggers it.
-- **Verification.** All silent:
-  - Build a scratch harness that opens a silent `WasapiCapture` on the Intel
-    array from a separate process. The row should show "in use (1)" with the
-    harness's process name, and the marker should disappear when the harness
-    exits.
-  - Select a mic in the app and check the app's own meter session is shown as
-    "this app" and not counted.
-  - Use UI Automation to read the tooltips.
-- **Decisions needed:**
-  - Should sessions be controllable from the app, with a per-session volume
-    and mute (Windows' volume mixer)? That changes other apps' audio. The
-    default proposal is read-only.
-  - Should output rows show sessions as well, or only inputs?
+  - Sessions show what is open on the *Windows endpoint*; a dongle's
+    Bluetooth link state is still invisible.
+  - Peak meters start at −60 dBFS, so in a quiet room a streaming capture
+    session can read empty: measured −50…−80 dBFS.
+- **Verified** (2026-11-10). Silent; only the Intel mic array was used.
+  - Probe of the real machine: Webex (`CiscoCollabHost` "Webex", `atmgr`
+    "Cisco Webex Service") holds idle sessions on all 4 active endpoints,
+    and there's a system-sounds session on each.
+  - A separate process held a silent capture stream on the Intel array for
+    5 s. Results:
+    - the row showed "In use by n1probe", with the tooltip listing it as
+      streaming, and cleared after the process stopped;
+    - USED BY listed it first ("3 app sessions, 1 streaming");
+    - the log got "started streaming" and "stopped streaming (session
+      closed)" lines ~5 s apart;
+    - the app's own meter stream showed as "This app … Streaming" and wasn't
+      counted;
+    - its peak tooltip read −43…−58 dBFS (room noise), so live peaks reach
+      the UI.
+- **Not verified, needs the owner:**
+  - Join a call on the Jabra headset, and check the hint and the "In use by
+    Webex/Teams" marker on its mic row.
+  - The visual layout: the screenshot came back white (display asleep).
 
 ### N2. Event timeline — implemented (2026-11-10)
 Goal: a timestamped log of everything that happens to the audio devices, so
@@ -279,7 +290,7 @@ reconstructed afterwards.
     tooltip has the full detail.
   - Deviation from the plan: no Pause button. Newest entries go on top, so
     there's no auto-scroll to pause.
-- [ ] **Session events** ("Teams started using …"). These come with N1.
+- [x] **Session events** ("Webex started streaming …"), added with N1 ("Apps" filter).
 - [ ] **Optional persistence.** Not built; events are in memory only until
       the owner decides. The proposal is to append JSON Lines to
       `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log` and keep 14

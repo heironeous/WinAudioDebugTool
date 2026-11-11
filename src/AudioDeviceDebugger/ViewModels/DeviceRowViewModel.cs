@@ -155,6 +155,74 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
         }
     }
 
+    private string _usageSuffix = "";
+
+    /// <summary>Appended to the subtitle when other apps are streaming on this device, e.g.
+    /// " · In use by Webex Meetings" (" +1" for more). Empty otherwise.</summary>
+    public string UsageSuffix
+    {
+        get => _usageSuffix;
+        private set
+        {
+            if (_usageSuffix == value) return;
+            _usageSuffix = value;
+            OnPropertyChanged(nameof(UsageSuffix));
+        }
+    }
+
+    private string? _usageToolTip;
+
+    /// <summary>Which apps have sessions here (streaming first), plus the call-mode hint for headset mics.</summary>
+    public string? UsageToolTip
+    {
+        get => _usageToolTip;
+        private set
+        {
+            if (_usageToolTip == value) return;
+            _usageToolTip = value;
+            OnPropertyChanged(nameof(UsageToolTip));
+        }
+    }
+
+    /// <summary>
+    /// Summarises the device's audio sessions. "In use" means another app is streaming right now; this app's own
+    /// streams (the selected mic's meter, tests) and the system-sounds session don't count.
+    /// </summary>
+    public void ApplySessions(IReadOnlyList<AudioSessionInfo> sessions)
+    {
+        var others = sessions.Where(s => !s.IsThisApp && s.State != AudioSessionActivity.Expired).ToList();
+        var streaming = others.Where(s => s.State == AudioSessionActivity.Active && !s.IsSystemSounds)
+            .Select(s => s.AppName).Distinct().ToList();
+
+        UsageSuffix = streaming.Count switch
+        {
+            0 => "",
+            1 => $" · In use by {streaming[0]}",
+            _ => $" · In use by {streaming[0]} +{streaming.Count - 1}",
+        };
+
+        if (others.Count == 0)
+        {
+            UsageToolTip = null;
+            return;
+        }
+
+        var lines = new List<string>();
+        foreach (var s in others.OrderByDescending(s => s.State == AudioSessionActivity.Active).ThenBy(s => s.AppName))
+        {
+            string state = s.State == AudioSessionActivity.Active ? "streaming" : "idle";
+            string pid = s.IsSystemSounds ? "" : $", PID {s.ProcessId}";
+            lines.Add($"{s.AppName} — {state}{pid}");
+        }
+        if (streaming.Count > 0 && !IsOutput && Device.IsHeadsetFormFactor)
+        {
+            lines.Add("");
+            lines.Add("This headset mic is open, which usually switches the headset into call (hands-free) mode: " +
+                      "its playback drops to call quality until the mic is released.");
+        }
+        UsageToolTip = string.Join("\n", lines);
+    }
+
     private void OnPropertyChanged(string propertyName) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 

@@ -107,8 +107,11 @@
                             <DataTemplate>
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Device.FriendlyName}" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding Subtitle}" FontSize="11" Margin="0,2,0,0"
-                                               Foreground="{StaticResource ListSubtleText}" TextTrimming="CharacterEllipsis"/>
+                                    <!-- "Output · Active", plus " · In use by <app>" (accent) while another app streams here. -->
+                                    <TextBlock FontSize="11" Margin="0,2,0,0" ToolTip="{Binding UsageToolTip}"
+                                               Foreground="{StaticResource ListSubtleText}" TextTrimming="CharacterEllipsis">
+                                        <Run Text="{Binding Subtitle, Mode=OneWay}"/><Run Text="{Binding UsageSuffix, Mode=OneWay}" Foreground="{StaticResource ListAccent}"/>
+                                    </TextBlock>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -267,6 +270,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*" MinHeight="60"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Margin="0,0,0,8">
@@ -380,6 +384,60 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </DockPanel>
+
+                    <!-- USED BY: apps with an audio session on the selected device (read-only). -->
+                    <StackPanel Grid.Row="3" Margin="0,10,0,0"
+                                Visibility="{Binding ShowSessions, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock FontSize="11" Margin="0,0,0,4">
+                            <Run Text="USED BY" Foreground="{StaticResource ListHeaderText}"/>
+                            <Run Text="{Binding SessionsSummary, Mode=OneWay}" Foreground="{StaticResource ListSubtleText}"/>
+                        </TextBlock>
+                        <ScrollViewer MaxHeight="112" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="SessionsList" ItemsSource="{Binding SelectedDeviceSessions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Height="22" ToolTip="{Binding ToolTip}" Background="Transparent">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="74"/>
+                                                <ColumnDefinition Width="52"/>
+                                                <ColumnDefinition Width="64"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Opacity" Value="0.55"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                            <Setter Property="Opacity" Value="1"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <TextBlock Grid.Column="0" Text="{Binding AppName}" FontSize="12" Foreground="{StaticResource ListText}"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="11" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource ListSubtleText}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource ListAccent}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="2" Text="{Binding VolumeText}" FontSize="11" Foreground="{StaticResource ListSubtleText}"
+                                                       VerticalAlignment="Center" ToolTip="App volume (Windows volume mixer)"/>
+                                            <ProgressBar Grid.Column="3" Style="{StaticResource FlatMeter}" Minimum="0" Maximum="1"
+                                                         Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
+                                                         VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
                 </Grid>
 
                 <GridSplitter x:Name="SidePanelSplitter" Grid.Column="1" Width="8" HorizontalAlignment="Center" VerticalAlignment="Stretch"
@@ -452,6 +510,8 @@
                                           ToolTip="Volume and mute changes (active devices)"/>
                                 <CheckBox Content="Tests" IsChecked="{Binding ShowTests}" Style="{StaticResource FlatCheckBox}" Margin="0,0,14,4"
                                           ToolTip="Tests started and finished in this app"/>
+                                <CheckBox Content="Apps" IsChecked="{Binding ShowApps}" Style="{StaticResource FlatCheckBox}" Margin="0,0,14,4"
+                                          ToolTip="Other apps starting or stopping a stream on a device (checked twice a second)"/>
                                 <CheckBox Content="Properties" IsChecked="{Binding RecordPropertyChanges}" Style="{StaticResource FlatCheckBox}" Margin="0,0,14,4"
                                           ToolTip="Record property-store changes too. Off by default: they are very frequent, so they're only recorded while this is ticked"/>
                                 <CheckBox Content="Selected device only" IsChecked="{Binding SelectedDeviceOnly}" Style="{StaticResource FlatCheckBox}" Margin="0,0,0,4"
