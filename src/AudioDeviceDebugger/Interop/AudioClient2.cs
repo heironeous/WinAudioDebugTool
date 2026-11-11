@@ -139,29 +139,9 @@ internal static class AudioPropertyKeys
         new(new Guid("8943b373-388c-4395-b557-bc6dbaffafdb"), 2);
 }
 
-/// <summary>Names for the AUDIO_EFFECT_TYPE_* GUIDs of ksmedia.h (unknown ones are shown as their GUID).</summary>
+/// <summary>Names for the AUDIO_EFFECT_TYPE_* GUIDs a stream reports, e.g. "Acoustic echo cancellation" (from the
+/// generated SDK GUID table — <see cref="KnownGuidNames"/>); unknown ones are shown as their GUID.</summary>
 internal static class AudioEffectNames
 {
-    private static readonly Dictionary<Guid, string> Names = new()
-    {
-        [new("6f64adbe-8211-11e2-8c70-2c27d7f001fa")] = "Echo cancellation",
-        [new("6f64adbf-8211-11e2-8c70-2c27d7f001fa")] = "Noise suppression",
-        [new("6f64adc0-8211-11e2-8c70-2c27d7f001fa")] = "Automatic gain control",
-        [new("6f64adc1-8211-11e2-8c70-2c27d7f001fa")] = "Beamforming",
-        [new("6f64adc2-8211-11e2-8c70-2c27d7f001fa")] = "Constant tone removal",
-        [new("6f64adc3-8211-11e2-8c70-2c27d7f001fa")] = "Equalizer",
-        [new("6f64adc4-8211-11e2-8c70-2c27d7f001fa")] = "Loudness equalizer",
-        [new("6f64adc5-8211-11e2-8c70-2c27d7f001fa")] = "Bass boost",
-        [new("6f64adc6-8211-11e2-8c70-2c27d7f001fa")] = "Virtual surround",
-        [new("6f64adc7-8211-11e2-8c70-2c27d7f001fa")] = "Virtual headphones",
-        [new("6f64adc8-8211-11e2-8c70-2c27d7f001fa")] = "Speaker fill",
-        [new("6f64adc9-8211-11e2-8c70-2c27d7f001fa")] = "Room correction",
-        [new("6f64adca-8211-11e2-8c70-2c27d7f001fa")] = "Bass management",
-        [new("6f64adcb-8211-11e2-8c70-2c27d7f001fa")] = "Environmental effects",
-        [new("6f64adcc-8211-11e2-8c70-2c27d7f001fa")] = "Speaker protection",
-        [new("6f64adcd-8211-11e2-8c70-2c27d7f001fa")] = "Speaker compensation",
-        [new("6f64adce-8211-11e2-8c70-2c27d7f001fa")] = "Dynamic range compression",
-    };
-
-    public static string Describe(Guid id) => Names.TryGetValue(id, out var name) ? name : id.ToString("B");
+    public static string Describe(Guid id) => KnownGuidNames.Describe(id) ?? id.ToString("B");
 }

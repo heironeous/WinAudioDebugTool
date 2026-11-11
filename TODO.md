@@ -60,10 +60,20 @@ verification notes for the larger features are in
       PKEY_/DEVPKEY_ keys generated from Win32 metadata
       (`tools/PropertyKeyNameGenerator` → `Interop/PropertyKeyNames.g.cs`) plus a
       manual table for confirmed undocumented keys; unknown keys keep their UID
-- [ ] Name more undocumented endpoint keys (~185 distinct on the development
-      machine, e.g. `{b3f8fa53-0004-438e-9003-51a46e139bfc},*`) once their meaning
-      is confirmed
-- [ ] Decode property *values* to names (e.g. form factor 4 → "Microphone")
+- [x] Names for 7 undocumented endpoint keys whose meaning was confirmed
+      against Windows' own PnP data (audio device name, hardware ID and driver;
+      the endpoint's device instance ID and interface path), shown as
+      "undocumented" with a note on how each was confirmed
+      (see docs/design-notes.md, "Property names and values")
+- [ ] Name more undocumented keys — ~170 still show as raw `{fmtid},pid`; no
+      public source documents them, so each needs its own confirmation
+- [x] Readable property *values*: form factor ("Microphone (4)"), jack type and
+      other GUIDs by their SDK names (264 generated from the Win32 metadata into
+      `Interop/KnownGuidNames.g.cs`), channel masks, the 16.16 fixed-point
+      default volume ("20 dB"), the microphone-array geometry, wave-format
+      blobs ("48 kHz · 32-bit float · 2 ch (FL FR)"), version blocks, SYSTEMTIME
+      and UTF-16 text in blobs, dates, and endpoint IDs resolved to names; the
+      raw value stays in the tooltip
 - [x] Raw-capture support (`RawProcessingSupported`) shown for inputs
 
 ## Testing devices

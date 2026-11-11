@@ -78,10 +78,10 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 `src/AudioDeviceDebugger/` (MVVM, no DI container — services are new'd up in `Views/MainWindow.xaml.cs`):
 
 - `Interop/` — `IPolicyConfig` (undocumented default-endpoint setter), `EndpointPropertyReader` (fast keyed property
-  reads), `PropertyKeyNames.cs` (+ generated `.g.cs`: ~1,550 SDK PKEY/DEVPKEY names; `ManualNames` for confirmed
-  undocumented keys).
+  reads), `PropertyKeyNames.cs` (+ generated `.g.cs`: ~1,550 SDK PKEY/DEVPKEY names; `ManualNames` / `Undocumented`
+  for confirmed undocumented keys), `KnownGuidNames.cs` (+ generated `.g.cs`: 264 audio GUID constants).
 - `Services/` — `DeviceEnumerationService` (enumeration + IMMNotificationClient), `DefaultDeviceService`,
-  `DeviceDetailsService` (formats; `GetProperties` separately), `EndpointVolumeService` (volume/mute + external-change
+  `DeviceDetailsService` (formats; `GetProperties` separately, values made readable by `PropertyValueFormatter`), `EndpointVolumeService` (volume/mute + external-change
   notifications), `LevelMeterService` (single MTA polling thread), `AudioTestService` + `AudioTestSession` (phased
   tests with Stop), `TestMusic` (procedural test clip), `ChannelMatchingSampleProvider`, `EventLogExporter`
   (CSV / Markdown / JSON Lines / text), `AudioSessionService` (per-endpoint app sessions — "used by" — polled
@@ -97,7 +97,8 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   collapsible right-hand side panel showing one of four tabs — PROPERTIES, EVENTS, PROCESSES (apps using the
   device), RAW RECORDING (A/B takes) — picked from a vertical tab strip whose labels hide when it's too short),
   `LevelGraph`.
-- `tools/PropertyKeyNameGenerator/` — reads `Windows.Win32.winmd` from Microsoft.Windows.SDK.Win32Metadata.
+- `tools/PropertyKeyNameGenerator/` — reads `Windows.Win32.winmd` from Microsoft.Windows.SDK.Win32Metadata and writes
+  both generated tables (property keys; audio GUID constants).
 
 ## Hard-won lessons (don't regress these)
 
@@ -146,6 +147,14 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     modes can capture from one mic at the same time (verified on the Intel array). On that array the processed
     paths (Standard and Call: echo cancellation + noise suppression) output one signal copied to all 4 channels,
     ~25 dB below the raw room noise — Raw is the only way to hear the individual capsules.
+16. **Property names and values** (`PropertyValueFormatter`, `KnownGuidNames`): in the Win32 metadata most GUID
+    constants (KSNODETYPE_*, AUDIO_SIGNALPROCESSINGMODE_*, AUDIO_EFFECT_TYPE_*, …) are *empty structs* carrying a
+    GuidAttribute (DEFINE_GUIDSTRUCT), not fields — scan type definitions too, or they look absent. None of the ~180
+    undocumented endpoint keys are in the Windows property schema (`PSGetNameFromPropertyKey`) or in public docs; the
+    reliable way to confirm one is to compare its value with `Get-PnpDeviceProperty` on the endpoint
+    (`SWD\MMDEVAPI\<endpoint ID>`) and on its audio device. Many keys are *snapshots* taken when the endpoint was
+    registered (device name, driver version), so a few mismatches can be stale data rather than a wrong guess. Value
+    decoders must be strict: loose "UTF-16 text" detection turned binary blobs into CJK-looking garbage.
 
 ## Verifying changes (techniques that worked)
 
@@ -170,8 +179,9 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   The Intel array's "channels 2 and 4 below −60 dB" is explained by N4: the processed paths output one
   noise-suppressed signal on all four channels, far below the raw room noise.
 - N1's call-mode hint keys on form factor 5/6, but the Jabra Link 390 mic reports 4 (Microphone) — see TODO.
-- ~185 undocumented endpoint property keys still show as raw `{fmtid},pid`; add to `PropertyKeyNames.ManualNames`
-  only with a confirmed meaning.
+- ~170 undocumented endpoint property keys still show as raw `{fmtid},pid` (most belong to driver/APO-private sets
+  such as `{f112024a-…}` and `{5510c7ab-…}`); add to `PropertyKeyNames.Undocumented` only with a confirmed meaning —
+  see lesson 16 and docs/design-notes.md.
 - The maintainer asked for explanations, not code, on the headset call-mode ideas (media-vs-call listening test,
   disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
 - Not started: license, automated tests, code signing (releases are unsigned, so SmartScreen warns).

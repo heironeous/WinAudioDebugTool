@@ -34,7 +34,10 @@ its formats, rolling dB level graph, per-channel meters, and the PROCESSES tab l
 and whether the driver supports raw (unprocessed) capture.
 
 **Side panel tabs** (right edge of the details area; one open at a time)
-- **PROPERTIES** — the endpoint's full property store, with readable names for ~1,550 documented keys.
+- **PROPERTIES** — the endpoint's full property store, with readable names for ~1,550 documented keys (plus a few
+  undocumented ones whose meaning was confirmed) and readable values where the format is known: "Headset (5)",
+  "Communication speaker", "48 kHz · 32-bit float · 2 ch (FL FR)", "20 dB", a mic array's microphone positions, … —
+  the raw value is in the tooltip.
 - **EVENTS** — a timeline of device changes, default switches, volume/mute changes (by Windows or by this app), apps
   starting and stopping streams, and tests. Filter it, copy it, or export it as CSV, Markdown or JSON Lines — handy
   for "my mic died in the meeting at 14:03".
@@ -192,18 +195,24 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 └── tools/PropertyKeyNameGenerator/   Regenerates the property-key name table
 ```
 
-### Property-key names
+### Property names and values
 
 The PROPERTIES tab shows each endpoint property by a readable name ("Device: Friendly Name") instead of its raw
-`{fmtid},pid`. The names come from a table compiled into the app:
+`{fmtid},pid`, and decodes values whose format is known (`Services/PropertyValueFormatter.cs`). The names come from
+tables compiled into the app:
 
 - `src/AudioDeviceDebugger/Interop/PropertyKeyNames.g.cs`: **generated** — every documented `PKEY_*` / `DEVPKEY_*` in
   the Windows SDK (~1,550 keys), read from Microsoft's
   [Win32 metadata](https://www.nuget.org/packages/Microsoft.Windows.SDK.Win32Metadata) package. Don't edit by hand;
   regenerate from the repo root with `dotnet run --project tools/PropertyKeyNameGenerator` (bump the package version in
   `tools/PropertyKeyNameGenerator/PropertyKeyNameGenerator.csproj` to pick up newer SDKs).
-- `src/AudioDeviceDebugger/Interop/PropertyKeyNames.cs`: **hand-maintained** `ManualNames` for undocumented keys. Only
-  add a key once its meaning is confirmed; unknown keys are shown by their raw `{fmtid},pid`.
+- `src/AudioDeviceDebugger/Interop/KnownGuidNames.g.cs`: **generated** by the same tool — the audio-related GUID
+  constants (jack/node types, categories, sample formats, signal-processing modes, effect types), used to show GUID
+  values such as the jack type by name.
+- `src/AudioDeviceDebugger/Interop/PropertyKeyNames.cs`: **hand-maintained** names for undocumented keys
+  (`ManualNames`, `Undocumented`). Only add a key once its meaning is confirmed — see "Property names and values" in
+  [docs/design-notes.md](docs/design-notes.md) for how the current ones were checked; unknown keys are shown by their
+  raw `{fmtid},pid`.
 
 ## Contributing
 

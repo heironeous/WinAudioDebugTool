@@ -82,6 +82,19 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
     private static IReadOnlyList<PropertyEntry> DumpProperties(MMDevice device)
     {
         var entries = new List<PropertyEntry>();
+
+        // Values that contain an endpoint ID are shown with that endpoint's name (looked up once per ID).
+        using var reader = new EndpointPropertyReader();
+        var endpointNames = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        string? EndpointName(string endpointId)
+        {
+            if (!endpointNames.TryGetValue(endpointId, out var name))
+            {
+                endpointNames[endpointId] = name = reader.TryGetString(endpointId, PropertyKeys.PKEY_Device_FriendlyName);
+            }
+            return name;
+        }
+
         try
         {
             var store = device.Properties;
@@ -93,12 +106,20 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
                     var (formatId, propertyId) = (prop.Key.formatId, prop.Key.propertyId);
                     string raw = PropertyKeyNames.FormatRaw(formatId, propertyId);
                     string? symbol = PropertyKeyNames.TryGetSymbol(formatId, propertyId);
+                    var undocumented = symbol is null ? PropertyKeyNames.TryGetUndocumented(formatId, propertyId) : null;
+                    object? value = prop.Value;
+                    string rawValue = PropertyValueFormatter.FormatRaw(value);
+                    var decoded = PropertyValueFormatter.Decode(symbol, value, EndpointName);
                     entries.Add(new PropertyEntry
                     {
-                        Name = symbol is null ? raw : PropertyKeyNames.ToDisplayName(symbol),
+                        Name = symbol is not null ? PropertyKeyNames.ToDisplayName(symbol)
+                            : undocumented?.DisplayName ?? raw,
                         RawKey = raw,
                         Symbol = symbol,
-                        Value = FormatValue(prop.Value),
+                        Note = undocumented?.Note,
+                        Value = decoded?.Summary ?? rawValue,
+                        RawValue = rawValue,
+                        ValueDetail = decoded?.Detail,
                     });
                 }
                 catch
@@ -119,15 +140,6 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
             .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
-
-    private static string FormatValue(object? value) => value switch
-    {
-        null => "(null)",
-        byte[] bytes when bytes.Length <= 64 => $"byte[{bytes.Length}] {Convert.ToHexString(bytes)}",
-        byte[] bytes => $"byte[{bytes.Length}] {Convert.ToHexString(bytes, 0, 64)}…",
-        string[] strings => string.Join("; ", strings),
-        _ => value.ToString() ?? "(null)",
-    };
 
     private static DeviceConnectionState MapState(DeviceState state) => state switch
     {

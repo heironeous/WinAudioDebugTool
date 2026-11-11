@@ -59,6 +59,16 @@ public static class ChannelLayout
         return channels;
     }
 
+    /// <summary>Speaker positions in a channel mask, e.g. 0x3F → "FL FR C LFE BL BR"; unknown bits are listed in hex.</summary>
+    public static string DescribeMask(uint mask)
+    {
+        if (mask == 0) return "none";
+        var names = SpeakerPositions.Where(p => (mask & p.Bit) != 0).Select(p => p.Short).ToList();
+        uint known = SpeakerPositions.Aggregate(0u, (all, p) => all | p.Bit);
+        if ((mask & ~known) != 0) names.Add($"0x{mask & ~known:X}");
+        return string.Join(" ", names);
+    }
+
     /// <summary>dwChannelMask of a WAVEFORMATEXTENSIBLE (0 for plain formats). NAudio doesn't expose the field, so
     /// it's read from NAudio's serialised form: a 4-byte length prefix, then WAVEFORMATEX (18 bytes),
     /// wValidBitsPerSample (2), dwChannelMask (4) — i.e. the mask is at byte offset 24.</summary>
