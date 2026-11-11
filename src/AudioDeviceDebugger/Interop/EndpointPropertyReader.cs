@@ -17,6 +17,7 @@ internal sealed class EndpointPropertyReader : IDisposable
     private const int StgmRead = 0;
     private const ushort VtLpwstr = 31;
     private const ushort VtUi4 = 19;
+    private const ushort VtBool = 11;
 
     // Created by CLSID rather than via a [ComImport] class: NAudio already declares a class for this CLSID, and
     // the runtime hands back an RCW of *that* type, which can't be cast to a second ComImport class.
@@ -30,6 +31,10 @@ internal sealed class EndpointPropertyReader : IDisposable
 
     public uint? TryGetUInt32(string deviceId, PropertyKey key) =>
         Read<uint?>(deviceId, key, value => value.vt == VtUi4 ? (uint)(value.pointerValue.ToInt64() & 0xFFFFFFFF) : null);
+
+    /// <summary>VT_BOOL: a VARIANT_BOOL (0 or -1) in the low 16 bits of the value.</summary>
+    public bool? TryGetBool(string deviceId, PropertyKey key) =>
+        Read<bool?>(deviceId, key, value => value.vt == VtBool ? (value.pointerValue.ToInt64() & 0xFFFF) != 0 : null);
 
     private T? Read<T>(string deviceId, PropertyKey key, Func<RawPropVariant, T?> convert)
     {

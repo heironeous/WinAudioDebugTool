@@ -46,7 +46,7 @@ public partial class MainWindow : Window
         {
             DetailGraph.Clear();
         }
-        else if (e.PropertyName is nameof(MainViewModel.IsPropertiesPanelOpen) or nameof(MainViewModel.IsEventsPanelOpen))
+        else if (e.PropertyName == nameof(MainViewModel.OpenSidePanel))
         {
             ApplySidePanelLayout();
         }
@@ -56,17 +56,18 @@ public partial class MainWindow : Window
     private GridLength _sidePanelWidth = new(3, GridUnitType.Star);
     private const double SidePanelMinWidth = 400;
 
-    /// <summary>Shows the property table or the event log in the right-hand column, or collapses the column to zero
-    /// width (just the toggle strips remain at the right edge). Done here rather than in XAML because the
-    /// GridSplitter writes local Width values that would override style triggers.</summary>
+    /// <summary>Shows the open panel (properties, events, processes or raw recording) in the right-hand column, or
+    /// collapses the column to zero width (just the tab strip remains at the right edge). Done here rather than in
+    /// XAML because the GridSplitter writes local Width values that would override style triggers.</summary>
     private void ApplySidePanelLayout()
     {
-        bool properties = _viewModel.IsPropertiesPanelOpen;
-        bool events = _viewModel.IsEventsPanelOpen;
-        PropertiesList.Visibility = properties ? Visibility.Visible : Visibility.Collapsed;
-        EventsPanel.Visibility = events ? Visibility.Visible : Visibility.Collapsed;
+        var open = _viewModel.OpenSidePanel;
+        PropertiesList.Visibility = open == SidePanel.Properties ? Visibility.Visible : Visibility.Collapsed;
+        EventsPanel.Visibility = open == SidePanel.Events ? Visibility.Visible : Visibility.Collapsed;
+        ProcessesPanel.Visibility = open == SidePanel.Processes ? Visibility.Visible : Visibility.Collapsed;
+        RecordingsPanel.Visibility = open == SidePanel.Recordings ? Visibility.Visible : Visibility.Collapsed;
 
-        if (properties || events)
+        if (open != SidePanel.None)
         {
             SidePanelColumn.MinWidth = SidePanelMinWidth;
             SidePanelColumn.Width = _sidePanelWidth;
@@ -166,6 +167,46 @@ public partial class MainWindow : Window
 
     private void CycleChannelsButton_Click(object sender, RoutedEventArgs e) =>
         _ = _viewModel.ToggleChannelTestAsync(null);
+
+    // Height of the tab strip with its labels shown, remembered while they are (with them hidden it's shorter).
+    private double _labelledTabsHeight;
+
+    /// <summary>Hides the tab labels (icons only) when the strip is too short to show them all, and shows them again
+    /// once there's room.</summary>
+    private void SideTabsScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        bool labelsShown = PropertiesTabLabel.Visibility == Visibility.Visible;
+        if (labelsShown) _labelledTabsHeight = e.ExtentHeight;
+        bool fits = _labelledTabsHeight <= e.ViewportHeight + 0.5;
+        if (fits == labelsShown) return;
+
+        var visibility = fits ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var label in new[] { PropertiesTabLabel, EventsTabLabel, ProcessesTabLabel, RecordingsTabLabel })
+        {
+            label.Visibility = visibility;
+        }
+    }
+
+    private void RecordAbButton_Click(object sender, RoutedEventArgs e) =>
+        _ = _viewModel.ToggleRecordAbAsync();
+
+    private void TakePlayButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: TakeRowViewModel line })
+        {
+            _ = _viewModel.ToggleTakePlaybackAsync(line);
+        }
+    }
+
+    // Picking a RECORDINGS line makes the channel strip play it. The ListBox's own selection is cleared straight
+    // away: the highlight comes from the view model (which also moves it after an A/B recording), and a cleared
+    // selection lets the same line be picked again later.
+    private void TakesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ListBox list || list.SelectedItem is not TakeRowViewModel line) return;
+        _viewModel.SelectStripTake(line);
+        Dispatcher.BeginInvoke(() => list.SelectedItem = null);
+    }
 
     private void SetDefaultButton_Click(object sender, RoutedEventArgs e) =>
         _viewModel.SetSelectedAsDefault(DefaultRoles.Default);

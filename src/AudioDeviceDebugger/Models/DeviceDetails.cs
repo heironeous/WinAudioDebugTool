@@ -14,4 +14,8 @@ public sealed class DeviceDetails
 
     /// <summary>The format exclusive-mode playback/capture would actually use, if it differs from shared mode.</summary>
     public AudioFormatInfo? ExclusiveModeFormat { get; init; }
+
+    /// <summary>Inputs: whether the driver says it supports raw (unprocessed) capture — the endpoint property
+    /// System.Devices.AudioDevice.RawProcessingSupported; null if it isn't set.</summary>
+    public bool? RawProcessingSupported { get; init; }
 }

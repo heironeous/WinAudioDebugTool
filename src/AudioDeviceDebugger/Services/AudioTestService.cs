@@ -28,6 +28,186 @@ public sealed class AudioTestService : IAudioTestService
     public AudioTestSession StartChannelPlayback(RecordedTake take, string inputName, IReadOnlyList<int> channels, string? outputDeviceId) =>
         new(AudioTestPhase.PlayingBack, session => PlayTakeChannels(take, inputName, channels, outputDeviceId, session));
 
+    public AudioTestSession StartModeComparison(string inputDeviceId, string? outputDeviceId) =>
+        new(AudioTestPhase.Recording, session => RecordModesAndPlayback(inputDeviceId, outputDeviceId, session));
+
+    public AudioTestSession StartTakePlayback(IReadOnlyList<RecordedTake> takes, string inputName, string? outputDeviceId) =>
+        new(AudioTestPhase.PlayingBack, session => PlayTakes(takes, inputName, outputDeviceId, session));
+
+    /// <summary>The modes an A/B recording captures. Raw and Call are played back automatically, in that order;
+    /// Standard is recorded too (on many drivers it matches Call) and can be played from the list.</summary>
+    private static readonly CaptureMode[] ComparisonModes = { CaptureMode.Raw, CaptureMode.Communications, CaptureMode.Standard };
+    private static readonly CaptureMode[] ComparisonPlayback = { CaptureMode.Raw, CaptureMode.Communications };
+
+    /// <summary>
+    /// Records the same few seconds from one mic in several processing modes at once — one shared-mode stream per
+    /// mode, all started together, so every take holds the same sound — then plays the Raw and Call takes back to back.
+    /// </summary>
+    private static TestOutcome RecordModesAndPlayback(string inputDeviceId, string? outputDeviceId, AudioTestSession session)
+    {
+        var captures = new List<ModeCapture>();
+        var errors = new Dictionary<CaptureMode, string>();
+        try
+        {
+            string inputName = NameOf(inputDeviceId);
+            foreach (var mode in ComparisonModes)
+            {
+                try
+                {
+                    captures.Add(ModeCapture.Open(inputDeviceId, mode));
+                }
+                catch (Exception ex)
+                {
+                    errors[mode] = ex.Message;
+                }
+            }
+            if (captures.Count == 0)
+            {
+                return TestOutcome.Fail($"A/B recording failed: couldn't open \"{inputName}\" ({string.Join("; ", errors.Values)}).");
+            }
+
+            // Phase 1: record until the fixed duration elapses or the user hits Stop.
+            var stop = session.CurrentStopToken;
+            foreach (var capture in captures) capture.Start();
+            var started = DateTime.UtcNow;
+            bool stoppedEarly = false;
+            while (DateTime.UtcNow - started < RecordDuration)
+            {
+                foreach (var capture in captures) capture.Drain();
+                if (stop.WaitHandle.WaitOne(10))
+                {
+                    stoppedEarly = true;
+                    break;
+                }
+            }
+            foreach (var capture in captures) capture.Stop();
+
+            var takes = new List<RecordedTake>();
+            foreach (var capture in captures)
+            {
+                if (capture.BytesCaptured == 0)
+                {
+                    errors[capture.Mode] = "no audio arrived";
+                    continue;
+                }
+                takes.Add(ToTake(capture.GetRecording(), capture.SampleFormat, capture.Mode, capture.Effects, capture.Glitches));
+            }
+            session.SetModeTakes(takes, errors);
+            if (takes.Count == 0)
+            {
+                return TestOutcome.Fail($"No audio captured from \"{inputName}\" — check it's active and not muted.");
+            }
+
+            string recorded = string.Join(", ", takes.Select(t => CaptureModeText.Name(t.Mode)));
+            string failed = errors.Count == 0
+                ? ""
+                : " Not recorded: " + string.Join("; ", errors.Select(e => $"{CaptureModeText.Name(e.Key)} ({e.Value})")) + ".";
+            string recordPart = $"Recorded {takes[0].Duration.TotalSeconds:0.0}s{(stoppedEarly ? " (stopped early)" : "")} " +
+                                $"from \"{inputName}\" as {recorded} at the same time.{failed}";
+
+            // Phase 2: play Raw, then Call (what the other side hears), back to back.
+            var playback = ComparisonPlayback
+                .Select(mode => takes.FirstOrDefault(t => t.Mode == mode))
+                .OfType<RecordedTake>()
+                .ToList();
+            if (playback.Count == 0) return TestOutcome.Ok(recordPart);
+
+            session.BeginPhase(AudioTestPhase.PlayingBack);
+            var (outputName, last, playbackStoppedEarly) = PlayTakesOn(playback, outputDeviceId, session);
+            string playPart = playbackStoppedEarly
+                ? $" Playback stopped early (during {CaptureModeText.Name(last)})."
+                : $" Played {string.Join(", then ", playback.Select(t => CaptureModeText.Name(t.Mode)))} through \"{outputName}\".";
+            return TestOutcome.Ok(recordPart + playPart);
+        }
+        catch (Exception ex)
+        {
+            return TestOutcome.Fail($"A/B recording failed: {ex.Message}");
+        }
+        finally
+        {
+            foreach (var capture in captures) capture.Dispose();
+        }
+    }
+
+    /// <summary>Plays whole recordings (all channels mixed to the output's layout) one after another.</summary>
+    private static TestOutcome PlayTakes(IReadOnlyList<RecordedTake> takes, string inputName, string? outputDeviceId, AudioTestSession session)
+    {
+        try
+        {
+            var (outputName, last, stoppedEarly) = PlayTakesOn(takes, outputDeviceId, session);
+            string names = string.Join(", then ", takes.Select(t => CaptureModeText.Name(t.Mode)));
+            return stoppedEarly
+                ? TestOutcome.Ok($"Stopped playing the {CaptureModeText.Name(last)} recording of \"{inputName}\".")
+                : TestOutcome.Ok($"Played the {names} recording of \"{inputName}\" through \"{outputName}\".");
+        }
+        catch (Exception ex)
+        {
+            return TestOutcome.Fail($"Playback failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Plays <paramref name="takes"/> in turn on the output (default output if null), reporting each one's
+    /// mode through <see cref="AudioTestSession.SetPlayingMode"/>. Returns the output's name, the mode playing when
+    /// it ended, and whether Stop cut it short.</summary>
+    private static (string OutputName, CaptureMode Last, bool StoppedEarly) PlayTakesOn(IReadOnlyList<RecordedTake> takes, string? outputDeviceId, AudioTestSession session)
+    {
+        using var enumerator = new MMDeviceEnumerator();
+        using var outputDevice = outputDeviceId is null
+            ? enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)
+            : enumerator.GetDevice(outputDeviceId);
+        string outputName = SafeName(outputDevice);
+        var mix = GetMixFormat(outputDevice);
+        var stop = session.CurrentStopToken;
+        try
+        {
+            for (int i = 0; i < takes.Count; i++)
+            {
+                var take = takes[i];
+                session.SetPlayingMode(take.Mode);
+                var (stoppedEarly, _) = Play(outputDevice, ConvertToMixFormat(new TakeSampleProvider(take), mix), take.Duration, stop);
+                if (stoppedEarly) return (outputName, take.Mode, true);
+                if (i < takes.Count - 1 && stop.WaitHandle.WaitOne(TakeGap)) return (outputName, take.Mode, true);
+            }
+            return (outputName, takes[^1].Mode, false);
+        }
+        finally
+        {
+            session.SetPlayingMode(null);
+        }
+    }
+
+    private static readonly TimeSpan TakeGap = TimeSpan.FromSeconds(0.6);
+
+    /// <summary>Reads a whole <see cref="RecordedTake"/> as a sample stream, with short fades at both ends.</summary>
+    private sealed class TakeSampleProvider : ISampleProvider
+    {
+        private readonly float[] _samples;
+        private int _position;
+
+        public TakeSampleProvider(RecordedTake take)
+        {
+            _samples = (float[])take.Interleaved.Clone();
+            int channels = take.Channels;
+            int fadeIn = Math.Min(take.Frames / 2, take.SampleRate / 100);       // 10 ms
+            int fadeOut = Math.Min(take.Frames / 2, take.SampleRate * 3 / 100);  // 30 ms
+            for (int f = 0; f < fadeIn; f++)
+                for (int c = 0; c < channels; c++) _samples[f * channels + c] *= (float)f / fadeIn;
+            for (int f = 0; f < fadeOut; f++)
+                for (int c = 0; c < channels; c++) _samples[(take.Frames - 1 - f) * channels + c] *= (float)f / fadeOut;
+            WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(take.SampleRate, channels);
+        }
+
+        public WaveFormat WaveFormat { get; }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            int n = Math.Min(count, _samples.Length - _position);
+            Array.Copy(_samples, _position, buffer, offset, n);
+            _position += n;
+            return n;
+        }
+    }
+
     private static TestOutcome PlayTestSound(string outputDeviceId, AudioTestSession session)
     {
         try
@@ -254,7 +434,8 @@ public sealed class AudioTestService : IAudioTestService
     }
 
     /// <summary>Converts raw captured bytes (in the capture's format) to an interleaved float take.</summary>
-    private static RecordedTake ToTake(byte[] bytes, WaveFormat format)
+    private static RecordedTake ToTake(byte[] bytes, WaveFormat format, CaptureMode mode = CaptureMode.Standard,
+        IReadOnlyList<AudioEffectInfo>? effects = null, int glitches = 0)
     {
         var provider = new RawSourceWaveStream(new MemoryStream(bytes), format).ToSampleProvider();
         var samples = new List<float>(bytes.Length / Math.Max(1, format.BitsPerSample / 8));
@@ -264,7 +445,7 @@ public sealed class AudioTestService : IAudioTestService
         {
             for (int i = 0; i < read; i++) samples.Add(buffer[i]);
         }
-        return new RecordedTake(samples.ToArray(), format.Channels, format.SampleRate);
+        return new RecordedTake(samples.ToArray(), format.Channels, format.SampleRate, mode, effects, glitches);
     }
 
     private static WaveFormat GetMixFormat(MMDevice device)
@@ -292,9 +473,11 @@ public sealed class AudioTestService : IAudioTestService
     }
 
     // Not NAudio's device.FriendlyName — see EndpointPropertyReader for why that's slow.
-    private static string SafeName(MMDevice device)
+    private static string SafeName(MMDevice device) => NameOf(device.ID);
+
+    private static string NameOf(string deviceId)
     {
         using var reader = new EndpointPropertyReader();
-        return reader.TryGetString(device.ID, PropertyKeys.PKEY_Device_FriendlyName) ?? device.ID;
+        return reader.TryGetString(deviceId, PropertyKeys.PKEY_Device_FriendlyName) ?? deviceId;
     }
 }

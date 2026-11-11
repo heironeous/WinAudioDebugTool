@@ -320,6 +320,11 @@
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlHover}"/>
                             <Setter Property="Foreground" Value="{StaticResource ListText}"/>
                         </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListRowSelected}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource ListAccent}"/>
+                            <Setter Property="Foreground" Value="{StaticResource ListAccent}"/>
+                        </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlPressed}"/>
                         </Trigger>

@@ -82,6 +82,38 @@ public sealed class AudioTestSession
 
     internal void SetTake(RecordedTake take) => Take = take;
 
+    /// <summary>For an A/B recording: one take per processing mode that could be recorded (set once recording
+    /// ends), and why any other mode couldn't.</summary>
+    public IReadOnlyList<RecordedTake> ModeTakes { get; private set; } = Array.Empty<RecordedTake>();
+    public IReadOnlyDictionary<CaptureMode, string> ModeErrors { get; private set; } = new Dictionary<CaptureMode, string>();
+
+    internal void SetModeTakes(IReadOnlyList<RecordedTake> takes, IReadOnlyDictionary<CaptureMode, string> errors)
+    {
+        ModeTakes = takes;
+        ModeErrors = errors;
+    }
+
+    private CaptureMode? _playingMode;
+
+    /// <summary>While whole recordings are played back: the processing mode of the one currently playing.</summary>
+    public CaptureMode? PlayingMode
+    {
+        get { lock (_lock) return _playingMode; }
+    }
+
+    /// <summary>Raised (on the worker thread) when <see cref="PlayingMode"/> changes.</summary>
+    public event EventHandler<CaptureMode?>? PlayingModeChanged;
+
+    internal void SetPlayingMode(CaptureMode? mode)
+    {
+        lock (_lock)
+        {
+            if (_playingMode == mode) return;
+            _playingMode = mode;
+        }
+        PlayingModeChanged?.Invoke(this, mode);
+    }
+
     /// <summary>Ends the currently running phase early.</summary>
     public void Stop()
     {

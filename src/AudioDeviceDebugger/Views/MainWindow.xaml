@@ -270,7 +270,6 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*" MinHeight="60"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Margin="0,0,0,8">
@@ -384,60 +383,6 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </DockPanel>
-
-                    <!-- USED BY: apps with an audio session on the selected device (read-only). -->
-                    <StackPanel Grid.Row="3" Margin="0,10,0,0"
-                                Visibility="{Binding ShowSessions, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock FontSize="11" Margin="0,0,0,4">
-                            <Run Text="USED BY" Foreground="{StaticResource ListHeaderText}"/>
-                            <Run Text="{Binding SessionsSummary, Mode=OneWay}" Foreground="{StaticResource ListSubtleText}"/>
-                        </TextBlock>
-                        <ScrollViewer MaxHeight="112" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl x:Name="SessionsList" ItemsSource="{Binding SelectedDeviceSessions}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Height="22" ToolTip="{Binding ToolTip}" Background="Transparent">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="74"/>
-                                                <ColumnDefinition Width="52"/>
-                                                <ColumnDefinition Width="64"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Grid.Style>
-                                                <Style TargetType="Grid">
-                                                    <Setter Property="Opacity" Value="0.55"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                            <Setter Property="Opacity" Value="1"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Grid.Style>
-                                            <TextBlock Grid.Column="0" Text="{Binding AppName}" FontSize="12" Foreground="{StaticResource ListText}"
-                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="11" VerticalAlignment="Center">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource ListSubtleText}"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource ListAccent}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                            <TextBlock Grid.Column="2" Text="{Binding VolumeText}" FontSize="11" Foreground="{StaticResource ListSubtleText}"
-                                                       VerticalAlignment="Center" ToolTip="App volume (Windows volume mixer)"/>
-                                            <ProgressBar Grid.Column="3" Style="{StaticResource FlatMeter}" Minimum="0" Maximum="1"
-                                                         Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
-                                                         VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </StackPanel>
                 </Grid>
 
                 <GridSplitter x:Name="SidePanelSplitter" Grid.Column="1" Width="8" HorizontalAlignment="Center" VerticalAlignment="Stretch"
@@ -599,83 +544,352 @@
                     </DockPanel>
                 </Border>
 
-                <!-- Collapse/expand strips for the property table and the event log, stacked at the right edge. -->
-                <Grid Grid.Column="3" Margin="6,0,0,0" Width="28">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="6"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <ToggleButton Grid.Row="0" Padding="0,8,0,8"
-                                  VerticalAlignment="Stretch" VerticalContentAlignment="Top"
-                                  IsChecked="{Binding IsPropertiesPanelOpen}">
-                        <ToggleButton.Style>
-                            <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
-                                <Setter Property="ToolTip" Value="Show device properties"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsPropertiesPanelOpen}" Value="True">
-                                        <Setter Property="ToolTip" Value="Hide device properties"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ToggleButton.Style>
-                        <StackPanel>
-                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" HorizontalAlignment="Center">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <!-- Closed: chevron-left ("expand to the left"); open: chevron-right ("collapse"). -->
-                                        <Setter Property="Text" Value="&#xE76B;"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsPropertiesPanelOpen}" Value="True">
-                                                <Setter Property="Text" Value="&#xE76C;"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
+                <!-- PROCESSES: apps (processes) with an audio session on the selected device — read-only (N1). -->
+                <Border x:Name="ProcessesPanel" Grid.Column="2" Background="{StaticResource ListBackground}"
+                        BorderBrush="{StaticResource ListBorder}" BorderThickness="1" CornerRadius="6">
+                    <DockPanel Margin="10,8,10,8">
+                        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                            <TextBlock FontSize="11">
+                                <Run Text="PROCESSES" Foreground="{StaticResource ListHeaderText}"/>
+                                <Run Text="{Binding SessionsSummary, Mode=OneWay}" Foreground="{StaticResource ListSubtleText}"/>
                             </TextBlock>
-                            <TextBlock Text="PROPERTIES" FontSize="11" Margin="0,10,0,0" HorizontalAlignment="Center">
-                                <TextBlock.LayoutTransform>
-                                    <RotateTransform Angle="90"/>
-                                </TextBlock.LayoutTransform>
-                            </TextBlock>
+                            <TextBlock Text="{Binding SelectedDevice.Device.FriendlyName}" FontSize="11" Margin="0,2,0,0"
+                                       Foreground="{StaticResource ListSubtleText}" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                    </ToggleButton>
-                    <ToggleButton Grid.Row="2" Padding="0,8,0,8"
-                                  VerticalAlignment="Stretch" VerticalContentAlignment="Top"
-                                  IsChecked="{Binding IsEventsPanelOpen}">
-                        <ToggleButton.Style>
-                            <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
-                                <Setter Property="ToolTip" Value="Show the event log"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsEventsPanelOpen}" Value="True">
-                                        <Setter Property="ToolTip" Value="Hide the event log"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ToggleButton.Style>
-                        <StackPanel>
-                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" HorizontalAlignment="Center">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="&#xE76B;"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsEventsPanelOpen}" Value="True">
-                                                <Setter Property="Text" Value="&#xE76C;"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
+                        <TextBlock DockPanel.Dock="Top" FontSize="12" Foreground="{StaticResource ListSubtleText}" TextWrapping="Wrap"
+                                   Text="Select an active device to see which apps have it open.">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ShowSessions}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,4"
+                              Visibility="{Binding ShowSessions, Converter={StaticResource BoolToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="74"/>
+                                <ColumnDefinition Width="52"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="APP" FontSize="11" Foreground="{StaticResource ListHeaderText}"/>
+                            <TextBlock Grid.Column="1" Text="PROCESS · PID" FontSize="11" Foreground="{StaticResource ListHeaderText}"/>
+                            <TextBlock Grid.Column="2" Text="STATE" FontSize="11" Foreground="{StaticResource ListHeaderText}"/>
+                            <TextBlock Grid.Column="3" Text="VOLUME" FontSize="11" Foreground="{StaticResource ListHeaderText}"
+                                       ToolTip="App volume (Windows volume mixer)"/>
+                            <TextBlock Grid.Column="4" Text="LEVEL" FontSize="11" Foreground="{StaticResource ListHeaderText}"/>
+                        </Grid>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Visibility="{Binding ShowSessions, Converter={StaticResource BoolToVisibility}}">
+                            <ItemsControl x:Name="SessionsList" ItemsSource="{Binding SelectedDeviceSessions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Height="26" ToolTip="{Binding ToolTip}" Background="Transparent">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="74"/>
+                                                <ColumnDefinition Width="52"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Opacity" Value="0.55"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                            <Setter Property="Opacity" Value="1"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <TextBlock Grid.Column="0" Text="{Binding AppName}" FontSize="12" Foreground="{StaticResource ListText}"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding ProcessText}" FontSize="11" Foreground="{StaticResource ListSubtleText}"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding StateText}" FontSize="11" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource ListSubtleText}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource ListAccent}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="3" Text="{Binding VolumeText}" FontSize="11" Foreground="{StaticResource ListSubtleText}"
+                                                       VerticalAlignment="Center" ToolTip="App volume (Windows volume mixer)"/>
+                                            <ProgressBar Grid.Column="4" Style="{StaticResource FlatMeter}" Minimum="0" Maximum="1"
+                                                         Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
+                                                         VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+
+                <!-- RAW RECORDING (inputs, N4): the last recording per processing mode — Raw / Call / Standard — for A/B
+                     listening. Record A/B records all three at once; picking a line makes the channel strip play it. -->
+                <Border x:Name="RecordingsPanel" Grid.Column="2" Background="{StaticResource ListBackground}"
+                        BorderBrush="{StaticResource ListBorder}" BorderThickness="1" CornerRadius="6">
+                    <DockPanel Margin="10,8,10,8">
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,2">
+                            <Button DockPanel.Dock="Right" Click="RecordAbButton_Click" Padding="10,3" Margin="8,0,0,0"
+                                    Style="{StaticResource FlatButton}" ToolTip="{Binding RecordAbToolTip}"
+                                    Visibility="{Binding ShowRecordings, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Record A/B"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelectedDeviceTesting}" Value="True">
+                                                        <Setter Property="Text" Value="Stop"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" FontSize="10"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="&#xE7C8;"/>
+                                                <Setter Property="Foreground" Value="{StaticResource NegativeGlyph}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelectedDeviceTesting}" Value="True">
+                                                        <Setter Property="Text" Value="&#xE71A;"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Button>
+                            <TextBlock FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding RecordingsSummary}">
+                                <Run Text="RAW RECORDING" Foreground="{StaticResource ListHeaderText}"/>
+                                <Run Text="{Binding RecordingsSummary, Mode=OneWay}" Foreground="{StaticResource ListSubtleText}"/>
                             </TextBlock>
-                            <TextBlock FontSize="11" Margin="0,10,0,0" HorizontalAlignment="Center">
-                                <TextBlock.LayoutTransform>
-                                    <RotateTransform Angle="90"/>
-                                </TextBlock.LayoutTransform>
-                                <Run Text="EVENTS"/>
-                                <Run Text="{Binding EventLog.Events.Count, Mode=OneWay}" Foreground="{StaticResource ListHeaderText}"/>
-                            </TextBlock>
-                        </StackPanel>
-                    </ToggleButton>
-                </Grid>
+                        </DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedDevice.Device.FriendlyName}" FontSize="11" Margin="0,0,0,6"
+                                   Foreground="{StaticResource ListSubtleText}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock DockPanel.Dock="Top" FontSize="11" Foreground="{StaticResource ListSubtleText}" TextWrapping="Wrap"
+                                   Margin="0,0,0,10">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Record A/B records this mic three ways at the same time — Raw (no processing), Call (what Teams / Webex receive: what the other side of a call hears, before the app's own processing) and Standard (most apps) — then plays Raw and Call back to back. Pick a line to play its channels from the channel strip."/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ShowRecordings}" Value="False">
+                                            <Setter Property="Text" Value="Select an active microphone to record it raw and as call apps receive it."/>
+                                            <Setter Property="FontSize" Value="12"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <!-- A ListBox (not an ItemsControl) so lines can be picked by keyboard / UI Automation too.
+                             Selecting a line only tells the view model; the highlight shows IsStripSource. -->
+                        <ListBox x:Name="TakesList" ItemsSource="{Binding SelectedDeviceTakes}" SelectionChanged="TakesList_SelectionChanged"
+                                 Background="Transparent" BorderThickness="0" Padding="0" VerticalAlignment="Top"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Visibility="{Binding ShowRecordings, Converter={StaticResource BoolToVisibility}}">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter/>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Setter Property="AutomationProperties.HelpText" Value="{Binding ToolTip}"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="4" Padding="4,5,6,5" Margin="0,0,0,4" ToolTip="{Binding ToolTip}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasTake}" Value="True">
+                                                        <Setter Property="Cursor" Value="Hand"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsStripSource}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource ListRowSelected}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="34"/>
+                                                <ColumnDefinition Width="72"/>
+                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Button Grid.Column="0" Grid.RowSpan="2" Click="TakePlayButton_Click" Width="28" Height="22" Padding="0"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center" Style="{StaticResource FlatButton}"
+                                                    IsEnabled="{Binding CanPlay}" ToolTip="{Binding PlayToolTip}"
+                                                    ToolTipService.ShowOnDisabled="True">
+                                                <TextBlock FontSize="9" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="&#xE768;"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource PositiveGlyph}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                                    <Setter Property="Text" Value="&#xE71A;"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource NegativeGlyph}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Button>
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource ListText}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource ListAccent}"/>
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="2" Text="{Binding LevelText}" FontSize="12" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource ListText}"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding DetailText}" FontSize="11" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource ListSubtleText}" Margin="0,0,12,0"/>
+                                            <TextBlock Grid.Column="4" Text="{Binding EffectsText}" FontSize="11" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource ListSubtleText}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Text="{Binding Description}" FontSize="11"
+                                                       Margin="0,2,0,0" Foreground="{StaticResource ListHeaderText}" TextTrimming="CharacterEllipsis"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <!-- Tabs for the right-hand panel, stacked at the right edge: each opens its panel (closing any other);
+                     clicking the open one collapses the column. Labels hide when the strip is too short for them
+                     (SideTabsScroll_ScrollChanged); the icons and tooltips still tell the tabs apart. -->
+                <ScrollViewer x:Name="SideTabsScroll" Grid.Column="3" Margin="6,0,0,0" Width="28"
+                              VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled"
+                              ScrollChanged="SideTabsScroll_ScrollChanged">
+                    <StackPanel>
+                        <ToggleButton Padding="0,8,0,8" Margin="0,0,0,6" IsChecked="{Binding IsPropertiesPanelOpen}">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
+                                    <Setter Property="ToolTip" Value="Show device properties"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPropertiesPanelOpen}" Value="True">
+                                            <Setter Property="ToolTip" Value="Hide device properties"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                            <StackPanel>
+                                <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="PropertiesTabLabel" FontSize="11" Margin="0,8,0,0" HorizontalAlignment="Center">
+                                    <TextBlock.LayoutTransform>
+                                        <RotateTransform Angle="90"/>
+                                    </TextBlock.LayoutTransform>
+                                    <Run Text="PROPERTIES"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </ToggleButton>
+                        <ToggleButton Padding="0,8,0,8" Margin="0,0,0,6" IsChecked="{Binding IsEventsPanelOpen}">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
+                                    <Setter Property="ToolTip" Value="Show the event log"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEventsPanelOpen}" Value="True">
+                                            <Setter Property="ToolTip" Value="Hide the event log"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                            <StackPanel>
+                                <TextBlock Text="&#xE81C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="EventsTabLabel" FontSize="11" Margin="0,8,0,0" HorizontalAlignment="Center">
+                                    <TextBlock.LayoutTransform>
+                                        <RotateTransform Angle="90"/>
+                                    </TextBlock.LayoutTransform>
+                                    <Run Text="EVENTS"/>
+                                    <Run Text="{Binding EventLog.Events.Count, Mode=OneWay}" Foreground="{StaticResource ListHeaderText}"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </ToggleButton>
+                        <ToggleButton Padding="0,8,0,8" Margin="0,0,0,6" IsChecked="{Binding IsProcessesPanelOpen}">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
+                                    <Setter Property="ToolTip" Value="Show the processes (apps) using the selected device"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsProcessesPanelOpen}" Value="True">
+                                            <Setter Property="ToolTip" Value="Hide the processes panel"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                            <StackPanel>
+                                <TextBlock Text="&#xE71D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="ProcessesTabLabel" FontSize="11" Margin="0,8,0,0" HorizontalAlignment="Center">
+                                    <TextBlock.LayoutTransform>
+                                        <RotateTransform Angle="90"/>
+                                    </TextBlock.LayoutTransform>
+                                    <Run Text="PROCESSES"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </ToggleButton>
+                        <ToggleButton Padding="0,8,0,8" Margin="0,0,0,6" IsChecked="{Binding IsRecordingsPanelOpen}">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatStripToggle}">
+                                    <Setter Property="ToolTip" Value="Show raw recording: record the selected mic raw and as call apps receive it, and compare"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRecordingsPanelOpen}" Value="True">
+                                            <Setter Property="ToolTip" Value="Hide the raw recording panel"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                            <StackPanel>
+                                <TextBlock Text="&#xE720;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="RecordingsTabLabel" FontSize="11" Margin="0,8,0,0" HorizontalAlignment="Center">
+                                    <TextBlock.LayoutTransform>
+                                        <RotateTransform Angle="90"/>
+                                    </TextBlock.LayoutTransform>
+                                    <Run Text="RAW RECORDING"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </ToggleButton>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Grid>
 

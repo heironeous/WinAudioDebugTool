@@ -22,4 +22,12 @@ public interface IAudioTestService
     /// <summary>Plays one channel of a recorded mic take — or several, in turn — in mono on every speaker of
     /// <paramref name="outputDeviceId"/> (or the default output if null).</summary>
     AudioTestSession StartChannelPlayback(RecordedTake take, string inputName, IReadOnlyList<int> channels, string? outputDeviceId);
+
+    /// <summary>A/B recording: records the same few seconds from one mic in the Raw, Call (communications) and
+    /// Standard processing modes at once, then plays the Raw and Call takes back to back. The takes end up in
+    /// <see cref="AudioTestSession.ModeTakes"/>; <see cref="AudioTestSession.PlayingMode"/> tracks the playback.</summary>
+    AudioTestSession StartModeComparison(string inputDeviceId, string? outputDeviceId);
+
+    /// <summary>Plays whole recordings (all channels, mixed to the output) one after another.</summary>
+    AudioTestSession StartTakePlayback(IReadOnlyList<RecordedTake> takes, string inputName, string? outputDeviceId);
 }

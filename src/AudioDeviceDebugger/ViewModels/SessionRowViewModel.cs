@@ -18,6 +18,11 @@ public sealed class SessionRowViewModel : INotifyPropertyChanged
 
     public bool IsActive => _info.State == AudioSessionActivity.Active;
 
+    /// <summary>"CiscoCollabHost.exe · 1234" (blank for the system-sounds session).</summary>
+    public string ProcessText => _info.IsSystemSounds ? ""
+        : _info.ProcessName is null ? $"PID {_info.ProcessId}"
+        : $"{_info.ProcessName}.exe · {_info.ProcessId}";
+
     /// <summary>"Streaming" / "Idle" (+ " · exited") — Windows' Active / Inactive session state in plain words.</summary>
     public string StateText => (_info.State switch
     {

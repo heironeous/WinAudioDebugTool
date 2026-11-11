@@ -9,6 +9,16 @@ using AudioDeviceDebugger.Services;
 
 namespace AudioDeviceDebugger.ViewModels;
 
+/// <summary>The panels that share the right-hand column of the details area.</summary>
+public enum SidePanel
+{
+    None,
+    Properties,
+    Events,
+    Processes,
+    Recordings,
+}
+
 public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IDeviceEnumerationService _enumerationService;
@@ -192,7 +202,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         bool isActive = row?.IsActive == true;
         bool isOutput = row?.IsOutput == true;
         _activeTests.TryGetValue(id, out var running);
-        _lastTakes.TryGetValue(id, out var take);
+        var take = StripTake(id);
         bool canStart = isActive && (isOutput || take is not null);
 
         foreach (var vm in SelectedDeviceChannelPeaks)
@@ -203,8 +213,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 running is not null ? "Stop the running test"
                 : !isActive ? "The device isn't active"
                 : isOutput ? $"Play the test music on {vm.LongName} ({vm.ShortName}) only"
-                : take is not null ? $"Listen to {vm.LongName} of the last recording ({take.Duration.TotalSeconds:0.0} s) on the default output"
-                : "Run the mic test first (Test on the device row) — then listen to each channel here";
+                : take is not null ? $"Listen to {vm.LongName} of the {CaptureModeText.Name(take.Mode)} recording ({take.Duration.TotalSeconds:0.0} s) on the default output"
+                : "Record first (Test on the device row, or Record A/B below) — then listen to each channel here";
         }
 
         HasChannels = SelectedDeviceChannelPeaks.Count > 0;
@@ -214,8 +224,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             running is not null ? "Stop the running test"
             : !isActive ? "The device isn't active"
             : isOutput ? "Play a short excerpt on each channel in turn"
-            : take is not null ? "Listen to each channel of the last recording in turn"
-            : "Run the mic test first (Test on the device row) — then listen to each channel here";
+            : take is not null ? $"Listen to each channel of the {CaptureModeText.Name(take.Mode)} recording in turn"
+            : "Record first (Test on the device row, or Record A/B below) — then listen to each channel here";
+
+        SyncTakeRows();
     }
 
     private DeviceRowViewModel? _selectedDevice;
@@ -244,42 +256,48 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         private set => SetField(ref _selectedDeviceDetails, value);
     }
 
-    private bool _isPropertiesPanelOpen;
+    private SidePanel _openSidePanel;
 
-    /// <summary>Whether the property table is expanded. The property store is only read while this is true:
-    /// opening it fetches the selected device's properties, closing it drops them.</summary>
-    public bool IsPropertiesPanelOpen
+    /// <summary>Which panel the right-hand column shows (the tab strip at the right edge picks it); None collapses
+    /// the column. The property store is only read while the PROPERTIES panel is open: opening it fetches the
+    /// selected device's properties, closing it drops them. Events are recorded whatever is shown.</summary>
+    public SidePanel OpenSidePanel
     {
-        get => _isPropertiesPanelOpen;
+        get => _openSidePanel;
         set
         {
-            if (!SetField(ref _isPropertiesPanelOpen, value)) return;
-            if (value)
+            var previous = _openSidePanel;
+            if (!SetField(ref _openSidePanel, value)) return;
+            OnPropertyChanged(nameof(IsPropertiesPanelOpen));
+            OnPropertyChanged(nameof(IsEventsPanelOpen));
+            OnPropertyChanged(nameof(IsProcessesPanelOpen));
+            OnPropertyChanged(nameof(IsRecordingsPanelOpen));
+            if (value == SidePanel.Properties)
             {
-                IsEventsPanelOpen = false;
                 LoadSelectedDeviceProperties(SelectedDevice);
             }
-            else
+            else if (previous == SidePanel.Properties)
             {
                 SelectedDeviceProperties = null;
             }
         }
     }
 
-    private bool _isEventsPanelOpen;
+    // One bool per tab, for the strip's toggle buttons: checking one opens its panel (closing any other).
+    public bool IsPropertiesPanelOpen { get => _openSidePanel == SidePanel.Properties; set => SetSidePanel(SidePanel.Properties, value); }
+    public bool IsEventsPanelOpen { get => _openSidePanel == SidePanel.Events; set => SetSidePanel(SidePanel.Events, value); }
+    public bool IsProcessesPanelOpen { get => _openSidePanel == SidePanel.Processes; set => SetSidePanel(SidePanel.Processes, value); }
+    public bool IsRecordingsPanelOpen { get => _openSidePanel == SidePanel.Recordings; set => SetSidePanel(SidePanel.Recordings, value); }
 
-    /// <summary>Whether the EVENTS panel is expanded. It shares the right-hand side with the property table, so
-    /// opening one closes the other. Events are recorded either way.</summary>
-    public bool IsEventsPanelOpen
+    private void SetSidePanel(SidePanel panel, bool open)
     {
-        get => _isEventsPanelOpen;
-        set
+        if (open)
         {
-            if (!SetField(ref _isEventsPanelOpen, value)) return;
-            if (value)
-            {
-                IsPropertiesPanelOpen = false;
-            }
+            OpenSidePanel = panel;
+        }
+        else if (_openSidePanel == panel)
+        {
+            OpenSidePanel = SidePanel.None;
         }
     }
 
@@ -301,8 +319,155 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private readonly Dictionary<string, AudioTestSession> _activeTests = new();
 
-    // Last mic-test recording per input device, so its channels can be replayed one by one.
-    private readonly Dictionary<string, RecordedTake> _lastTakes = new();
+    // Last mic recording per input device and processing mode (Standard from the row's Test button; Raw, Call and
+    // Standard from Record A/B), why a mode couldn't be recorded, and which recording the channel strip plays.
+    private readonly Dictionary<string, Dictionary<CaptureMode, RecordedTake>> _takes = new();
+    private readonly Dictionary<string, Dictionary<CaptureMode, string>> _takeErrors = new();
+    private readonly Dictionary<string, CaptureMode> _stripMode = new();
+
+    private RecordedTake? StripTake(string id) =>
+        _takes.TryGetValue(id, out var byMode) && _stripMode.TryGetValue(id, out var mode) && byMode.TryGetValue(mode, out var take)
+            ? take
+            : null;
+
+    private void StoreTakes(string id, IReadOnlyList<RecordedTake> takes, IReadOnlyDictionary<CaptureMode, string>? errors, CaptureMode stripPreference)
+    {
+        if (!_takes.TryGetValue(id, out var byMode)) _takes[id] = byMode = new();
+        if (!_takeErrors.TryGetValue(id, out var errorsByMode)) _takeErrors[id] = errorsByMode = new();
+        foreach (var take in takes)
+        {
+            byMode[take.Mode] = take;
+            errorsByMode.Remove(take.Mode);
+        }
+        foreach (var (mode, error) in errors ?? new Dictionary<CaptureMode, string>())
+        {
+            byMode.Remove(mode); // an older take would be mistaken for this recording
+            errorsByMode[mode] = error;
+        }
+        if (takes.Count > 0)
+        {
+            _stripMode[id] = takes.Any(t => t.Mode == stripPreference) ? stripPreference : takes[0].Mode;
+        }
+    }
+
+    // ---- RECORDINGS (inputs): last take per processing mode, for A/B listening ----
+
+    /// <summary>One fixed line per mode, in comparison order: Raw, Call, Standard.</summary>
+    public ObservableCollection<TakeRowViewModel> SelectedDeviceTakes { get; } = new()
+    {
+        new TakeRowViewModel(CaptureMode.Raw),
+        new TakeRowViewModel(CaptureMode.Communications),
+        new TakeRowViewModel(CaptureMode.Standard),
+    };
+
+    private bool _showRecordings;
+    /// <summary>The RECORDINGS section applies (an active input is selected).</summary>
+    public bool ShowRecordings
+    {
+        get => _showRecordings;
+        private set => SetField(ref _showRecordings, value);
+    }
+
+    private string _recordingsSummary = "";
+    public string RecordingsSummary
+    {
+        get => _recordingsSummary;
+        private set => SetField(ref _recordingsSummary, value);
+    }
+
+    private string _recordAbToolTip = "";
+    public string RecordAbToolTip
+    {
+        get => _recordAbToolTip;
+        private set => SetField(ref _recordAbToolTip, value);
+    }
+
+    private void SyncTakeRows()
+    {
+        var row = SelectedDevice;
+        string id = row?.Device.Id ?? "";
+        bool active = row?.IsActive == true;
+        ShowRecordings = active && row!.Device.Direction == AudioDirection.Input;
+
+        _activeTests.TryGetValue(id, out var running);
+        _takes.TryGetValue(id, out var byMode);
+        _takeErrors.TryGetValue(id, out var errors);
+        var strip = StripTake(id);
+        foreach (var line in SelectedDeviceTakes)
+        {
+            RecordedTake? take = byMode?.GetValueOrDefault(line.Mode);
+            bool playing = running?.PlayingMode == line.Mode;
+            bool canPlay = running is not null ? playing : take is not null && active;
+            string tip = playing ? "Stop playback"
+                : running is not null ? "A test is running on this device"
+                : take is null ? "Not recorded yet"
+                : $"Play the whole {line.Name} recording ({take.Duration.TotalSeconds:0.0} s) on the default output";
+            line.Update(take, errors?.GetValueOrDefault(line.Mode), strip?.Mode == line.Mode, playing, canPlay, tip);
+        }
+
+        RecordingsSummary = SelectedDeviceDetails?.Id != id ? ""
+            : SelectedDeviceDetails.RawProcessingSupported switch
+            {
+                true => "· the driver supports raw capture",
+                false => "· the driver says it can't do raw capture (Raw may still be processed)",
+                null => "",
+            };
+        RecordAbToolTip = running is not null
+            ? "Stop the running test"
+            : "Record 5 s from this mic in Raw, Call and Standard at the same time — speak while it records — " +
+              "then play Raw and Call back to back on the default output.\n" +
+              "Raw: straight from the mic. Call: what call apps (Teams, Webex…) receive, i.e. what the other side hears " +
+              "before the app's own processing. Standard: what most other apps receive.";
+    }
+
+    /// <summary>Records the selected mic in every processing mode at once, then plays Raw and Call back to back —
+    /// or stops the test running on it.</summary>
+    public async Task ToggleRecordAbAsync()
+    {
+        var row = SelectedDevice;
+        if (row is null || row.Device.Direction != AudioDirection.Input || !row.IsActive) return;
+
+        string id = row.Device.Id;
+        if (_activeTests.TryGetValue(id, out var running))
+        {
+            running.Stop();
+            return;
+        }
+
+        string name = row.Device.FriendlyName;
+        await RunTestAsync(id, name, _testService.StartModeComparison(id, null),
+            $"Recording from \"{name}\" in Raw, Call and Standard at the same time — speak now… click Stop to end early.",
+            "A/B recording (Raw, Call, Standard)");
+    }
+
+    /// <summary>Plays one whole recording of the selected mic — or stops the test running on it.</summary>
+    public async Task ToggleTakePlaybackAsync(TakeRowViewModel line)
+    {
+        var row = SelectedDevice;
+        if (row is null) return;
+
+        string id = row.Device.Id;
+        if (_activeTests.TryGetValue(id, out var running))
+        {
+            running.Stop();
+            return;
+        }
+        if (line.Take is not { } take) return;
+
+        string name = row.Device.FriendlyName;
+        await RunTestAsync(id, name, _testService.StartTakePlayback(new[] { take }, name, null),
+            $"Playing the {line.Name} recording of \"{name}\" — {CaptureModeText.Description(line.Mode)}…",
+            $"Playback of the {line.Name} recording");
+    }
+
+    /// <summary>Makes the channel strip play the channels of this recording.</summary>
+    public void SelectStripTake(TakeRowViewModel line)
+    {
+        var row = SelectedDevice;
+        if (row is null || line.Take is null) return;
+        _stripMode[row.Device.Id] = line.Mode;
+        RefreshChannelControls();
+    }
 
     /// <summary>Raised on the UI thread with a fresh sample whenever the *currently selected* device
     /// reports a new level — the view wires this straight to the big detail-panel graph.</summary>
@@ -464,15 +629,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
         else
         {
-            if (!_lastTakes.TryGetValue(id, out var take)) return;
+            if (StripTake(id) is not { } take) return;
             channels = channels.Where(c => c < take.Channels).ToList();
             if (channels.Count == 0) return;
+            string mode = CaptureModeText.Name(take.Mode);
             string status = channel is null
-                ? $"Playing each channel of the \"{name}\" recording in turn…"
-                : $"Playing {channel.LongName} of the \"{name}\" recording…";
+                ? $"Playing each channel of the {mode} recording of \"{name}\" in turn…"
+                : $"Playing {channel.LongName} of the {mode} recording of \"{name}\"…";
             string label = channel is null
-                ? "Each channel of the last recording in turn"
-                : $"{channel.LongName} of the last recording";
+                ? $"Each channel of the {mode} recording in turn"
+                : $"{channel.LongName} of the {mode} recording";
             await RunTestAsync(id, name, _testService.StartChannelPlayback(take, name, channels, null), status, label);
         }
     }
@@ -504,6 +670,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 SetStatus($"Channel test on \"{deviceName}\": now playing {playing.LongName} ({playing.ShortName})…");
             }
         });
+        session.PlayingModeChanged += (_, mode) => _dispatcher.BeginInvoke(() =>
+        {
+            if (SelectedDevice?.Device.Id == id) SyncTakeRows();
+            if (mode is { } m && _activeTests.ContainsKey(id))
+            {
+                SetStatus($"Playing the {CaptureModeText.Name(m)} recording of \"{deviceName}\" — {CaptureModeText.Description(m)}… click Stop to end.");
+            }
+        });
         UpdateRowTestState(id);
         RefreshChannelControls();
         SetStatus(startStatus);
@@ -513,7 +687,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             var outcome = await session.Completion;
             if (session.Take is { } take)
             {
-                _lastTakes[id] = take;
+                StoreTakes(id, new[] { take }, null, CaptureMode.Standard);
+            }
+            if (session.ModeTakes.Count > 0 || session.ModeErrors.Count > 0)
+            {
+                StoreTakes(id, session.ModeTakes, session.ModeErrors, CaptureMode.Raw);
             }
             SetStatus(outcome.Message);
             LogForDevice(id, outcome.Success ? AudioEventKind.TestFinished : AudioEventKind.Error,

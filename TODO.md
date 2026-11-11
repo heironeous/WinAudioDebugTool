@@ -88,8 +88,9 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Inputs: the last mic-test recording is kept per device; play any one
       channel (mono, on every speaker of the default output) or cycle
       through all of them; buttons disabled until a recording exists
-- [ ] Optional: "raw" capture (IAudioClient2 stream options) to bypass mic-array
-      processing and expose the individual capsules
+- [x] Raw capture (IAudioClient2 stream options) to bypass mic-array processing
+      and expose the individual capsules: Record A/B, then pick the Raw line
+      for the strip (see N4)
 
 ## Live level metering
 - [x] Real-time peak-level meter per device using `IAudioMeterInformation`
@@ -122,8 +123,8 @@ means **implemented and committed**, not "verified on real hardware" — see
 ## Next steps — planned, awaiting approval
 
 Five features chosen from the suggestions list (2026-11-10). **Each needs the
-owner's go-ahead before implementation** — N2 and N1 are done; N3–N5 are not
-started. Suggested
+owner's go-ahead before implementation** — N2, N1 and N4 are done; N3 and N5
+are not started. Suggested
 order: N1 → N2 → N3 → N4 → N5. N1 feeds N2 and N5, and N3 feeds N5. The report
 (N5) comes last because it collects everything else. Each feature is its own
 commit, with this file updated in that commit. Every item ends with
@@ -175,8 +176,10 @@ Decisions used (the owner didn't specify, so the proposed defaults apply):
   - Headset or handset *input* rows that are in use add the call-mode hint.
     These are recognised by `PKEY_AudioEndpoint_FormFactor` 5/6, now read
     into `DeviceInfo.FormFactor` via `EndpointPropertyReader.TryGetUInt32`.
-- [x] **Details panel.** A "USED BY" section under the channel strip, for
-      active devices only.
+- [x] **Details panel.** Originally a "USED BY" section under the channel strip.
+      Since 2026-11-11 it is the **PROCESSES** side-panel tab (see "Side-panel
+      tabs" below). It covers active devices only, and adds a PROCESS · PID
+      column.
   - The header gives a summary ("2 app sessions, 0 streaming").
   - Each row shows the app, "Streaming"/"Idle", the app's volume in
     Windows' volume mixer, and a live peak meter. Idle rows are dimmed.
@@ -386,74 +389,131 @@ where Windows sees no format change.
   - Is the spectrum plot wanted, or only the one-line verdict?
   - Should "Record only" be added?
 
-### N4. Raw mic capture (bypass Windows audio processing)
-Goal: record a mic with the driver's/Windows' signal processing switched off
-(beamforming, noise suppression, AGC, echo cancellation), to compare with the
-processed signal and to expose individual mic-array capsules. Two expected
-uses: finding out why the Intel array's channels 2 and 4 read below −60 dB,
-and why its level seemed low.
+### N4. Raw mic capture vs. what the other side hears — implemented (2026-11-11)
+Goal: record a mic with the driver's and Windows' processing switched off, and
+compare it with the processed signal that call apps receive. Two expected uses:
+finding out why the Intel array's channels 2 and 4 read below −60 dB, and why
+its level seemed low.
 
-- **Background.** WASAPI's `AUDCLNT_STREAMOPTIONS_RAW` (Windows 8.1+), set
-  via `IAudioClient2::SetClientProperties` *before* `Initialize`, asks for the
-  raw signal path. Whether a device supports it is reported by the endpoint
-  property `System.Devices.AudioDevice.RawProcessingSupported`, key
-  `{8943b373-388c-4395-b557-bc6dbaffafdb},2` (confirm on the dev machine).
-- **NAudio gap (checked in 2.2.1).**
-  - The `AudioClientProperties` and `AudioClientStreamOptions.Raw` types
-    exist.
-  - But `AudioClient` has no `SetClientProperties`, and `WasapiCapture`
-    can't set it, so raw capture needs its own interop.
-- [ ] **Interop** `Interop/AudioClient2.cs`.
-  - A `[ComImport]` `IAudioClient2`, IID
-    `726778CD-F60A-4EDA-82DE-E47610CD78AA`, declaring the full vtable in
-    order: the IAudioClient methods (Initialize … GetService), then
-    `IsOffloadCapable`, `SetClientProperties`, `GetBufferSizeLimits`.
-  - Plus `IAudioCaptureClient`, and the `AudioClientProperties` struct
-    (`cbSize`, `bIsOffload`, `eCategory`, `Options`).
-  - Activate it through the existing `EndpointPropertyReader`
-    `IMMDeviceRaw.Activate`, which already gets an IMMDevice via the
-    enumerator created by CLSID (lesson 2).
-  - Don't use reflection into NAudio's private fields.
-- [ ] **Capture loop** `Services/RawCapture.cs`, run on an MTA worker.
-  - Activate, then `SetClientProperties` (category Other, options RAW), then
-    `GetMixFormat`. The raw format may differ from the processed one, e.g.
-    more channels; use whatever the device reports after the call.
-  - Then `Initialize` (shared, event-driven, 100 ms buffer),
-    `GetService(IAudioCaptureClient)`, `Start`, and a
-    GetNextPacketSize/GetBuffer/ReleaseBuffer loop into a float buffer.
-  - Convert to float the same way the processed path does, honour the
-    session's Stop token, and produce the same `RecordedTake` (tagged
-    `IsRaw = true`).
-  - If `SetClientProperties` fails, report "raw capture not supported by this
-    device/driver".
-- [ ] **Test service.** Extend `StartRecordAndPlayback(inputId, outputId,
-      bool raw)`, or add a separate start method. Playback and per-channel
-      playback work unchanged on the raw take, since the format conversion is
-      shared.
-- [ ] **UI.**
-  - For inputs, a "Raw (bypass processing)" checkbox next to the channel
-    strip. It is enabled only if the property says raw is supported;
-    otherwise it's disabled with a tooltip explaining why.
-  - The mic test honours the checkbox. The kept take is labelled
-    "raw"/"processed", and so is the strip (e.g. tooltip "Ch 2 — raw
-    recording").
-  - Optional "Compare" button: record 5 s processed, then 5 s raw, and keep
-    both takes for A/B playback. Since N3 exists by then, show both bandwidth
-    results too.
-- [ ] **Details panel.** Show "Raw processing: supported / not supported"
-      alongside the format info.
-- **Verification.**
-  - Read the raw-support property for every input.
-  - In a harness, record 3 s raw and 3 s processed from the Intel array
-    *without playback* (silent). Compare the channel count and per-channel
-    RMS. If channels 2 and 4 are at room-noise level in raw, that explains
-    the processed result.
-  - The Jabra will probably report no raw support. Check that the UI
-    disables the option cleanly.
-  - Listening to the A/B takes needs the owner.
-- **Decisions needed:**
-  - Checkbox (applies to every mic test) or a separate "Raw test" button?
-  - Is the "Compare" button wanted?
+Scope at approval: the owner asked to compare "what is recorded RAW and what
+the other side hears". So the main feature is an **A/B recording** that captures
+the same sound in several modes at once. A "Raw" checkbox for the plain mic test
+was not built.
+
+- [x] **Interop** `Interop/AudioClient2.cs`.
+  - `IAudioClient2` (full vtable), `IAudioCaptureClient`,
+    `IAudioEffectsManager` (Windows 11), and the `AudioClientProperties` and
+    `AUDIO_EFFECT` structs. IIDs, method order and enum values were checked
+    against `Windows.Win32.winmd`.
+  - `AudioClient2Activator` gets the IMMDevice through an enumerator created
+    by CLSID (lesson 2).
+  - Effect names come from the `AUDIO_EFFECT_TYPE_*` GUIDs in `ksmedia.h`;
+    they aren't in the winmd. Unknown GUIDs are shown as-is.
+  - `AudioPropertyKeys.RawProcessingSupported` holds the property key
+    `{8943b373-…},2`. It is VT_BOOL, read with the new
+    `EndpointPropertyReader.TryGetBool`.
+- [x] **Capture** `Services/ModeCapture.cs`. One shared-mode stream per mode:
+  - **Standard**: no client properties set; this is what NAudio's
+    WasapiCapture gets.
+  - **Call**: category `Communications`, which is what Teams and Webex request.
+  - **Raw**: `AUDCLNT_STREAMOPTIONS_RAW`.
+  - The properties are set with `SetClientProperties` before `Initialize`;
+    then `GetMixFormat`, then shared-mode `Initialize` with a 200 ms buffer.
+  - Capture is polled, not event-driven: `Drain` every 10 ms.
+  - Silent packets are written as zeros. Discontinuities are counted as
+    glitches.
+  - The effects the engine reports for each stream are read through
+    `IAudioEffectsManager`.
+  - `SampleFormat` turns WAVE_FORMAT_EXTENSIBLE into the equivalent plain
+    format, because NAudio's converters reject extensible headers.
+- [x] **Test service.** `StartModeComparison(input, output)`:
+  - It opens Raw, Call and Standard together and starts them back to back, so
+    every take holds the same sound. It records 5 s, or until Stop.
+  - It then plays Raw, then Call, with a 0.6 s gap.
+  - `AudioTestSession.ModeTakes`, `ModeErrors` and `PlayingMode` (+ event)
+    carry the results.
+  - A mode that fails to open is reported and the others still record.
+  - `StartTakePlayback(takes, …)` plays whole takes.
+  - `RecordedTake` now carries Mode, Effects and Glitches, plus overall and
+    per-channel RMS/peak in dBFS.
+- [x] **UI.** A **RAW RECORDING** side-panel tab (first built as a RECORDINGS
+      section below the channel strip; see "Side-panel tabs" below). It works
+      for active inputs; any other selection shows a hint instead.
+  - The header shows "· the driver supports raw capture" (or says it doesn't)
+    and has a **Record A/B** button, which becomes Stop while a test runs.
+  - There's one fixed line each for Raw, Call and Standard. Each line has:
+    - ▶ to play the whole take;
+    - its level ("−40.2 dB" RMS) and "4 ch · 48 kHz · 3.1 s";
+    - the effects Windows reported ("Echo cancellation, Noise suppression" /
+      "no effects");
+    - a tooltip with per-channel RMS/peak, the full effect list, glitches and
+      what the mode means.
+  - The line that's playing is accent-coloured.
+  - Clicking a line makes the **channel strip** play that take's channels. The
+    highlighted line is the strip's source; after an A/B recording it is Raw.
+    The strip tooltips name the mode ("Ch 2 of the Raw recording").
+  - The row's plain **Test** still records with NAudio. Its take becomes the
+    Standard line, marked "effects not checked".
+  - The lines are a ListBox, so they're keyboard- and UI Automation-selectable.
+  - Each line also shows what its mode means.
+  - Log entries: "A/B recording (Raw, Call, Standard) started" and the
+    outcome.
+- **Limitations.**
+  - "What the other side hears" is approximated by the Call take: the driver's
+    and Windows' communications processing.
+  - The call app's own processing (e.g. Teams noise suppression), the codec and
+    the network come on top of that, and can't be captured here.
+  - On some drivers Standard and Call are the same processing. On the Intel
+    array both report echo cancellation and noise suppression.
+  - Raw *output* (playback) isn't covered.
+- **Verified** (2026-11-11). Only the Intel array was recorded.
+  - Probe (`n4probe`, silent, no playback):
+    - both active mics report raw support;
+    - Raw, Call and Standard opened *at the same time* on the Intel array;
+    - effects: Standard and Call reported echo cancellation and noise
+      suppression, Raw reported none;
+    - format: 48 kHz, 4 ch in all modes.
+    - What the levels show:
+      - the processed takes are one signal copied to all 4 channels, about
+        −66 dB RMS in a quiet room;
+      - Raw is four distinct capsules at about −40 dB;
+      - so noise suppression removes about 25 dB of room noise.
+  - UI (UI Automation):
+    - Record A/B was stopped after ~3 s; Raw playback started and was stopped
+      after ~0.5 s;
+    - the three lines filled in (Raw −40.2 dB "no effects"; Call and Standard
+      −47.5 dB, echo cancellation + noise suppression);
+    - selecting a line switched the channel strip between Standard and Raw;
+    - the plain mic Test replaced the Standard line;
+    - RECORDINGS is hidden for outputs, and the log entries are right.
+  - The layout was checked by screenshot at 1200×800 and at a taller size.
+- **Not verified, needs the owner:**
+  - Listening to the A/B takes.
+  - Recording the Jabra mic. Opening it switches the dongle to call mode, so
+    the automated checks avoided it. It reports raw support.
+- Found along the way: the Jabra Link 390 mic reports form factor 4
+  (Microphone), not 5/6 (Headset). So N1's call-mode hint, which is keyed on
+  5/6, never shows for it.
+
+### Side-panel tabs (2026-11-11, owner request)
+The right-hand column now has four tabs: **PROPERTIES**, **EVENTS**,
+**PROCESSES** (the apps using the selected device, from N1) and **RAW
+RECORDING** (A/B recording, from N4).
+- One panel shows at a time (`MainViewModel.OpenSidePanel`, enum `SidePanel`).
+  Clicking the open tab collapses the column.
+- Each tab has an icon plus a vertical label. The labels hide when the strip
+  is too short for all four (`SideTabsScroll_ScrollChanged`), e.g. at
+  1200×800. Tooltips name every tab.
+- The open tab is highlighted (accent border and text, via a `FlatStripToggle`
+  IsChecked trigger). The chevrons were replaced by the icons.
+- Moving PROCESSES and RAW RECORDING out of the left column gives the level
+  graph and the channel strip their full height back.
+- Verified by UI Automation: exactly one tab is on at a time; each opens its
+  own panel; closing collapses the column; PROCESSES lists Webex, the Cisco
+  service, system sounds and this app with process names and PIDs; RAW
+  RECORDING shows its hint for an output.
+- Checked by screenshot at 1200×800 (icons only) and at a taller size (labels
+  shown).
 
 ### N5. Diagnostic report export
 Goal: one file describing the complete audio setup and its recent history.

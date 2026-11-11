@@ -22,6 +22,9 @@ public sealed class DeviceDetailsService : IDeviceDetailsService, IDisposable
             State = MapState(device.State),
             SharedModeFormat = TryGetSharedModeFormat(device),
             ExclusiveModeFormat = TryGetExclusiveModeFormat(device),
+            RawProcessingSupported = device.DataFlow == DataFlow.Capture
+                ? reader.TryGetBool(device.ID, AudioPropertyKeys.RawProcessingSupported)
+                : null,
         };
     }
 

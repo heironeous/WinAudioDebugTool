@@ -65,13 +65,17 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   notifications), `LevelMeterService` (single MTA polling thread), `AudioTestService` + `AudioTestSession` (phased
   tests with Stop), `TestMusic` (procedural test clip), `ChannelMatchingSampleProvider`, `EventLogExporter`
   (CSV / Markdown / JSON Lines / text), `AudioSessionService` (per-endpoint app sessions — "used by" — polled
-  every 500 ms on its own MTA thread, plus session peaks for the selected device). `DeviceEnumerationService.EndpointNotified` carries each
+  every 500 ms on its own MTA thread, plus session peaks for the selected device), `ModeCapture` (one capture
+  stream in a chosen processing mode — Standard / Call (communications category) / Raw — via our own
+  `Interop/AudioClient2.cs` IAudioClient2 interop, plus the stream's effects from IAudioEffectsManager); the test
+  service's A/B recording runs three of them at once. `DeviceEnumerationService.EndpointNotified` carries each
   IMMNotificationClient callback in detail (for the event log) alongside the coarse `DevicesChanged`.
 - `ViewModels/` — `MainViewModel` (refresh/debounce, filters, selection, tests, side panels, event logging),
   `DeviceRowViewModel`, `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging),
-  `SessionRowViewModel` (USED BY list). `Models/` — plain data + `LevelScale` (dB conversion).
+  `SessionRowViewModel` (PROCESSES tab), `TakeRowViewModel` (RAW RECORDING tab: last take per processing mode). `Models/` — plain data + `LevelScale` (dB conversion).
 - `Views/` — `MainWindow` (toolbar 2 lines; device grid top; details bottom: info + `LevelGraph` + channel bars left,
-  collapsible right-hand side panel showing either the property table or the EVENTS log — two strip toggles),
+  collapsible right-hand side panel showing one of four tabs — PROPERTIES, EVENTS, PROCESSES (apps using the
+  device), RAW RECORDING (A/B takes) — picked from a vertical tab strip whose labels hide when it's too short),
   `LevelGraph`.
 - `tools/PropertyKeyNameGenerator/` — reads `Windows.Win32.winmd` from Microsoft.Windows.SDK.Win32Metadata.
 
@@ -113,6 +117,15 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     rescan. The app's own streams (the selected mic's meter capture, tests) appear as sessions of its own PID —
     exclude them from "in use" or every selected mic looks busy. Capture-session peaks are real but tiny in a quiet
     room (−50…−80 dBFS), so the −60 dB meters can look dead; check the dB tooltip before suspecting a bug.
+15. **Raw / call-mode capture** (`ModeCapture`, `Interop/AudioClient2.cs`): NAudio 2.2.1 can't set
+    `AudioClientProperties`, hence our own IAudioClient2 interop. An `[ComImport]` enumerator created by CLSID
+    returns whatever RCW already exists for that singleton — if *ours* is created first, a later `new
+    MMDeviceEnumerator()` (NAudio) throws InvalidCastException; the app is fine because NAudio's enumerators are
+    created at startup and kept, but a harness must create NAudio's first. The mix format comes back as
+    WAVE_FORMAT_EXTENSIBLE, which NAudio's `ToSampleProvider` rejects — use `ToStandardWaveFormat()`. Several
+    modes can capture from one mic at the same time (verified on the Intel array). On that array the processed
+    paths (Standard and Call: echo cancellation + noise suppression) output one signal copied to all 4 channels,
+    ~25 dB below the raw room noise — Raw is the only way to hear the individual capsules.
 
 ## Verifying changes (techniques that worked)
 
@@ -137,6 +150,8 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 - Unconfirmed observations: Jabra Link 390 mic read 0 / −∞ in every automated check (likely headset muted/boom up —
   never confirmed by the owner); the test music read 1.0 peak on the Realtek output meter (driver enhancements?);
   the Intel array's channels 2 and 4 read below −60 dB while 1 and 3 show room noise.
+- N1's call-mode hint keys on form factor 5/6 (Headset/Handset), but the Jabra Link 390 mic reports 4
+  (Microphone), so the hint never shows for it — consider also matching by container ID with a headset output.
 - Cosmetic: the Role column truncates "Default + Comms" to "Default + Comm" (column width 95).
 - ~185 undocumented endpoint property keys still show as raw `{fmtid},pid` (e.g. `{b3f8fa53-0004-438e-9003-51a46e139bfc},*`);
   add to `PropertyKeyNames.ManualNames` only with a confirmed meaning. Property *values* (e.g. form factor 3) are not
