@@ -23,7 +23,14 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   `main`). The maintainer pushes; agents don't.
 - Builds cleanly (0 warnings) and runs on Windows 11; every feature in `TODO.md` that is checked was exercised on
   real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
-  the maintainer's decision. No CI, no automated tests, no releases.
+  the maintainer's decision. No automated tests, no downloadable releases.
+- CI: `.github/workflows/build-and-tag.yml` builds every push to `main` (windows-latest, .NET 8) and, on success,
+  pushes an annotated tag `vX.Y.Z`. The bump comes from the commit subjects since the last tag
+  (`.github/scripts/next-version.sh`): `type!:` / `BREAKING CHANGE` → major, `feat:` → minor, anything else → patch.
+  Documentation-only pushes (`**.md`, `docs/**` — `paths-ignore`) don't run the workflow and get no tag.
+  So **the commit type matters** — use `feat:` only for user-visible features. Don't create version tags by hand
+  and don't edit `<Version>` in the `.csproj` to release (it is only the first tag's version and the local-build
+  version). `.gitattributes` keeps `*.sh` LF — bash on the Windows runner fails on CRLF.
 - Docs: `README.md` is for users (features, requirements, build, caveats) — update it when a user-visible feature
   changes; `TODO.md` is the checklist + roadmap (N3, N5 specified); `docs/design-notes.md` holds implementation and
   verification notes for N1, N2, N4 and the side-panel tabs.
@@ -165,4 +172,4 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   only with a confirmed meaning.
 - The maintainer asked for explanations, not code, on the headset call-mode ideas (media-vs-call listening test,
   disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
-- Not started: license, automated tests, CI, releases, code signing.
+- Not started: license, automated tests, downloadable releases, code signing.

@@ -1,5 +1,7 @@
 # Windows Audio Device Debugger
 
+[![Build and tag](https://github.com/heironeous/WinAudioDebugTool/actions/workflows/build-and-tag.yml/badge.svg)](https://github.com/heironeous/WinAudioDebugTool/actions/workflows/build-and-tag.yml)
+
 A Windows desktop tool for finding out what's really going on with your audio devices: every input and output
 Windows knows about, which one is the default, who is using it, what format it runs at, what processing Windows
 applies to your microphone — and quick tests to check that a speaker or mic actually works.
@@ -57,7 +59,9 @@ All levels are shown in dBFS (−60…0 dB).
 
 ## Getting it
 
-There are no prebuilt releases yet — build it from source:
+There are no downloadable builds yet — build it from source. Every push to `main` that changes more than
+documentation, and builds successfully, is tagged with a version (`vX.Y.Z`, see
+[Tags](https://github.com/heironeous/WinAudioDebugTool/tags)); check out a tag to build that version.
 
 ```powershell
 git clone https://github.com/heironeous/WinAudioDebugTool.git
@@ -103,7 +107,8 @@ Every checked item in [TODO.md](TODO.md) was tested by hand on a Windows 11 lapt
 Smart Sound Technology 4-channel mic array and a Jabra Link 390 USB headset dongle. Other hardware — surround setups,
 pro audio interfaces, directly paired Bluetooth headsets — hasn't been tried; reports are welcome.
 
-There are no automated tests or CI yet. Most of the code is a thin layer over live Windows Core Audio calls, which
+A GitHub Actions workflow builds every push to `main` on Windows (except documentation-only pushes) and tags it
+with the next version (see "Versioning" below). There are no automated tests yet. Most of the code is a thin layer over live Windows Core Audio calls, which
 can't be meaningfully unit-tested without real devices; the pure-logic parts (event log, exporters, level scale,
 channel layout) are candidates for a test project.
 
@@ -115,6 +120,26 @@ A quick manual check after building:
 4. Meters move for several devices at once; the channel strip plays one speaker at a time.
 5. EVENTS logs your volume changes and device switches; PROCESSES shows a call app or browser that has the mic open.
 6. RAW RECORDING → **Record A/B**: the Raw and Call takes sound different and list different effects.
+
+## Versioning
+
+Versions follow [semantic versioning](https://semver.org/) and are derived from
+[conventional commit](https://www.conventionalcommits.org/) messages by
+`.github/workflows/build-and-tag.yml` (logic in `.github/scripts/next-version.sh`). On each push to `main` the
+workflow builds the app and, if that succeeds, tags the commit with the next version:
+
+| Commits since the last tag include… | Bump | Example |
+|---|---|---|
+| a breaking change (`feat!:`, `fix!:`, … or a `BREAKING CHANGE:` footer) | major | v1.4.2 → v2.0.0 |
+| a `feat:` | minor | v1.4.2 → v1.5.0 |
+| only other types (`fix:`, `perf:`, `docs:`, `chore:`, …) | patch | v1.4.2 → v1.4.3 |
+
+Pushes that only change documentation — Markdown files (`*.md`) and anything under `docs/` — don't run the
+workflow, so they get no tag of their own; their commits are included in the next tag. A push that changes
+documentation *and* anything else is built and tagged as usual.
+
+The first tag uses the `<Version>` in `src/AudioDeviceDebugger/AudioDeviceDebugger.csproj` (0.1.0). The CI build
+stamps the version into the executable (file and product version); local builds keep the `.csproj` version.
 
 ## Reporting problems
 
@@ -133,6 +158,7 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 ## Repository layout
 
 ```
+├── .github/                     CI: build-and-tag workflow and its versioning script
 ├── README.md                    This file
 ├── TODO.md                      Feature checklist and roadmap
 ├── CLAUDE.md                    Notes for AI coding agents (architecture, pitfalls, conventions)

@@ -12,8 +12,10 @@ verification notes for the larger features are in
 - [x] `README.md` (features, build, usage), `TODO.md`, `docs/design-notes.md`,
       `CLAUDE.md` (notes for AI coding agents)
 - [ ] License file
-- [ ] CI build (e.g. GitHub Actions: `dotnet build` on `windows-latest`)
-- [ ] Prebuilt releases on GitHub (self-contained `.exe`)
+- [x] CI: GitHub Actions builds every push to `main` on `windows-latest` and
+      tags it `vX.Y.Z` (version bump from conventional commits; see README
+      "Versioning"); documentation-only pushes are skipped
+- [ ] Prebuilt releases on GitHub (self-contained `.exe` attached to each tag)
 - [ ] Code signing of the published executable
 
 ## Device enumeration

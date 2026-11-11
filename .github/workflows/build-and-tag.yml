@@ -1,0 +1,74 @@
+# Builds every push to main and, if the build succeeds, tags the commit with the next version (vX.Y.Z).
+# The version comes from the conventional-commit subjects since the last tag (see .github/scripts/next-version.sh):
+# feat -> minor, breaking (type!: / BREAKING CHANGE) -> major, anything else -> patch.
+# Pushes that only change documentation (Markdown files, docs/) don't run at all, so they get no tag; their commits
+# are covered by the next tag. A push that changes docs *and* anything else runs as usual.
+name: Build and tag
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write # push the tag
+
+# One run at a time, so two quick pushes can't both claim the same version.
+concurrency:
+  group: build-and-tag
+  cancel-in-progress: false
+
+jobs:
+  build-and-tag:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out (full history and tags, for versioning)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out the next version
+        id: version
+        run: bash .github/scripts/next-version.sh
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build the app
+        run: >
+          dotnet build src/AudioDeviceDebugger/AudioDeviceDebugger.csproj -c Release
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:FileVersion=${{ steps.version.outputs.version }}.0
+          -p:AssemblyVersion=${{ steps.version.outputs.version }}.0
+
+      - name: Build the property-key name generator
+        run: dotnet build tools/PropertyKeyNameGenerator/PropertyKeyNameGenerator.csproj -c Release
+
+      - name: Tag the commit
+        if: steps.version.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG" "$GITHUB_SHA"
+          git push origin "$TAG"
+
+      - name: Summary
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          SKIP: ${{ steps.version.outputs.skip }}
+        run: |
+          if [ "$SKIP" = "true" ]; then
+            echo "Built $GITHUB_SHA; it was already tagged $TAG." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Built $GITHUB_SHA and tagged it **$TAG**." >> "$GITHUB_STEP_SUMMARY"
+          fi
