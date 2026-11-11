@@ -1,16 +1,20 @@
 # TODO — Windows Audio Device Debugger
 
-Feature checklist. Boxes are checked once the corresponding code is written and
-committed. Because development happens inside a Linux container, "checked"
-means **implemented and committed**, not "verified on real hardware" — see
-`README.md` for the manual Windows test pass this still needs.
+Feature checklist and roadmap. A checked item is implemented and was tested by
+hand on Windows 11 on the development machine (see "Testing" in
+[README.md](README.md)); there are no automated tests yet. Implementation and
+verification notes for the larger features are in
+[docs/design-notes.md](docs/design-notes.md).
 
-## Project scaffolding
-- [x] Git repository initialized (`Aral Kaymaz` / `aralcan@hotmail.com`)
+## Project setup
+- [x] Solution + WPF project (`.sln`, `.csproj`), .NET 8, NAudio 2.2.1
 - [x] `.gitignore` for .NET build artifacts
-- [x] Solution + WPF project scaffolding (`.sln`, `.csproj`)
-- [x] NAudio dependency wired up for Core Audio access
-- [x] `README.md` describing layout, build, run, and test instructions
+- [x] `README.md` (features, build, usage), `TODO.md`, `docs/design-notes.md`,
+      `CLAUDE.md` (notes for AI coding agents)
+- [ ] License file
+- [ ] CI build (e.g. GitHub Actions: `dotnet build` on `windows-latest`)
+- [ ] Prebuilt releases on GitHub (self-contained `.exe`)
+- [ ] Code signing of the published executable
 
 ## Device enumeration
 - [x] Enumerate all active output (render) devices
@@ -27,7 +31,7 @@ means **implemented and committed**, not "verified on real hardware" — see
       subtle hover/selection, dimmed inactive rows, thin meter/slider, flat
       mute and Test buttons; no images or shadows
 - [x] Same flat theme for the toolbar buttons, Show: checkboxes, the
-      PROPERTIES strip toggle, the level graph panel and the per-channel bars
+      side-panel tab strip, the level graph panel and the per-channel bars
 
 ## Default device roles
 - [x] Show current default device for Render / Multimedia role
@@ -46,15 +50,18 @@ means **implemented and committed**, not "verified on real hardware" — see
 - [x] Shared-mode mix format vs. exclusive-mode supported formats
 - [x] Raw property store dump (all discoverable `PROPERTYKEY` values, via `device.Properties`)
 - [x] Details panel rendering in the UI (name, ID, formats, property grid)
-- [x] Layout: device list on top, details below (resizable); property table
-      collapses to a strip at the right edge (collapsed by default) and the
-      property store is only read while the table is open
+- [x] Layout: device list on top, details below (resizable); the property
+      table is the PROPERTIES side-panel tab (collapsed by default) and the
+      property store is only read while it is open
 - [x] Human-readable property names: compiled-in table of all ~1,550 documented
       PKEY_/DEVPKEY_ keys generated from Win32 metadata
       (`tools/PropertyKeyNameGenerator` → `Interop/PropertyKeyNames.g.cs`) plus a
       manual table for confirmed undocumented keys; unknown keys keep their UID
-- [ ] Name more undocumented endpoint keys (~185 distinct on the dev machine,
-      e.g. `{b3f8fa53-0004-438e-9003-51a46e139bfc},*`) once their meaning is confirmed
+- [ ] Name more undocumented endpoint keys (~185 distinct on the development
+      machine, e.g. `{b3f8fa53-0004-438e-9003-51a46e139bfc},*`) once their meaning
+      is confirmed
+- [ ] Decode property *values* to names (e.g. form factor 4 → "Microphone")
+- [x] Raw-capture support (`RawProcessingSupported`) shown for inputs
 
 ## Testing devices
 - [x] "Test" button per device row — plays a short generated music clip (TestMusic: drums, bass, chords, melody, bells; full-band, panned) for outputs, records 5s
@@ -90,7 +97,7 @@ means **implemented and committed**, not "verified on real hardware" — see
       through all of them; buttons disabled until a recording exists
 - [x] Raw capture (IAudioClient2 stream options) to bypass mic-array processing
       and expose the individual capsules: Record A/B, then pick the Raw line
-      for the strip (see N4)
+      for the strip (see "Raw recording" below)
 
 ## Live level metering
 - [x] Real-time peak-level meter per device using `IAudioMeterInformation`
@@ -120,207 +127,57 @@ means **implemented and committed**, not "verified on real hardware" — see
       `app.manifest` (DPI awareness, OS compatibility, no elevation) wired
       up via `ApplicationIcon`/`ApplicationManifest` in the `.csproj`
 
-## Next steps — planned, awaiting approval
+## Apps using a device (N1)
+- [x] Per-endpoint audio sessions, polled every 500 ms (`AudioSessionService`)
+- [x] Device row subtitle "· In use by Webex" (+N) while another app streams;
+      tooltip lists every app session with PIDs
+- [x] Call-mode hint on headset mic rows that are in use (form factor 5/6)
+- [x] PROCESSES side-panel tab: app, process · PID, Streaming/Idle, app
+      volume (volume mixer) and a live level per session
+- [ ] Call-mode hint for headsets whose mic reports form factor 4
+      ("Microphone"), e.g. the Jabra Link 390 — match the mic to a headset
+      output by container ID
 
-Five features chosen from the suggestions list (2026-11-10). **Each needs the
-owner's go-ahead before implementation** — N2, N1 and N4 are done; N3 and N5
-are not started. Suggested
-order: N1 → N2 → N3 → N4 → N5. N1 feeds N2 and N5, and N3 feeds N5. The report
-(N5) comes last because it collects everything else. Each feature is its own
-commit, with this file updated in that commit. Every item ends with
-"Decisions needed": questions to settle at approval time.
+## Event timeline (N2)
+- [x] EVENTS side-panel tab: devices added/removed/state changes, default
+      changes, volume/mute (Windows vs this app), tests, apps starting and
+      stopping streams, optional property changes
+- [x] Bursts merged (default-change callbacks, slider drags), "was X" for
+      previous defaults, names kept for removed devices
+- [x] Filters by category and "selected device only"; Copy; Export… as CSV,
+      Markdown or JSON Lines
+- [ ] Persist the log to disk (proposal: JSON Lines in
+      `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log`, kept 14 days)
+- [ ] Tray mode, so events are recorded all day without the window open
 
-### N1. "Who's using this device" — implemented (2026-11-10)
-Goal: show which apps have a stream open on each device, especially the
-headset mic. An app opening the mic is what switches a USB dongle (Jabra Link
-390, Poly BT700) into call mode, so this answers "why does my headset suddenly
-sound bad?" and "who is holding my mic?".
+## Raw recording (N4)
+- [x] Own IAudioClient2 interop (NAudio can't set stream categories or the
+      RAW option) — `Interop/AudioClient2.cs`, `Services/ModeCapture.cs`
+- [x] RAW RECORDING side-panel tab: **Record A/B** captures the selected mic
+      as Raw, Call (communications category, what Teams/Webex receive) and
+      Standard *at the same time*, then plays Raw and Call back to back
+- [x] Per take: level, format, duration, per-channel RMS/peak, and the effects
+      Windows reports for the stream (echo cancellation, noise suppression, …;
+      Windows 11)
+- [x] Play any take whole, or pick it for the channel strip to hear single
+      channels / mic-array capsules
+- [ ] Raw *playback* (render) path — not covered
 
-Decisions used (the owner didn't specify, so the proposed defaults apply):
-**read-only** (no control over other apps' volume), and sessions are shown for
-**inputs and outputs**.
+## Side panel
+- [x] Four tabs at the right edge — PROPERTIES, EVENTS, PROCESSES, RAW
+      RECORDING; one open at a time, clicking the open tab collapses it
+- [x] Tab labels hide (icons only) when the strip is too short for all four
+- [ ] Cosmetic: the Role column truncates "Default + Comms" to
+      "Default + Comm" (column width 95)
 
-- [x] **Service** `Services/AudioSessionService.cs` (+ `IAudioSessionService`),
-      model `Models/AudioSessionInfo.cs`.
-  - One MTA thread; all COM objects live on it (lesson 3).
-  - It keeps one NAudio `AudioSessionManager` per active endpoint, and
-    re-lists every endpoint's sessions **every 500 ms** with
-    `RefreshSessions`. `OnSessionCreated` triggers an immediate rescan. The
-    callback only sets a flag, because re-enumerating inside it would
-    re-register the notification from within itself.
-  - `SessionsUpdated` is raised only when something changed (apps, states,
-    volumes).
-  - For the selected device, the session controls are kept between scans
-    and their peaks are read 10× a second (`PeaksUpdated`).
-  - Nothing is reported before the first `SetDevices`, so sessions already
-    streaming at startup aren't logged as new.
-  - Deviation from the plan: it polls instead of using per-session
-    `IAudioSessionEvents`. A full scan of 4 endpoints costs ~0.5 ms, polling
-    can't miss a lost notification, and the cost is ~0.5 s latency. A
-    stream shorter than that can be missed.
-  - Process names are resolved once per PID and cached:
-    - `Process.GetProcessById` gives the name;
-    - `QueryFullProcessImageName` with `PROCESS_QUERY_LIMITED_INFORMATION`
-      gives the path (it works for elevated processes);
-    - the app name is the executable's FileDescription (e.g. "Webex"), or
-      else the session's display name or the process name;
-    - PID 0 / `IsSystemSoundsSession` is shown as "System sounds";
-    - a process that has exited is marked.
-  - Sessions with `ProcessId == Environment.ProcessId` are flagged
-    `IsThisApp`: the selected mic's meter stream and test streams.
-- [x] **Device list.** The row subtitle gets " · In use by Webex" (+N),
-      accent-coloured, while another app is *streaming* (Active). This app
-      and the system-sounds session don't count.
-  - The subtitle tooltip lists every app session, streaming first, with
-    PIDs.
-  - Headset or handset *input* rows that are in use add the call-mode hint.
-    These are recognised by `PKEY_AudioEndpoint_FormFactor` 5/6, now read
-    into `DeviceInfo.FormFactor` via `EndpointPropertyReader.TryGetUInt32`.
-- [x] **Details panel.** Originally a "USED BY" section under the channel strip.
-      Since 2026-11-11 it is the **PROCESSES** side-panel tab (see "Side-panel
-      tabs" below). It covers active devices only, and adds a PROCESS · PID
-      column.
-  - The header gives a summary ("2 app sessions, 0 streaming").
-  - Each row shows the app, "Streaming"/"Idle", the app's volume in
-    Windows' volume mixer, and a live peak meter. Idle rows are dimmed.
-  - Order: other apps' streaming sessions, then idle ones, then system
-    sounds, then this app.
-  - The row tooltip has the process name, PID, path, what Streaming/Idle
-    means, and a note for browsers (one audio process, not per tab).
-  - Rows are updated in place by session key.
-- [x] **Events for N2.** "App" entries ("Webex started streaming (PID …)",
-      "… stopped streaming", "(session closed)" / "(device no longer
-      active)"), with an "Apps" filter.
-  - Streams already running when the log starts are logged once as "was
-    already streaming when the log started".
-  - This app's own streams and system sounds aren't logged; every
-    notification sound would otherwise make a pair of lines.
-- **Limitations.**
-  - Only streams that go through the Windows audio engine show up;
-    exclusive-mode streams may not.
-  - Sessions show what is open on the *Windows endpoint*; a dongle's
-    Bluetooth link state is still invisible.
-  - Peak meters start at −60 dBFS, so in a quiet room a streaming capture
-    session can read empty: measured −50…−80 dBFS.
-- **Verified** (2026-11-10). Silent; only the Intel mic array was used.
-  - Probe of the real machine: Webex (`CiscoCollabHost` "Webex", `atmgr`
-    "Cisco Webex Service") holds idle sessions on all 4 active endpoints,
-    and there's a system-sounds session on each.
-  - A separate process held a silent capture stream on the Intel array for
-    5 s. Results:
-    - the row showed "In use by n1probe", with the tooltip listing it as
-      streaming, and cleared after the process stopped;
-    - USED BY listed it first ("3 app sessions, 1 streaming");
-    - the log got "started streaming" and "stopped streaming (session
-      closed)" lines ~5 s apart;
-    - the app's own meter stream showed as "This app … Streaming" and wasn't
-      counted;
-    - its peak tooltip read −43…−58 dBFS (room noise), so live peaks reach
-      the UI.
-- **Not verified, needs the owner:**
-  - Join a call on the Jabra headset, and check the hint and the "In use by
-    Webex/Teams" marker on its mic row.
-  - The visual layout: the screenshot came back white (display asleep).
+## Roadmap
 
-### N2. Event timeline — implemented (2026-11-10)
-Goal: a timestamped log of everything that happens to the audio devices, so
-an intermittent problem ("my mic died in the meeting at 14:03") can be
-reconstructed afterwards.
+Planned features, specified in enough detail to implement. If you'd like to
+work on one, please open an issue first to discuss it. Each feature should land
+as its own commit, with this file (and the README, if user-visible) updated in
+the same commit.
 
-- [x] **Model and log.**
-  - Model: `Models/AudioEvent.cs`, an immutable record with Timestamp,
-    LastTimestamp, Kind, Category, Source = Windows | ThisApp, device ID,
-    name and direction, Detail, Count, FromValue and Low/High.
-  - Log: `ViewModels/EventLogViewModel.cs`, an in-memory ring buffer of 5,000
-    entries, newest first, used on the UI thread only. It has per-category
-    filters, "selected device only", and `AddOrMerge` for coalescing bursts.
-    - Deviation from the plan: it's a view model rather than
-      `Services/EventLogService.cs`, because it owns the filtered
-      `ICollectionView` the panel binds to.
-  - Kinds: Started, DeviceAdded, DeviceRemoved, StateChanged (old → new),
-    DefaultChanged, DefaultRequested, VolumeChanged, MuteChanged,
-    TestStarted, TestFinished, PropertyChanged, Error.
-- [x] **Event sources.**
-  - `DeviceEnumerationService`:
-    - new `EndpointNotified` event carrying each IMMNotificationClient
-      callback's data (`EndpointNotification`), timestamped in the callback,
-      before the refresh debounce;
-    - `OnPropertyValueChanged` is now forwarded, but only to the log; it
-      still doesn't trigger a refresh;
-    - new `TryGetFriendlyName` for endpoints not seen before.
-  - Volume and mute:
-    - external changes come from `EndpointVolumeService.VolumeChanged`
-      (Source = Windows);
-    - the app's own slider and mute edits are logged in `MainViewModel`
-      (Source = ThisApp);
-    - both are compared with the last known value per device.
-  - The app's own actions in `MainViewModel`: Set Default/Comms/Both, test
-    start and outcome (a failure is logged as Error), and load errors. On
-    start the log records an entry with the endpoint count and the four
-    current defaults.
-- [x] **Names for removed devices.** `_knownDevices` (ID → last `DeviceInfo`)
-      is filled on every refresh and never pruned. It also supplies the *old*
-      state for a state change, and the previous default holder ("was X").
-      Endpoints not seen yet are read directly. Their direction comes from the
-      ID prefix: `{0.0.0.` is output, `{0.0.1.` is input.
-- [x] **Grouping and coalescing.**
-  - Default changes: callbacks for the same device and direction within
-    500 ms merge into one line, e.g. "Became the default output for Console +
-    Multimedia (was X)". Communications is kept as a separate line, because
-    its previous holder usually differs.
-  - Volume: changes on the same device from the same source with less than
-    1 s between them merge, e.g. "Volume 40 % → 65 %". If the value went
-    beyond its start and end during the burst, the range is shown, e.g.
-    "100 % → 100 % (dipped to 90 %)".
-  - Property changes: repeats of the same key within 1 s merge.
-  - Each line records how many notifications it merged (Count; shown in the
-    tooltip and exports).
-    - Deviation from the plan: individual raw callbacks are not kept.
-- [x] **UI.** An "EVENTS" strip toggle under PROPERTIES at the right edge.
-      Both share the right-hand column, and opening one closes the other
-      (`ApplySidePanelLayout`).
-  - The panel has a header with its count, and buttons for Copy (plain text
-    of the shown events), Export… (CSV / Markdown / JSON Lines; the format
-    follows the chosen file extension, `Services/EventLogExporter.cs`) and
-    Clear.
-  - Filters: Devices, Defaults, Volume, Tests, Properties, and "Selected
-    device only". Entries without a device (start, errors) stay visible under
-    "Selected device only".
-  - Properties is off by default. While it's off, property changes aren't
-    *recorded* at all; the check happens on the notification thread.
-  - The table follows the flat dark theme (`LogHeader`/`LogCell`/`LogRow` in
-    `Theme.xaml`); Error is shown red, Default accent-coloured, and each row's
-    tooltip has the full detail.
-  - Deviation from the plan: no Pause button. Newest entries go on top, so
-    there's no auto-scroll to pause.
-- [x] **Session events** ("Webex started streaming …"), added with N1 ("Apps" filter).
-- [ ] **Optional persistence.** Not built; events are in memory only until
-      the owner decides. The proposal is to append JSON Lines to
-      `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log` and keep 14
-      days.
-- **Limitation.** The app must be running to record anything. A tray mode
-  (suggestion #15) would make it useful all day.
-- **Verified** (2026-11-10). Silent; only the Intel mic array was touched,
-  and it was restored.
-  - Offline harness (`EventLogViewModel` and exporter), 15/15 checks:
-    burst merging, merging past an interleaved event, filters, capacity,
-    CSV/Markdown escaping, JSON Lines parsing.
-  - In the app, via UI Automation:
-    - start entry with the four defaults;
-    - in-app mute and unmute → two "this app" lines;
-    - in-app slider drag → one merged line;
-    - level changes from a separate process → "Windows" lines, two bursts
-      1.5 s apart giving two lines, with "dipped to" ranges.
-  - No property-change notifications arrived in 6 s idle, nor during volume
-    changes.
-  - Screenshot checked: panel layout and both strips.
-- **Not verified, needs the owner:**
-  - plugging or unplugging a device (state, added and removed lines);
-  - default changes from Windows Settings, and Set Default in the app;
-  - test start and finish lines (the tests are audible);
-  - the Export… dialog itself (the writer is covered by the harness).
-
-### N3. Call-mode detection from the recording (bandwidth analysis)
+### N3. Call-mode detection from a recording (bandwidth analysis)
 Goal: after a mic test, report the *audio bandwidth* actually reaching
 Windows, which shows the Bluetooth codec in use even through a USB dongle,
 where Windows sees no format change.
@@ -364,10 +221,10 @@ where Windows sees no format change.
     super-wideband; else full band. Treat a cutoff within 10 % of Nyquist as
     "limited by device format".
   - The thresholds above are starting values, to be tuned on real recordings
-    from the owner's Jabra, the Intel array and any other mic.
+    from real headsets, laptop mic arrays and USB mics.
 - [ ] **Hook-up.** Run the analysis in `RunTestAsync` when an input test
       completes, using the kept `RecordedTake`. Run it on a pool thread (it's
-      pure math), and store the result per device next to `_lastTakes`.
+      pure math), and store the result per device next to the kept takes (`_takes`).
 - [ ] **UI.**
   - Details panel line, e.g. "Bandwidth: ≈ 7.9 kHz (sharp cutoff) — wideband
     call quality (e.g. HFP mSBC). Format 16 kHz." The status bar gets a short
@@ -382,138 +239,12 @@ where Windows sees no format change.
   - Unit tests and an offline harness: white noise and speech-like noise,
     low-passed at 3.4, 7, 14 and 20 kHz, classified correctly. Plus a
     silence case and a too-short-signal case.
-  - On hardware (needs the owner to speak during a mic test): the Intel
+  - On hardware (someone has to speak during a mic test): the Intel
     array should read full band, and the Jabra headset mic presumably
-    wideband. Record the measured values in CLAUDE.md.
-- **Decisions needed:**
+    wideband. Record the measured values in docs/design-notes.md.
+- **Open questions:**
   - Is the spectrum plot wanted, or only the one-line verdict?
   - Should "Record only" be added?
-
-### N4. Raw mic capture vs. what the other side hears — implemented (2026-11-11)
-Goal: record a mic with the driver's and Windows' processing switched off, and
-compare it with the processed signal that call apps receive. Two expected uses:
-finding out why the Intel array's channels 2 and 4 read below −60 dB, and why
-its level seemed low.
-
-Scope at approval: the owner asked to compare "what is recorded RAW and what
-the other side hears". So the main feature is an **A/B recording** that captures
-the same sound in several modes at once. A "Raw" checkbox for the plain mic test
-was not built.
-
-- [x] **Interop** `Interop/AudioClient2.cs`.
-  - `IAudioClient2` (full vtable), `IAudioCaptureClient`,
-    `IAudioEffectsManager` (Windows 11), and the `AudioClientProperties` and
-    `AUDIO_EFFECT` structs. IIDs, method order and enum values were checked
-    against `Windows.Win32.winmd`.
-  - `AudioClient2Activator` gets the IMMDevice through an enumerator created
-    by CLSID (lesson 2).
-  - Effect names come from the `AUDIO_EFFECT_TYPE_*` GUIDs in `ksmedia.h`;
-    they aren't in the winmd. Unknown GUIDs are shown as-is.
-  - `AudioPropertyKeys.RawProcessingSupported` holds the property key
-    `{8943b373-…},2`. It is VT_BOOL, read with the new
-    `EndpointPropertyReader.TryGetBool`.
-- [x] **Capture** `Services/ModeCapture.cs`. One shared-mode stream per mode:
-  - **Standard**: no client properties set; this is what NAudio's
-    WasapiCapture gets.
-  - **Call**: category `Communications`, which is what Teams and Webex request.
-  - **Raw**: `AUDCLNT_STREAMOPTIONS_RAW`.
-  - The properties are set with `SetClientProperties` before `Initialize`;
-    then `GetMixFormat`, then shared-mode `Initialize` with a 200 ms buffer.
-  - Capture is polled, not event-driven: `Drain` every 10 ms.
-  - Silent packets are written as zeros. Discontinuities are counted as
-    glitches.
-  - The effects the engine reports for each stream are read through
-    `IAudioEffectsManager`.
-  - `SampleFormat` turns WAVE_FORMAT_EXTENSIBLE into the equivalent plain
-    format, because NAudio's converters reject extensible headers.
-- [x] **Test service.** `StartModeComparison(input, output)`:
-  - It opens Raw, Call and Standard together and starts them back to back, so
-    every take holds the same sound. It records 5 s, or until Stop.
-  - It then plays Raw, then Call, with a 0.6 s gap.
-  - `AudioTestSession.ModeTakes`, `ModeErrors` and `PlayingMode` (+ event)
-    carry the results.
-  - A mode that fails to open is reported and the others still record.
-  - `StartTakePlayback(takes, …)` plays whole takes.
-  - `RecordedTake` now carries Mode, Effects and Glitches, plus overall and
-    per-channel RMS/peak in dBFS.
-- [x] **UI.** A **RAW RECORDING** side-panel tab (first built as a RECORDINGS
-      section below the channel strip; see "Side-panel tabs" below). It works
-      for active inputs; any other selection shows a hint instead.
-  - The header shows "· the driver supports raw capture" (or says it doesn't)
-    and has a **Record A/B** button, which becomes Stop while a test runs.
-  - There's one fixed line each for Raw, Call and Standard. Each line has:
-    - ▶ to play the whole take;
-    - its level ("−40.2 dB" RMS) and "4 ch · 48 kHz · 3.1 s";
-    - the effects Windows reported ("Echo cancellation, Noise suppression" /
-      "no effects");
-    - a tooltip with per-channel RMS/peak, the full effect list, glitches and
-      what the mode means.
-  - The line that's playing is accent-coloured.
-  - Clicking a line makes the **channel strip** play that take's channels. The
-    highlighted line is the strip's source; after an A/B recording it is Raw.
-    The strip tooltips name the mode ("Ch 2 of the Raw recording").
-  - The row's plain **Test** still records with NAudio. Its take becomes the
-    Standard line, marked "effects not checked".
-  - The lines are a ListBox, so they're keyboard- and UI Automation-selectable.
-  - Each line also shows what its mode means.
-  - Log entries: "A/B recording (Raw, Call, Standard) started" and the
-    outcome.
-- **Limitations.**
-  - "What the other side hears" is approximated by the Call take: the driver's
-    and Windows' communications processing.
-  - The call app's own processing (e.g. Teams noise suppression), the codec and
-    the network come on top of that, and can't be captured here.
-  - On some drivers Standard and Call are the same processing. On the Intel
-    array both report echo cancellation and noise suppression.
-  - Raw *output* (playback) isn't covered.
-- **Verified** (2026-11-11). Only the Intel array was recorded.
-  - Probe (`n4probe`, silent, no playback):
-    - both active mics report raw support;
-    - Raw, Call and Standard opened *at the same time* on the Intel array;
-    - effects: Standard and Call reported echo cancellation and noise
-      suppression, Raw reported none;
-    - format: 48 kHz, 4 ch in all modes.
-    - What the levels show:
-      - the processed takes are one signal copied to all 4 channels, about
-        −66 dB RMS in a quiet room;
-      - Raw is four distinct capsules at about −40 dB;
-      - so noise suppression removes about 25 dB of room noise.
-  - UI (UI Automation):
-    - Record A/B was stopped after ~3 s; Raw playback started and was stopped
-      after ~0.5 s;
-    - the three lines filled in (Raw −40.2 dB "no effects"; Call and Standard
-      −47.5 dB, echo cancellation + noise suppression);
-    - selecting a line switched the channel strip between Standard and Raw;
-    - the plain mic Test replaced the Standard line;
-    - RECORDINGS is hidden for outputs, and the log entries are right.
-  - The layout was checked by screenshot at 1200×800 and at a taller size.
-- **Not verified, needs the owner:**
-  - Listening to the A/B takes.
-  - Recording the Jabra mic. Opening it switches the dongle to call mode, so
-    the automated checks avoided it. It reports raw support.
-- Found along the way: the Jabra Link 390 mic reports form factor 4
-  (Microphone), not 5/6 (Headset). So N1's call-mode hint, which is keyed on
-  5/6, never shows for it.
-
-### Side-panel tabs (2026-11-11, owner request)
-The right-hand column now has four tabs: **PROPERTIES**, **EVENTS**,
-**PROCESSES** (the apps using the selected device, from N1) and **RAW
-RECORDING** (A/B recording, from N4).
-- One panel shows at a time (`MainViewModel.OpenSidePanel`, enum `SidePanel`).
-  Clicking the open tab collapses the column.
-- Each tab has an icon plus a vertical label. The labels hide when the strip
-  is too short for all four (`SideTabsScroll_ScrollChanged`), e.g. at
-  1200×800. Tooltips name every tab.
-- The open tab is highlighted (accent border and text, via a `FlatStripToggle`
-  IsChecked trigger). The chevrons were replaced by the icons.
-- Moving PROCESSES and RAW RECORDING out of the left column gives the level
-  graph and the channel strip their full height back.
-- Verified by UI Automation: exactly one tab is on at a time; each opens its
-  own panel; closing collapses the column; PROCESSES lists Webex, the Cisco
-  service, system sounds and this app with process names and PIDs; RAW
-  RECORDING shows its hint for an output.
-- Checked by screenshot at 1200×800 (icons only) and at a taller size (labels
-  shown).
 
 ### N5. Diagnostic report export
 Goal: one file describing the complete audio setup and its recent history.
@@ -570,15 +301,21 @@ Useful for IT support or a vendor ticket, or to compare a "working" with a
   - Time the run with and without properties.
   - Check the UI never freezes, for example with a UI Automation ping during
     generation.
-- **Decisions needed:**
+- **Open questions:**
   - Default format (Markdown or JSON)?
   - Should "Include all properties" be on by default?
   - Should redaction be on by default?
-  - Include driver details (suggestion #17: driver version/date, USB VID/PID)
+  - Include driver details (driver version/date, USB VID/PID)
     now, or later?
 
-## Not yet done / follow-ups
-- [ ] Manual verification pass on a real Windows machine (blocked: this
-      environment is Linux-only, see README "Testing" section)
-- [ ] Automated UI tests (no Windows test runner available in this container)
-- [ ] Code signing of the published executable
+### Other ideas
+- [ ] Automated tests for the pure-logic parts that don't need audio hardware:
+      event log merging and filters, exporters, `LevelScale`, `ChannelLayout`
+      (an offline harness covered the event log during development)
+- [ ] A/B listening test for headsets in media vs call mode (pair speaker and
+      mic by `DEVPKEY_Device_ContainerId`)
+- [ ] Disable a headset's mic endpoint so apps can't switch it into call mode
+      (`IPolicyConfig::SetEndpointVisibility`; check whether it needs
+      elevation)
+- [ ] Toggle for Windows' "communications activity" ducking
+- [ ] Close the selected mic's meter stream while the window is minimised

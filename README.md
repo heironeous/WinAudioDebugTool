@@ -1,155 +1,170 @@
 # Windows Audio Device Debugger
 
-A Windows desktop tool for inspecting and debugging audio input/output
-devices: enumerate every endpoint, inspect its properties, switch the
-system-wide default (regular and "communications") device, play test music,
-record/play back from microphones, and watch live level meters for every
-device at once.
+A Windows desktop tool for finding out what's really going on with your audio devices: every input and output
+Windows knows about, which one is the default, who is using it, what format it runs at, what processing Windows
+applies to your microphone — and quick tests to check that a speaker or mic actually works.
 
-## Why this exists
+Built for the "why isn't my mic/speaker working", "which of these five USB headsets is actually active" and "why
+does my headset sound terrible in calls" situations, where Windows' own Sound settings only give you a name and a
+default toggle.
 
-Windows' own Sound control panel only gives you a name and a single default
-toggle. This tool is meant for the "why isn't my mic/speaker working" / "which
-of these five USB audio devices is actually active" situations — it surfaces
-the full Core Audio picture (endpoint IDs, formats, roles, property store)
-and lets you drive the device straight from the UI.
+![Audio Device Debugger: the device list with roles, live levels and volume, and the details of a laptop mic array — level graph, per-channel meters and the PROCESSES tab showing which apps have it open](docs/images/screenshot.png)
 
-## Tech stack
+*The device list (roles, live levels, volume and mute, Test buttons) and, below it, the selected laptop mic array:
+its formats, rolling dB level graph, per-channel meters, and the PROCESSES tab listing the apps that have it open.*
 
-- **C# / .NET 8, WPF** — chosen because it's the most direct way to get a
-  native Windows UI with deep Core Audio integration (COM interop for
-  `IMMDeviceEnumerator`, `IPolicyConfig`, `IAudioMeterInformation`, etc.)
-  without going through a cross-platform abstraction that would hide the
-  Windows-specific behavior this tool exists to expose.
-- **NAudio** — wraps WASAPI (`MMDeviceEnumerator`, `WasapiOut`,
-  `WasapiCapture`) so we don't hand-roll every COM interface, while still
-  allowing raw interop where NAudio doesn't expose something (notably
-  `IPolicyConfig`, which is how Windows itself changes the default device —
-  it's undocumented but has been stable across Windows versions).
+## Features
+
+**Device list**
+- Every audio endpoint, including disabled, not-present and unplugged ones (filter them with the **Show:**
+  checkboxes), with its role badge (Default · Comms), a live level meter, volume slider and mute button.
+- Updates by itself when devices are plugged in or removed, or when another app changes a volume.
+- "· In use by *App*" when another application is streaming to or from the device.
+
+**Defaults** — make the selected device the default, the default *communications* device, or both.
+
+**Tests**
+- **Outputs:** play a short generated music clip (drums, bass, chords, melody), or play it on one speaker channel at
+  a time (front left, centre, LFE, …) to check wiring and channel order.
+- **Inputs:** record 5 seconds and play it back; then listen to each microphone channel on its own.
+
+**Details** for the selected device: shared- and exclusive-mode formats, a rolling dB level graph, per-channel meters,
+and whether the driver supports raw (unprocessed) capture.
+
+**Side panel tabs** (right edge of the details area; one open at a time)
+- **PROPERTIES** — the endpoint's full property store, with readable names for ~1,550 documented keys.
+- **EVENTS** — a timeline of device changes, default switches, volume/mute changes (by Windows or by this app), apps
+  starting and stopping streams, and tests. Filter it, copy it, or export it as CSV, Markdown or JSON Lines — handy
+  for "my mic died in the meeting at 14:03".
+- **PROCESSES** — which applications have the selected device open (app, process and PID, streaming or idle, the app's
+  own volume, live level). Opening a Bluetooth/USB headset's mic is what switches it into low-quality "call mode", so
+  this shows who is doing it.
+- **RAW RECORDING** — **Record A/B** records the selected mic three ways *at the same time*: **Raw** (no
+  processing), **Call** (what call apps such as Teams or Webex receive — i.e. what the other side hears, before the
+  app's own processing) and **Standard** (what most apps get), then plays Raw and Call back to back. Each take shows
+  its level, format, per-channel levels and the effects Windows applied (echo cancellation, noise suppression, …), and
+  you can listen to each channel of each take — for example the individual capsules of a laptop mic array.
+
+All levels are shown in dBFS (−60…0 dB).
+
+## Requirements
+
+- Windows 10 or 11, x64. Developed and tested on Windows 11.
+- No admin rights needed.
+- The effects list in RAW RECORDING needs Windows 11 (`IAudioEffectsManager`); raw capture needs a driver that
+  supports it (the app tells you).
+- To build: the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+
+## Getting it
+
+There are no prebuilt releases yet — build it from source:
+
+```powershell
+git clone https://github.com/heironeous/WinAudioDebugTool.git
+cd WinAudioDebugTool\src\AudioDeviceDebugger
+dotnet build -c Release
+.\bin\Release\net8.0-windows\win-x64\AudioDeviceDebugger.exe
+```
+
+Or run it directly with `dotnet run` from `src\AudioDeviceDebugger`.
+
+To produce a single self-contained `.exe` that runs on machines without .NET installed:
+
+```powershell
+cd src\AudioDeviceDebugger
+dotnet publish -p:PublishProfile=win-x64-selfcontained
+# → bin\Release\net8.0-windows\win-x64\publish\AudioDeviceDebugger.exe
+```
+
+(The same profile can be picked in Visual Studio's Publish dialog.)
+
+## Good to know
+
+- **Selecting a microphone opens it.** Windows only reports an input's level while something records from it, so
+  the app keeps a silent capture stream open on the *selected* input (and only that one). On many Bluetooth/USB
+  headsets, opening the mic switches the headset into call mode, which lowers playback quality while the mic is
+  selected. Select an output device to release it.
+- **Tests make sound.** Output tests and mic playback play through your speakers/headset at the current volume.
+- **Your audio stays on your machine.** Recordings and the event log are kept in memory only and are gone when you
+  close the app, unless you export the log yourself. Nothing is sent anywhere.
+- **Set Default uses an undocumented Windows interface** (`IPolicyConfig`) — the same one Windows' own Sound settings
+  use. It has been stable for many Windows versions, but Microsoft doesn't guarantee it.
+- **Call ≠ exactly what the other side hears.** The Call take is what Windows and the driver deliver to call apps;
+  Teams, Webex & co. add their own processing, a codec and the network on top. On many drivers Standard and Call use
+  the same processing.
+- **PROCESSES only sees shared-mode streams** going through the Windows audio engine; exclusive-mode streams may not
+  show up. Very short streams (under ~0.5 s) can be missed.
+- In a quiet room a microphone can read below the −60 dB meter floor and look dead — hover the meter for the exact
+  dBFS value.
+
+## Testing status
+
+Every checked item in [TODO.md](TODO.md) was tested by hand on a Windows 11 laptop with Realtek speakers, an Intel
+Smart Sound Technology 4-channel mic array and a Jabra Link 390 USB headset dongle. Other hardware — surround setups,
+pro audio interfaces, directly paired Bluetooth headsets — hasn't been tried; reports are welcome.
+
+There are no automated tests or CI yet. Most of the code is a thin layer over live Windows Core Audio calls, which
+can't be meaningfully unit-tested without real devices; the pure-logic parts (event log, exporters, level scale,
+channel layout) are candidates for a test project.
+
+A quick manual check after building:
+
+1. The device list matches what Windows Sound settings shows; plugging/unplugging a USB headset updates it.
+2. **Set Default / Set Comms** change the defaults, and Windows Sound settings agrees.
+3. **Test** on an output plays from the right device; **Test** on a mic records and plays back what you said.
+4. Meters move for several devices at once; the channel strip plays one speaker at a time.
+5. EVENTS logs your volume changes and device switches; PROCESSES shows a call app or browser that has the mic open.
+6. RAW RECORDING → **Record A/B**: the Raw and Call takes sound different and list different effects.
+
+## Reporting problems
+
+Please open an issue on GitHub with your Windows version, the device(s) involved, and — if relevant — the EVENTS log
+exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log can contain hardware serial numbers.
+
+## How it works
+
+- **C# / .NET 8, WPF** — a native Windows UI with direct access to the Core Audio COM APIs (`IMMDeviceEnumerator`,
+  `IAudioEndpointVolume`, `IAudioMeterInformation`, `IAudioSessionManager2`, …).
+- **[NAudio](https://github.com/naudio/NAudio) 2.2.1** for WASAPI playback/capture and most Core Audio wrappers.
+- **Own COM interop** where NAudio has no API or is too slow: `IPolicyConfig` (setting defaults), `IAudioClient2`
+  (raw and communications capture), `IAudioEffectsManager` (effects per stream), and direct property-store reads
+  (NAudio's `FriendlyName` scans the whole store and takes ~0.5 s per device).
 
 ## Repository layout
 
 ```
-/workspace
-├── TODO.md                     Feature checklist, updated as work lands
-├── README.md                   This file
-├── AudioDeviceDebugger.sln     Visual Studio / dotnet solution
-└── src/
-    └── AudioDeviceDebugger/    WPF application (net8.0-windows)
-        ├── App.xaml(.cs)       Application entry point
-        ├── Interop/            Raw COM interop: IPolicyConfig, PROPERTYKEY
-        │                       definitions, PKEY constants not exposed by NAudio
-        ├── Models/             Plain data models (DeviceInfo, LevelSample, ...)
-        ├── Services/           Business logic, no UI:
-        │                         - DeviceEnumerationService: lists endpoints
-        │                         - DefaultDeviceService: reads/sets default roles
-        │                         - DeviceDetailsService: property-store dump,
-        │                           format inspection
-        │                         - AudioTestService: test-music playback, mic record
-        │                           + playback round-trip
-        │                         - LevelMeterService: polls
-        │                           IAudioMeterInformation per device
-        ├── ViewModels/          MVVM glue between Services and Views
-        ├── Views/               XAML windows/controls:
-        │                         - MainWindow: device list + details + meters
-        │                         - LevelGraph: custom rolling-graph control
-        └── Assets/              App icon, etc.
-```
-
-## Building (on Windows — this cannot be built or run in this Linux container)
-
-Prerequisites: [.NET 8 SDK](https://dotnet.microsoft.com/download) on Windows
-10/11.
-
-```powershell
-cd src\AudioDeviceDebugger
-dotnet restore
-dotnet build -c Release
-```
-
-To produce a single self-contained `.exe` (no .NET runtime required on the
-target machine):
-
-```powershell
-dotnet publish -c Release -r win-x64 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
-```
-
-or equivalently, using the checked-in publish profile (also selectable from
-Visual Studio's Publish UI):
-
-```powershell
-dotnet publish -p:PublishProfile=win-x64-selfcontained
-```
-
-The output executable will be at:
-
-```
-src\AudioDeviceDebugger\bin\Release\net8.0-windows\win-x64\publish\AudioDeviceDebugger.exe
+├── README.md                    This file
+├── TODO.md                      Feature checklist and roadmap
+├── CLAUDE.md                    Notes for AI coding agents (architecture, pitfalls, conventions)
+├── docs/design-notes.md         Implementation and verification notes for the larger features
+├── docs/images/                 Screenshots used in this README
+├── AudioDeviceDebugger.sln
+├── src/AudioDeviceDebugger/     The WPF app (net8.0-windows)
+│   ├── Interop/                 Raw COM interop (IPolicyConfig, IAudioClient2, property reads, property-key names)
+│   ├── Models/                  Plain data (devices, formats, events, sessions, recordings)
+│   ├── Services/                Core Audio work, no UI: enumeration, defaults, details, volume, level meters,
+│   │                            tests and recordings, app sessions, event-log export
+│   ├── ViewModels/              MVVM glue between services and views
+│   ├── Views/                   MainWindow, LevelGraph, Theme.xaml (flat dark theme)
+│   └── Assets/                  App icon
+└── tools/PropertyKeyNameGenerator/   Regenerates the property-key name table
 ```
 
 ### Property-key names
 
-The details panel shows each endpoint property by a readable name ("Device: Friendly Name") instead of its raw
+The PROPERTIES tab shows each endpoint property by a readable name ("Device: Friendly Name") instead of its raw
 `{fmtid},pid`. The names come from a table compiled into the app:
 
-- `src/AudioDeviceDebugger/Interop/PropertyKeyNames.g.cs`: **generated**, every documented `PKEY_*` /
-  `DEVPKEY_*` in the Windows SDK (~1,550 keys), read from Microsoft's
+- `src/AudioDeviceDebugger/Interop/PropertyKeyNames.g.cs`: **generated** — every documented `PKEY_*` / `DEVPKEY_*` in
+  the Windows SDK (~1,550 keys), read from Microsoft's
   [Win32 metadata](https://www.nuget.org/packages/Microsoft.Windows.SDK.Win32Metadata) package. Don't edit by hand;
-  regenerate from the repo root with:
+  regenerate from the repo root with `dotnet run --project tools/PropertyKeyNameGenerator` (bump the package version in
+  `tools/PropertyKeyNameGenerator/PropertyKeyNameGenerator.csproj` to pick up newer SDKs).
+- `src/AudioDeviceDebugger/Interop/PropertyKeyNames.cs`: **hand-maintained** `ManualNames` for undocumented keys. Only
+  add a key once its meaning is confirmed; unknown keys are shown by their raw `{fmtid},pid`.
 
-  ```powershell
-  dotnet run --project tools/PropertyKeyNameGenerator
-  ```
+## Contributing
 
-  (Bump the package version in `tools/PropertyKeyNameGenerator/PropertyKeyNameGenerator.csproj` to pick up newer SDKs.)
-- `src/AudioDeviceDebugger/Interop/PropertyKeyNames.cs`: **hand-maintained** `ManualNames` for undocumented keys.
-  Only add a key once its meaning is confirmed. Unknown keys are shown by their raw `{fmtid},pid`.
-
-## Running
-
-Just launch the published `.exe`, or run `dotnet run` from
-`src\AudioDeviceDebugger` during development. No installer, no admin rights
-required (changing the default audio device and reading levels are
-user-level operations in Windows' Core Audio API).
-
-## Testing
-
-This tool was written inside a Linux Docker container, which has **no**
-Windows audio stack, so none of the code here has been compiled or run yet.
-There is no CI for this repo for the same reason. Treat the current state as
-"should build" code that needs a first real pass on Windows. When you build
-it there:
-
-1. **Smoke test**: launch the app, confirm the device list populates with
-   your actual output/input devices and matches what Windows' Sound settings
-   shows.
-2. **Enumeration correctness**: unplug/plug a USB headset or disable a device
-   in Windows Sound settings, hit **Refresh**, and confirm the list and state
-   (Active/Disabled/Unplugged) update correctly.
-3. **Default switching**: use the app to set a different default and
-   communications device, then confirm Windows Sound settings agrees, and
-   that an actual call app (Teams/Discord) and a media player pick the roles
-   up correctly.
-4. **Output test**: hit "Test" on each output device and confirm you hear the
-   test music from the correct physical device.
-5. **Input test**: hit "Test" on each input device, speak into it, and
-   confirm the recorded playback is audible and the live meter moved while
-   you spoke.
-6. **Level meters**: confirm meters move for all devices simultaneously
-   (e.g., play music and talk into a mic at the same time) without needing to
-   select a device first.
-7. **Property/detail dump**: spot check a couple of raw property values
-   (e.g., sample rate, endpoint GUID) against `Get-AudioDevice`/`pnputil`/
-   Device Manager output to sanity-check correctness.
-
-Once you've done a pass, update `TODO.md`'s "Not yet done / follow-ups"
-section with results, and file issues for anything broken.
-
-Unit tests are not included for the Service layer because nearly all of it
-is a thin wrapper over live Core Audio COM calls — there is no meaningful way
-to exercise `IMMDeviceEnumerator`/`IPolicyConfig` without a real Windows audio
-stack, so a mocked unit test would mostly test the mocks. If useful, a
-`tests/AudioDeviceDebugger.Tests` project using xUnit can be added later for
-any pure-logic pieces (e.g., formatting helpers, diffing enumeration
-results) that don't need live devices.
+Issues and pull requests are welcome. See [TODO.md](TODO.md) for the roadmap (bandwidth-based call-mode detection
+and a diagnostic report export are specified there) and [CLAUDE.md](CLAUDE.md) for the hard-won lessons about
+Core Audio, COM apartments and WPF that the code relies on — worth reading before changing services or interop.

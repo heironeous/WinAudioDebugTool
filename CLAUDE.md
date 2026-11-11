@@ -1,23 +1,33 @@
-# CLAUDE.md — handoff notes for future sessions and agents
+# CLAUDE.md — notes for AI coding agents (and curious contributors)
 
-Read this first, then `README.md` (layout, build, regenerating property names) and `TODO.md` (feature checklist).
-This file records **where the project stands, how the owner likes to work, and the non-obvious things learned the
-hard way**. Keep it current: when you finish a piece of work, update the "Current state" and "Open items" sections.
+This file is read automatically by [Claude Code](https://claude.com/claude-code) and is written for AI coding agents
+working on this repo. Human visitors: start with [README.md](README.md); the *Hard-won lessons* below are worth
+reading too before changing services or interop.
+
+Agents: read this first, then `README.md` (features, build, layout, regenerating property names), `TODO.md` (feature
+checklist and roadmap) and `docs/design-notes.md` (how the larger features were built and verified). This file
+records **where the project stands, how the maintainer likes to work, and the non-obvious things learned the hard
+way**. Keep it current: when you finish a piece of work, update "Current state" and "Open items".
 
 ## What this is
 
 **Audio Device Debugger** — a Windows WPF tool (C# / .NET 8, NAudio 2.2.1 + raw Core Audio COM interop) for
 inspecting and driving audio endpoints: list every input/output (incl. disabled / not-present / unplugged), set the
 default / communications / both roles, per-device volume + mute, live dB level meters, test playback (generated music)
-and mic record-and-playback tests, and a full property-store dump with human-readable key names.
+and mic record-and-playback tests, per-channel tests, an event timeline, the apps using each device, raw vs
+call-processed mic recording (A/B), and a full property-store dump with human-readable key names.
 
-## Current state (as of commit `3f5fa49`, 2026-11-10)
+## Current state (as of commit `16b86d5`, 2026-11-11)
 
+- Public on GitHub: <https://github.com/heironeous/WinAudioDebugTool>, branch `main` (work is committed straight to
+  `main`). The maintainer pushes; agents don't.
 - Builds cleanly (0 warnings) and runs on Windows 11; every feature in `TODO.md` that is checked was exercised on
-  real hardware during development (the owner tests manually; see "Verifying changes").
-- Branch `master` (the repo's default/PR branch is `main`, but all work so far has been committed to `master`).
-  Nothing has been pushed. Working tree was clean at handoff.
-- The owner's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
+  real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
+  the maintainer's decision. No CI, no automated tests, no releases.
+- Docs: `README.md` is for users (features, requirements, build, caveats) — update it when a user-visible feature
+  changes; `TODO.md` is the checklist + roadmap (N3, N5 specified); `docs/design-notes.md` holds implementation and
+  verification notes for N1, N2, N4 and the side-panel tabs.
+- The maintainer's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
   Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
   Poly BT700, Poly Voyager Focus 2, HP dock). **All headsets connect through USB dongles** — none are paired with
   Windows Bluetooth directly, so the A2DP/HFP ("call mode") switch happens inside the dongle, invisible to Windows.
@@ -38,19 +48,20 @@ dotnet run --project tools/PropertyKeyNameGenerator       # (from repo root) reg
 
 The running app locks its exe: stop it before rebuilding (`Get-Process AudioDeviceDebugger | Stop-Process`).
 
-## How the owner works (follow this)
+## How the maintainer works (follow this)
 
-- Requests are small and iterative; the owner tests each change by hand in the running app. After a change:
+- Requests are small and iterative; the maintainer tests each change by hand in the running app. After a change:
   build, **relaunch the app**, verify what you can, report briefly, and say what you could *not* verify.
-- **Commit only when the owner says "commit"** (they always ask explicitly, in a separate message). One commit per
+- **Commit only when the maintainer says "commit"** (they always ask explicitly, in a separate message). One commit per
   feature/fix, conventional-commit subject (`feat:`, `fix:`, `perf:`), a body explaining *why* (root cause for fixes),
-  ending with the `Co-Authored-By:` trailer given in the session's system prompt. Never push. Keep `TODO.md` updated
-  in the same commit as the feature.
-- When the owner asks to *explain first* (e.g. the call-mode question), explain and propose options — don't build.
+  ending with the `Co-Authored-By:` trailer given in the session's system prompt. Never push. Keep `TODO.md` (and
+  `README.md` / `docs/design-notes.md` where relevant) updated in the same commit as the feature. Never commit
+  `bin/` or `obj/` output, and keep scratch harnesses out of the repo.
+- When the maintainer asks to *explain first* (e.g. the call-mode question), explain and propose options — don't build.
 - Be careful with side effects on their real audio setup: don't switch default devices, change volumes, unmute, or
   play audible sound just to test something. Prefer silent checks (stream volume 0, muted devices, reading state via
   UI Automation). If a check must be audible, keep it short and say so. Restore anything you change.
-- The owner may be clicking in the app while you run UI Automation; if results look inconsistent, re-check once
+- The maintainer may be clicking in the app while you run UI Automation; if results look inconsistent, re-check once
   before concluding there's a bug.
 
 ## Architecture map
@@ -134,28 +145,24 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   `HelpText` (tooltips). DataGrid virtualises rows, so only on-screen rows are visible to UIA.
 - **Screenshots**: `PrintWindow(hwnd, hdc, 2)` via a small Add-Type helper works even when the window is covered;
   `CopyFromScreen` returns black when the screen is locked, and WPF windows capture as plain white while the display
-  is asleep (owner idle for minutes) — don't mistake that for a rendering bug. Re-declare the helper type in each new PowerShell process
+  is asleep (maintainer idle for minutes) — don't mistake that for a rendering bug. Re-declare the helper type in each new PowerShell process
   (or keep a script file in the session scratchpad).
 - **Scratch harness projects** (in the session scratchpad, never in the repo) referencing NAudio to measure things
   directly: endpoint volume/mute readback, per-device active audio sessions of the app's PID (to prove which mics are
   open), timing of COM calls, FFT band energy of `TestMusic`, silent playback with `WasapiOut.Volume = 0`.
 
-## Open items / ideas (not started unless the owner asks)
+## Open items / ideas (not started unless the maintainer asks)
 
-- From the call-mode discussion: an A/B "media vs call mode" listening test for headsets (pair speaker+mic by
-  `DEVPKEY_Device_ContainerId`); disabling a headset's mic endpoint (`IPolicyConfig::SetEndpointVisibility` — check
-  whether it needs elevation); a toggle for Windows "communications ducking". The owner asked for explanations first;
-  only the test music and mic-open policy were built.
-- Offered, not decided: close the selected mic's capture stream when the app window is inactive/minimised.
-- Unconfirmed observations: Jabra Link 390 mic read 0 / −∞ in every automated check (likely headset muted/boom up —
-  never confirmed by the owner); the test music read 1.0 peak on the Realtek output meter (driver enhancements?);
-  the Intel array's channels 2 and 4 read below −60 dB while 1 and 3 show room noise.
-- N1's call-mode hint keys on form factor 5/6 (Headset/Handset), but the Jabra Link 390 mic reports 4
-  (Microphone), so the hint never shows for it — consider also matching by container ID with a headset output.
-- Cosmetic: the Role column truncates "Default + Comms" to "Default + Comm" (column width 95).
-- ~185 undocumented endpoint property keys still show as raw `{fmtid},pid` (e.g. `{b3f8fa53-0004-438e-9003-51a46e139bfc},*`);
-  add to `PropertyKeyNames.ManualNames` only with a confirmed meaning. Property *values* (e.g. form factor 3) are not
-  decoded to names yet.
-- **Stale docs**: README's "Building"/"Testing" sections and TODO's "Not yet done" still say the code was written in a
-  Linux container and never built/verified — no longer true; update them when next touching the docs.
-- Not started: automated tests, code signing, a CI build.
+The roadmap and smaller open items live in `TODO.md` (N3 bandwidth analysis and N5 diagnostic report are fully
+specified there; N3/N5 still need the maintainer's go-ahead). Things only an agent needs to know:
+
+- Unconfirmed observations: the Jabra Link 390 mic read 0 / −∞ in every automated check (likely headset muted or
+  boom up — never confirmed); the test music read 1.0 peak on the Realtek output meter (driver enhancements?).
+  The Intel array's "channels 2 and 4 below −60 dB" is explained by N4: the processed paths output one
+  noise-suppressed signal on all four channels, far below the raw room noise.
+- N1's call-mode hint keys on form factor 5/6, but the Jabra Link 390 mic reports 4 (Microphone) — see TODO.
+- ~185 undocumented endpoint property keys still show as raw `{fmtid},pid`; add to `PropertyKeyNames.ManualNames`
+  only with a confirmed meaning.
+- The maintainer asked for explanations, not code, on the headset call-mode ideas (media-vs-call listening test,
+  disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
+- Not started: license, automated tests, CI, releases, code signing.
