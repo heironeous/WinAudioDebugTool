@@ -4,9 +4,9 @@ This file is read automatically by [Claude Code](https://claude.com/claude-code)
 working on this repo. Human visitors: start with [README.md](README.md); the *Hard-won lessons* below are worth
 reading too before changing services or interop.
 
-Agents: read this first, then `README.md` (features, build, layout, regenerating property names), `TODO.md` (feature
-checklist and roadmap) and `docs/design-notes.md` (how the larger features were built and verified). This file
-records **where the project stands, how the maintainer likes to work, and the non-obvious things learned the hard
+Agents: read this first, then `README.md` (features, build, layout, regenerating property names), `TODO.md` (open
+items and roadmap; finished items are in `planning/DONE-TODO.md`) and `docs/design-notes.md` (how the larger
+features were built and verified). This file records **where the project stands, how the maintainer likes to work, and the non-obvious things learned the hard
 way**. Keep it current: when you finish a piece of work, update "Current state" and "Open items".
 
 ## What this is
@@ -21,7 +21,7 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
 
 - Public on GitHub: <https://github.com/heironeous/WinAudioDebugTool>, branch `main` (work is committed straight to
   `main`). The maintainer pushes; agents don't.
-- Builds cleanly (0 warnings) and runs on Windows 11; every feature in `TODO.md` that is checked was exercised on
+- Builds cleanly (0 warnings) and runs on Windows 11; every feature in `planning/DONE-TODO.md` was exercised on
   real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
   the maintainer's decision. No automated tests.
 - CI: `.github/workflows/build-and-tag.yml` publishes every push to `main` (windows-latest, .NET 8) as the
@@ -34,8 +34,9 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   and don't edit `<Version>` in the `.csproj` to release (it is only the first tag's version and the local-build
   version). `.gitattributes` keeps `*.sh` LF — bash on the Windows runner fails on CRLF.
 - Docs: `README.md` is for users (features, requirements, build, caveats) — update it when a user-visible feature
-  changes; `TODO.md` is the checklist + roadmap (N3, N5 specified); `docs/design-notes.md` holds implementation and
-  verification notes for N1, N2, N4 and the side-panel tabs.
+  changes; `TODO.md` holds the open items + roadmap (N3, N5 specified) and `planning/DONE-TODO.md` the finished
+  items (move an item there once it's done); `docs/design-notes.md` holds implementation and verification notes for
+  N1, N2, N4 and the side-panel tabs.
 - The maintainer's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
   Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
   Poly BT700, Poly Voyager Focus 2, HP dock). **All headsets connect through USB dongles** — none are paired with
@@ -67,9 +68,9 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   build, **relaunch the app**, verify what you can, report briefly, and say what you could *not* verify.
 - **Commit only when the maintainer says "commit"** (they always ask explicitly, in a separate message). One commit per
   feature/fix, conventional-commit subject (`feat:`, `fix:`, `perf:`), a body explaining *why* (root cause for fixes),
-  ending with the `Co-Authored-By:` trailer given in the session's system prompt. Never push. Keep `TODO.md` (and
-  `README.md` / `docs/design-notes.md` where relevant) updated in the same commit as the feature. Never commit
-  `bin/` or `obj/` output, and keep scratch harnesses out of the repo.
+  ending with the `Co-Authored-By:` trailer given in the session's system prompt. Never push. Keep `TODO.md` /
+  `planning/DONE-TODO.md` (and `README.md` / `docs/design-notes.md` where relevant) updated in the same commit as the
+  feature. Never commit `bin/` or `obj/` output, and keep scratch harnesses out of the repo.
 - When the maintainer asks to *explain first* (e.g. the call-mode question), explain and propose options — don't build.
 - Be careful with side effects on their real audio setup: don't switch default devices, change volumes, unmute, or
   play audible sound just to test something. Prefer silent checks (stream volume 0, muted devices, reading state via

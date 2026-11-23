@@ -123,7 +123,7 @@ dotnet publish -p:PublishProfile=win-x64-selfcontained
 
 ## Testing status
 
-Every checked item in [TODO.md](TODO.md) was tested by hand on a Windows 11 laptop with Realtek speakers, an Intel
+Every finished item in [planning/DONE-TODO.md](planning/DONE-TODO.md) was tested by hand on a Windows 11 laptop with Realtek speakers, an Intel
 Smart Sound Technology 4-channel mic array and a Jabra Link 390 USB headset dongle. Other hardware — surround setups,
 pro audio interfaces, directly paired Bluetooth headsets — hasn't been tried; reports are welcome.
 
@@ -182,7 +182,8 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 ```
 ├── .github/                     CI: build-and-tag workflow and its versioning script
 ├── README.md                    This file
-├── TODO.md                      Feature checklist and roadmap
+├── TODO.md                      Open items and roadmap
+├── planning/DONE-TODO.md        Finished features (checked items moved out of TODO.md)
 ├── CLAUDE.md                    Notes for AI coding agents (architecture, pitfalls, conventions)
 ├── docs/design-notes.md         Implementation and verification notes for the larger features
 ├── docs/images/                 Screenshots used in this README

@@ -2,7 +2,8 @@
 
 Implementation and verification notes for the larger features, kept for contributors: what was built, why, where it
 lives, what was measured, and what still hasn't been checked. User-facing documentation is in
-[README.md](../README.md); the feature checklist and roadmap are in [TODO.md](../TODO.md).
+[README.md](../README.md); open items and the roadmap are in [TODO.md](../TODO.md), finished features in
+[planning/DONE-TODO.md](../planning/DONE-TODO.md).
 
 "Lesson n" refers to the numbered *Hard-won lessons* in [CLAUDE.md](../CLAUDE.md). Hardware named in the
 verification notes is the development machine's: Realtek laptop speakers, an Intel Smart Sound Technology 4-channel
