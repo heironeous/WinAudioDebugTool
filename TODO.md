@@ -147,9 +147,6 @@ verification notes for the larger features are in
 - [x] Call-mode hint on headset mic rows that are in use (form factor 5/6)
 - [x] PROCESSES side-panel tab: app, process · PID, Streaming/Idle, app
       volume (volume mixer) and a live level per session
-- [ ] Call-mode hint for headsets whose mic reports form factor 4
-      ("Microphone"), e.g. the Jabra Link 390 — match the mic to a headset
-      output by container ID
 
 ## Event timeline (N2)
 - [x] EVENTS side-panel tab: devices added/removed/state changes, default
@@ -159,8 +156,6 @@ verification notes for the larger features are in
       previous defaults, names kept for removed devices
 - [x] Filters by category and "selected device only"; Copy; Export… as CSV,
       Markdown or JSON Lines
-- [ ] Persist the log to disk (proposal: JSON Lines in
-      `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log`, kept 14 days)
 - [ ] Tray mode, so events are recorded all day without the window open
 
 ## Raw recording (N4)
@@ -182,6 +177,19 @@ verification notes for the larger features are in
 - [x] Tab labels hide (icons only) when the strip is too short for all four
 - [x] Role column shows "Default" and "Comms" on separate lines (each with a
       tooltip), matching the name/subtitle lines; row height unchanged
+
+## Next up
+Small items, ready to build, in this order.
+- [x] Call-mode hint for headsets whose mic reports form factor 4
+      ("Microphone"), e.g. the Jabra Link 390 — the mic is matched to an
+      output with the same container ID (`DEVPKEY_Device_ContainerId`); the
+      built-in "this PC" container is ignored (N1)
+- [x] Close the selected mic's meter stream while the window is minimised;
+      it reopens on restore (live level metering)
+- [x] Persist the event log to disk: JSON Lines in
+      `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log`, same format
+      as Export… → JSON Lines; files older than 14 days are deleted at
+      startup (N2)
 
 ## Roadmap
 
@@ -331,4 +339,3 @@ Useful for IT support or a vendor ticket, or to compare a "working" with a
       (`IPolicyConfig::SetEndpointVisibility`; check whether it needs
       elevation)
 - [ ] Toggle for Windows' "communications activity" ducking
-- [ ] Close the selected mic's meter stream while the window is minimised

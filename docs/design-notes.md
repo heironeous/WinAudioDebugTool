@@ -174,10 +174,7 @@ reconstructed afterwards.
   - Deviation from the plan: no Pause button. Newest entries go on top, so
     there's no auto-scroll to pause.
 - [x] **Session events** ("Webex started streaming …"), added with N1 ("Apps" filter).
-- [ ] **Optional persistence.** Not built; events are in memory only (see the
-      roadmap in TODO.md). The proposal is to append JSON Lines to
-      `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log` and keep 14
-      days.
+- [x] **Persistence** (2026-11-23). See "Small follow-ups" below.
 - **Limitation.** The app must be running to record anything. A tray mode
    would make it useful all day.
 - **Verified** (2026-11-10, on the development machine). Silent; only the Intel mic array was touched,
@@ -304,7 +301,8 @@ was not built.
     the automated checks avoided it. It reports raw support.
 - Found along the way: the Jabra Link 390 mic reports form factor 4
   (Microphone), not 5/6 (Headset). So N1's call-mode hint, which is keyed on
-  5/6, never shows for it.
+  5/6, never showed for it. Fixed 2026-11-23 by matching container IDs (see
+  "Small follow-ups" below).
 
 ## Side-panel tabs (2026-11-11)
 The right-hand column now has four tabs: **PROPERTIES**, **EVENTS**,
@@ -389,3 +387,52 @@ readable form.
   - UI Automation and a screenshot checked the PROPERTIES tab for the Intel mic: named rows, decoded values, and raw
     values in the tooltips.
 
+## Small follow-ups (2026-11-23)
+Built on a second machine: a desktop with Realtek USB Audio, an ASUS VP28U
+monitor (NVIDIA HDMI audio), a Logitech C922 webcam mic, and not-present
+Jabra Evolve3 75 / Link 370 / Link 380 endpoints.
+
+- **Call-mode hint for form-factor-4 headset mics (N1).**
+  - `DeviceEnumerationService` reads `DEVPKEY_Device_ContainerId`
+    (`{8c7ed206-…},2`, VT_CLSID) for every endpoint. A capture endpoint with
+    form factor 4 gets `DeviceInfo.LinkedOutputName` when a render endpoint
+    has the same container ID; an active one is preferred.
+  - The container `{00000000-0000-0000-ffff-ffffffffffff}` is ignored. Windows
+    gives it to every built-in device, so on this machine the Realtek mic
+    (form factor 4) and the Realtek headphones (form factor 3) share it.
+  - The output's form factor isn't checked. The Jabra Evolve3 75 reports
+    "Speakers" (1) and "Microphone" (4) for one headset.
+  - The tooltip names the linked output and says "if that is a headset".
+    A USB monitor with a webcam mic would also match, so the wording is
+    hedged.
+  - Probe through the app's own `DeviceEnumerationService`: 31 endpoints in
+    21 ms. "Microphone (Jabra Evolve3 75)" was linked to "Speakers (Jabra
+    Evolve3 75)". The Realtek mics and the C922 webcam mic were not linked.
+    Headsets with form factor 5 were flagged as before.
+- **Mic released while minimised.** `MainViewModel.IsWindowMinimized`, set
+  from `Window.StateChanged`, makes `UpdateCaptureStream` pass null to
+  `SetCaptureStreamDevice`. Tests and A/B recordings open their own streams,
+  so they are not affected.
+  - Verified with UI Automation and a session probe of the app's PID: with the
+    C922 mic selected, its capture session was active; after minimising there
+    was none; after restoring it was active again.
+- **Event log on disk (N2).** `Services/EventLogFile.cs`: one JSON Lines file
+  per local day, written by `EventLogExporter.ToJsonLine`.
+  - Merging replaces entries, so `EventLogViewModel` keeps an "unsaved" list
+    (merged entries replace theirs by reference: `AudioEvent` is a record).
+    Every 2 s, the leading entries whose last merge is more than 3 s old are
+    written. Merge windows are at most 1 s, so a written entry is final, and
+    stopping at the first unsettled entry keeps the file in order.
+  - Writes are chained tasks on the thread pool. On close, everything left is
+    written and the app waits up to 2 s. The first write error goes to the
+    status bar; later ones are ignored.
+  - "Clear" empties the panel only. The file keeps everything.
+  - At startup, files dated more than 13 days before today are deleted (14
+    days are kept).
+  - Verified: the start entry was written after ~5 s; closing the app within
+    1 s of starting still wrote its line; a file dated 14 days ago was
+    deleted and one dated 13 days ago was kept.
+- **Not yet verified (needs manual testing):**
+  - The hint with a form-factor-4 headset mic in a real call (no such headset
+    was connected).
+  - The log across midnight (the file is chosen per entry, so it should split).

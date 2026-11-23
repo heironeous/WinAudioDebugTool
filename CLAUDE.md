@@ -40,10 +40,14 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
   Poly BT700, Poly Voyager Focus 2, HP dock). **All headsets connect through USB dongles** — none are paired with
   Windows Bluetooth directly, so the A2DP/HFP ("call mode") switch happens inside the dongle, invisible to Windows.
+  A second machine (desktop) is also used. It has Realtek USB Audio (only its digital output is active), an ASUS
+  VP28U monitor on NVIDIA HDMI audio and a Logitech C922 webcam mic. Its Jabra Evolve3 75, Link 370 and Link 380 are
+  not present. Check which machine you are on (`Get-PnpDevice -Class AudioEndpoint`) before assuming hardware.
 
 ## Environment & commands
 
-- .NET 8 SDK 8.0.427 was installed via winget (only the runtime was present before). `dotnet` may not be on PATH in a
+- .NET 8 SDK (8.0.427 on the laptop, 8.0.428 on the desktop, 2026-11-23) was installed via winget; only the runtime
+  was present before, and the desktop's `dotnet` defaulted to a 3.1 SDK. `dotnet` may not be on PATH in a
   fresh shell — use `"C:\Program Files\dotnet\dotnet.exe"`.
 - No Windows SDK is installed (no C++ headers); property-key names come from the Win32 metadata NuGet package instead.
 - Shells: PowerShell is primary; Git Bash is also available (and handy for heredocs / python one-off edits).
@@ -155,6 +159,10 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     (`SWD\MMDEVAPI\<endpoint ID>`) and on its audio device. Many keys are *snapshots* taken when the endpoint was
     registered (device name, driver version), so a few mismatches can be stale data rather than a wrong guess. Value
     decoders must be strict: loose "UTF-16 text" detection turned binary blobs into CJK-looking garbage.
+17. **Container IDs** (`DEVPKEY_Device_ContainerId`) group the endpoints of one physical device, but every built-in
+    device shares `{00000000-0000-0000-ffff-ffffffffffff}` ("this PC"). Ignore that container when you pair a mic with
+    an output, or a laptop mic pairs with the headphone jack. Form factors don't help: the Jabra Evolve3 75 reports
+    its headset as "Speakers" (1) and "Microphone" (4).
 
 ## Verifying changes (techniques that worked)
 
@@ -178,7 +186,8 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   boom up — never confirmed); the test music read 1.0 peak on the Realtek output meter (driver enhancements?).
   The Intel array's "channels 2 and 4 below −60 dB" is explained by N4: the processed paths output one
   noise-suppressed signal on all four channels, far below the raw room noise.
-- N1's call-mode hint keys on form factor 5/6, but the Jabra Link 390 mic reports 4 (Microphone) — see TODO.
+- N1's call-mode hint covers form factor 4 mics through container IDs since 2026-11-23, but that was only checked on a
+  not-present Jabra Evolve3 75. Still to check with the Jabra Link 390 in a real call.
 - ~170 undocumented endpoint property keys still show as raw `{fmtid},pid` (most belong to driver/APO-private sets
   such as `{f112024a-…}` and `{5510c7ab-…}`); add to `PropertyKeyNames.Undocumented` only with a confirmed meaning —
   see lesson 16 and docs/design-notes.md.

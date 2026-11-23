@@ -31,12 +31,15 @@ public partial class MainWindow : Window
         _volumeService = new EndpointVolumeService();
         _sessionService = new AudioSessionService();
 
-        _viewModel = new MainViewModel(_enumerationService, _defaultDeviceService, _detailsService, _testService, _levelMeterService, _volumeService, _sessionService);
+        var logFile = new EventLogFile(message => Dispatcher.BeginInvoke(() => _viewModel?.ShowStatus(message)));
+
+        _viewModel = new MainViewModel(_enumerationService, _defaultDeviceService, _detailsService, _testService, _levelMeterService, _volumeService, _sessionService, logFile);
         _viewModel.SelectedDeviceLevelChanged += (_, sample) => DetailGraph.AddSample(sample.MasterPeak);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         DataContext = _viewModel;
         Closed += OnClosed;
+        StateChanged += (_, _) => _viewModel.IsWindowMinimized = WindowState == WindowState.Minimized;
         ApplySidePanelLayout();
     }
 

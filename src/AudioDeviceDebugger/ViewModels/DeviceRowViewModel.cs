@@ -206,11 +206,15 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
             string pid = s.IsSystemSounds ? "" : $", PID {s.ProcessId}";
             lines.Add($"{s.AppName} — {state}{pid}");
         }
-        if (streaming.Count > 0 && !IsOutput && Device.IsHeadsetFormFactor)
+        if (streaming.Count > 0 && Device.IsHeadsetMic)
         {
             lines.Add("");
-            lines.Add("This headset mic is open, which usually switches the headset into call (hands-free) mode: " +
-                      "its playback drops to call quality until the mic is released.");
+            lines.Add(Device.LinkedOutputName is { } output
+                ? $"This mic belongs to the same device as \"{output}\". If that is a headset (or its dongle), the " +
+                  "open mic usually switches it into call (hands-free) mode: its playback drops to call quality " +
+                  "until the mic is released."
+                : "This headset mic is open, which usually switches the headset into call (hands-free) mode: " +
+                  "its playback drops to call quality until the mic is released.");
         }
         UsageToolTip = string.Join("\n", lines);
     }

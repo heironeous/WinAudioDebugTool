@@ -19,6 +19,10 @@ public sealed class EventLogViewModel : INotifyPropertyChanged
 
     private readonly Dictionary<string, AudioEvent> _mergeTargets = new();
 
+    // Entries not yet handed to the log file, oldest first. Merging replaces an entry here too, so each one is
+    // written once, in its final form. Clear() empties the panel only; the file is the full record.
+    private readonly List<AudioEvent> _unsaved = new();
+
     public EventLogViewModel()
     {
         View = CollectionViewSource.GetDefaultView(Events);
@@ -91,6 +95,21 @@ public sealed class EventLogViewModel : INotifyPropertyChanged
 
     private int ShownCount => Events.Count(IsShown);
 
+    /// <summary>
+    /// Removes and returns the entries to write to the log file, oldest first. With <paramref name="settledBefore"/>:
+    /// only the leading entries whose last merge is older than that time (a later burst can't change them any more,
+    /// and stopping at the first unsettled one keeps the file in order). Without it: all of them.
+    /// </summary>
+    public IReadOnlyList<AudioEvent> TakeUnsaved(DateTimeOffset? settledBefore)
+    {
+        int count = settledBefore is { } cutoff
+            ? _unsaved.TakeWhile(e => e.LastTimestamp < cutoff).Count()
+            : _unsaved.Count;
+        var taken = _unsaved.GetRange(0, count);
+        _unsaved.RemoveRange(0, count);
+        return taken;
+    }
+
     /// <summary>The events currently shown, oldest first (for copy / export).</summary>
     public IReadOnlyList<AudioEvent> ShownEventsOldestFirst() => Events.Where(IsShown).Reverse().ToList();
 
@@ -101,6 +120,7 @@ public sealed class EventLogViewModel : INotifyPropertyChanged
             entry = entry with { LastTimestamp = entry.Timestamp };
         }
         Events.Insert(0, entry);
+        _unsaved.Add(entry);
         while (Events.Count > Capacity)
         {
             Events.RemoveAt(Events.Count - 1);
@@ -127,6 +147,10 @@ public sealed class EventLogViewModel : INotifyPropertyChanged
                 };
                 Events[index] = merged;
                 _mergeTargets[key] = merged;
+                // AudioEvent is a record (value equality), so find the entry by reference.
+                int unsavedIndex = _unsaved.FindIndex(e => ReferenceEquals(e, existing));
+                if (unsavedIndex >= 0) _unsaved[unsavedIndex] = merged;
+                else _unsaved.Add(merged); // already written (a very late notification): write the update too
                 return;
             }
         }

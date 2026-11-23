@@ -30,6 +30,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly IAudioSessionService _sessionService;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _refreshDebounce;
+    private readonly EventLogFile? _logFile;
+    private readonly DispatcherTimer _logFlush;
+
+    // Merge windows are at most 1 s; an entry whose last merge is older than this can't change any more.
+    private static readonly TimeSpan LogSettleTime = TimeSpan.FromSeconds(3);
 
     public MainViewModel(
         IDeviceEnumerationService enumerationService,
@@ -38,7 +43,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         IAudioTestService testService,
         ILevelMeterService levelMeterService,
         IEndpointVolumeService volumeService,
-        IAudioSessionService sessionService)
+        IAudioSessionService sessionService,
+        EventLogFile? logFile = null)
     {
         _enumerationService = enumerationService;
         _defaultDeviceService = defaultDeviceService;
@@ -48,6 +54,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _volumeService = volumeService;
         _sessionService = sessionService;
         _dispatcher = Dispatcher.CurrentDispatcher;
+        _logFile = logFile;
 
         // A single default-device change fires several IMMNotificationClient callbacks (one per role/flow);
         // collapse each burst into one Refresh instead of rebuilding the list for every callback.
@@ -60,6 +67,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             _refreshDebounce.Stop();
             Refresh();
         };
+
+        // Hands settled event-log entries to the file every 2 s (see EventLogFile).
+        _logFlush = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+        {
+            Interval = TimeSpan.FromSeconds(2),
+        };
+        _logFlush.Tick += (_, _) => _logFile?.Append(EventLog.TakeUnsaved(DateTimeOffset.Now - LogSettleTime));
+        if (_logFile is not null) _logFlush.Start();
 
         _enumerationService.DevicesChanged += OnDevicesChanged;
         _enumerationService.EndpointNotified += OnEndpointNotified;
@@ -239,15 +254,36 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             if (!SetField(ref _selectedDevice, value)) return;
             OnPropertyChanged(nameof(CanSetDefaults));
             EventLog.SelectedDeviceId = value?.Device.Id;
-            // Hold a microphone open (so its meter is live) only while it's the selected row; selecting anything
-            // else closes it. A running mic test keeps its own capture open regardless of selection.
-            _levelMeterService.SetCaptureStreamDevice(
-                value?.Device.Direction == AudioDirection.Input ? value.Device.Id : null);
+            UpdateCaptureStream();
             _sessionService.SetPeakDevice(value?.IsActive == true ? value.Device.Id : null);
             SyncSelectedSessions();
             LoadSelectedDeviceDetails(value);
         }
     }
+
+    private bool _isWindowMinimized;
+
+    /// <summary>Set by the window. While it's minimised nobody sees the meters, so the selected mic is released.</summary>
+    public bool IsWindowMinimized
+    {
+        get => _isWindowMinimized;
+        set
+        {
+            if (SetField(ref _isWindowMinimized, value)) UpdateCaptureStream();
+        }
+    }
+
+    /// <summary>
+    /// Holds a microphone open (so its meter is live) only while it's the selected row and the window isn't
+    /// minimised; selecting anything else or minimising closes it. Opening a headset mic can switch the headset
+    /// into call mode, so the app shouldn't keep doing that from the taskbar. A running mic test or A/B recording
+    /// keeps its own capture open regardless.
+    /// </summary>
+    private void UpdateCaptureStream() =>
+        _levelMeterService.SetCaptureStreamDevice(
+            !_isWindowMinimized && SelectedDevice?.Device.Direction == AudioDirection.Input
+                ? SelectedDevice.Device.Id
+                : null);
 
     private DeviceDetails? _selectedDeviceDetails;
     public DeviceDetails? SelectedDeviceDetails
@@ -1178,6 +1214,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         IsDefaultDevice = info.IsDefaultDevice,
         IsDefaultCommunicationsDevice = info.IsDefaultCommunicationsDevice,
         FormFactor = info.FormFactor,
+        ContainerId = info.ContainerId,
+        LinkedOutputName = info.LinkedOutputName,
     };
 
     private void OnLevelChanged(object? sender, DeviceLevelChangedEventArgs e)
@@ -1229,6 +1267,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         foreach (var session in _activeTests.Values)
         {
             session.Stop();
+        }
+
+        _logFlush.Stop();
+        if (_logFile is not null)
+        {
+            _logFile.Append(EventLog.TakeUnsaved(null));
+            _logFile.Flush(TimeSpan.FromSeconds(2));
         }
 
         _enumerationService.DevicesChanged -= OnDevicesChanged;

@@ -7,6 +7,15 @@ namespace AudioDeviceDebugger.Services;
 
 public sealed class DeviceEnumerationService : IDeviceEnumerationService
 {
+    /// <summary>DEVPKEY_Device_ContainerId (VT_CLSID). NAudio's PropertyKeys doesn't declare it.</summary>
+    private static readonly PropertyKey ContainerIdKey = new(new Guid("8c7ed206-3f8a-4827-b3ab-ae9e1faefc6c"), 2);
+
+    /// <summary>The container Windows gives every built-in device ("this PC"): internal speakers, headphone jack and
+    /// mic all share it, so it says nothing about a mic belonging to a headset.</summary>
+    private static readonly Guid ComputerContainerId = new("00000000-0000-0000-ffff-ffffffffffff");
+
+    private const int FormFactorMicrophone = 4;
+
     private readonly MMDeviceEnumerator _enumerator = new();
     private readonly EndpointPropertyReader _propertyReader = new();
     private readonly NotificationClient _notificationClient;
@@ -28,12 +37,21 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
     public IReadOnlyList<DeviceInfo> GetDevices()
     {
         var result = new List<DeviceInfo>();
-        AddForDirection(result, DataFlow.Render, AudioDirection.Output);
-        AddForDirection(result, DataFlow.Capture, AudioDirection.Input);
+        AddForDirection(result, DataFlow.Render, AudioDirection.Output, null);
+        AddForDirection(result, DataFlow.Capture, AudioDirection.Input, OutputNamesByContainer(result));
         return result;
     }
 
-    private void AddForDirection(List<DeviceInfo> result, DataFlow dataFlow, AudioDirection direction)
+    /// <summary>Output endpoint names per container ID, an active endpoint preferred when a container has several
+    /// (e.g. a monitor listed once as active and once as not present).</summary>
+    private static Dictionary<Guid, string> OutputNamesByContainer(List<DeviceInfo> outputs) =>
+        outputs.Where(d => d.ContainerId is { } c && c != ComputerContainerId)
+            .GroupBy(d => d.ContainerId!.Value)
+            .ToDictionary(g => g.Key,
+                g => g.OrderByDescending(d => d.State == DeviceConnectionState.Active).First().FriendlyName);
+
+    private void AddForDirection(List<DeviceInfo> result, DataFlow dataFlow, AudioDirection direction,
+        Dictionary<Guid, string>? outputNamesByContainer)
     {
         string? defaultId = TryGetDefaultEndpointId(dataFlow, Role.Multimedia);
         string? defaultCommsId = TryGetDefaultEndpointId(dataFlow, Role.Communications);
@@ -43,6 +61,13 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
         {
             using (device)
             {
+                var formFactor = (int?)_propertyReader.TryGetUInt32(device.ID, PropertyKeys.PKEY_AudioEndpoint_FormFactor);
+                var containerId = _propertyReader.TryGetGuid(device.ID, ContainerIdKey);
+                string? linkedOutput = null;
+                if (formFactor == FormFactorMicrophone && containerId is { } c && outputNamesByContainer is not null)
+                {
+                    outputNamesByContainer.TryGetValue(c, out linkedOutput);
+                }
                 result.Add(new DeviceInfo
                 {
                     Id = device.ID,
@@ -51,7 +76,9 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
                     State = MapState(device.State),
                     IsDefaultDevice = string.Equals(device.ID, defaultId, StringComparison.Ordinal),
                     IsDefaultCommunicationsDevice = string.Equals(device.ID, defaultCommsId, StringComparison.Ordinal),
-                    FormFactor = (int?)_propertyReader.TryGetUInt32(device.ID, PropertyKeys.PKEY_AudioEndpoint_FormFactor),
+                    FormFactor = formFactor,
+                    ContainerId = containerId,
+                    LinkedOutputName = linkedOutput,
                 });
             }
         }

@@ -41,7 +41,8 @@ and whether the driver supports raw (unprocessed) capture.
   the raw value is in the tooltip.
 - **EVENTS** — a timeline of device changes, default switches, volume/mute changes (by Windows or by this app), apps
   starting and stopping streams, and tests. Filter it, copy it, or export it as CSV, Markdown or JSON Lines — handy
-  for "my mic died in the meeting at 14:03".
+  for "my mic died in the meeting at 14:03". The timeline is also saved to disk, one JSON Lines file per day in
+  `%LOCALAPPDATA%\AudioDeviceDebugger`, kept for 14 days.
 - **PROCESSES** — which applications have the selected device open (app, process and PID, streaming or idle, the app's
   own volume, live level). Opening a Bluetooth/USB headset's mic is what switches it into low-quality "call mode", so
   this shows who is doing it.
@@ -105,10 +106,11 @@ dotnet publish -p:PublishProfile=win-x64-selfcontained
 - **Selecting a microphone opens it.** Windows only reports an input's level while something records from it, so
   the app keeps a silent capture stream open on the *selected* input (and only that one). On many Bluetooth/USB
   headsets, opening the mic switches the headset into call mode, which lowers playback quality while the mic is
-  selected. Select an output device to release it.
+  selected. Select an output device, or minimise the window, to release it.
 - **Tests make sound.** Output tests and mic playback play through your speakers/headset at the current volume.
-- **Your audio stays on your machine.** Recordings and the event log are kept in memory only and are gone when you
-  close the app, unless you export the log yourself. Nothing is sent anywhere.
+- **Your audio stays on your machine.** Recordings are kept in memory only and are gone when you close the app. The
+  event log is saved locally in `%LOCALAPPDATA%\AudioDeviceDebugger` (device names and IDs, apps and their PIDs, no
+  audio); files older than 14 days are deleted. Nothing is sent anywhere.
 - **Set Default uses an undocumented Windows interface** (`IPolicyConfig`) — the same one Windows' own Sound settings
   use. It has been stable for many Windows versions, but Microsoft doesn't guarantee it.
 - **Call ≠ exactly what the other side hears.** The Call take is what Windows and the driver deliver to call apps;

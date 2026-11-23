@@ -66,18 +66,7 @@ public static class EventLogExporter
             case EventLogFormat.JsonLines:
                 foreach (var e in events)
                 {
-                    writer.WriteLine(JsonSerializer.Serialize(new
-                    {
-                        time = e.Timestamp,
-                        lastTime = e.Count > 1 ? e.LastTimestamp : (DateTimeOffset?)null,
-                        kind = e.Kind,
-                        source = e.Source,
-                        device = e.DeviceName,
-                        direction = e.Direction,
-                        deviceId = e.DeviceId,
-                        detail = e.Detail,
-                        count = e.Count,
-                    }, JsonOptions));
+                    writer.WriteLine(ToJsonLine(e));
                 }
                 break;
 
@@ -95,6 +84,20 @@ public static class EventLogExporter
                 break;
         }
     }
+
+    /// <summary>One entry as a single JSON object: one line of JSON Lines, also the on-disk log format.</summary>
+    public static string ToJsonLine(AudioEvent e) => JsonSerializer.Serialize(new
+    {
+        time = e.Timestamp,
+        lastTime = e.Count > 1 ? e.LastTimestamp : (DateTimeOffset?)null,
+        kind = e.Kind,
+        source = e.Source,
+        device = e.DeviceName,
+        direction = e.Direction,
+        deviceId = e.DeviceId,
+        detail = e.Detail,
+        count = e.Count,
+    }, JsonOptions);
 
     private static string Csv(string? value)
     {
