@@ -458,5 +458,9 @@ Jabra Evolve3 75 / Link 370 / Link 380 endpoints.
     stopped;
   - the event log file got its start line; the app exits with code 0.
   - Screenshots of the .NET 8 and .NET 10 builds in the same state were identical.
-- **Not verified:** audible tests (music, per-channel, mic playback), Set Default / Set Comms, volume changes, and
-  the laptop hardware (Intel array, Jabra Link 390). The CI workflow runs on the next push to `main`.
+- **Verified by the maintainer:** recording and playback, and Set Both (default + communications). The CI workflow
+  built, tagged and released the .NET 10 exe. It warned that `actions/checkout@v4` and `actions/setup-dotnet@v4`
+  target the deprecated Node.js 20, so they were moved to `checkout@v7` and `setup-dotnet@v6` (both Node.js 24). Our
+  inputs (`fetch-depth`, `dotnet-version`) didn't change. Checkout v6+ keeps the credentials in a separate file,
+  which still works for the workflow's `git push` of the tag.
+- **Not verified:** volume changes, and the laptop hardware (Intel array, Jabra Link 390).
