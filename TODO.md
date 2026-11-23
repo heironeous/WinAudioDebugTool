@@ -6,6 +6,24 @@ and tested by hand — are listed in
 verification notes for the larger features are in
 [docs/design-notes.md](docs/design-notes.md).
 
+## Current priority
+- [ ] **Move to .NET 10 LTS.** .NET 8 support ended on 2026-11-10, so the
+      app now builds and ships on an unsupported runtime. .NET 10 is the
+      current LTS and is supported until November 2028.
+  - Retarget the app and `tools/PropertyKeyNameGenerator` to
+    `net10.0-windows` / `net10.0`, and update the publish profile.
+  - CI: `actions/setup-dotnet` to `10.0.x`.
+  - Check whether NAudio 2.2.1, the Win32 metadata package and the WPF
+    behaviour still work as before (build warnings, new analyzers, changed
+    defaults).
+  - The release is self-contained, so users don't need to install anything.
+    Local builds need the .NET 10 SDK.
+  - Update README (requirements, build), CLAUDE.md (environment) and
+    `docs/design-notes.md`.
+  - Verification: clean build, then exercise the full feature set on real
+    hardware, like a release check: enumeration, Set Default, volume, meters,
+    tests, A/B recording, side panels, event log file.
+
 ## Project setup
 - [ ] License file
 - [ ] Code signing of the published executable
@@ -158,6 +176,75 @@ Useful for IT support or a vendor ticket, or to compare a "working" with a
   - Should redaction be on by default?
   - Include driver details (driver version/date, USB VID/PID)
     now, or later?
+
+### Ideas from the 2026-11-23 brainstorm
+Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
+
+**Visual**
+- [ ] **Mini meter window.** A small, always-on-top window with one level bar
+      per active device, for watching during a call.
+- [ ] **Follow the Windows theme.** A light theme next to the dark one, chosen
+      from the Windows app mode, plus high-contrast support.
+- [ ] **Device-type icons.** A monochrome Segoe Fluent glyph per form factor
+      (speakers, headphones, headset, microphone, mic array, HDMI/digital,
+      line in), matching the flat theme. Windows' own icon
+      (`PKEY_DeviceClass_IconPath`) as a fallback, e.g. in the tooltip.
+- [ ] **Device grouping.** Group the endpoints of one physical device by
+      container ID (`DEVPKEY_Device_ContainerId`), e.g. "Jabra Evolve3 75"
+      with its Speakers and Microphone rows. Switch the device list from a
+      flat list to a grouped view (collapsible groups; built-in devices in a
+      "This PC" group).
+
+**Functional**
+- [ ] **Setup snapshots.** Save the whole audio setup (defaults, volumes, mute,
+      formats, enhancements) as JSON, restore it, and diff two snapshots
+      ("what differs between the working and the broken state?"). Overlaps
+      with N5.
+- [ ] **Latency numbers.** Show the device period and the engine period
+      (`IAudioClient` / `IAudioClient3`), and add a round-trip test: play a
+      click on an output, detect it on a mic, report the delay in ms.
+      Explain what the number means for people, for example:
+  - under ~10 ms: not noticeable, even when you hear yourself (monitoring);
+  - ~20–30 ms: hearing yourself starts to sound like an echo; musicians
+    playing along feel it;
+  - audio more than ~45 ms behind the picture: lip-sync errors become
+    noticeable (ITU-R BT.1359);
+  - one-way delay in a call: up to ~150 ms is fine, beyond ~400 ms
+    conversation breaks down (ITU-T G.114).
+- [ ] **Device inventory.** Driver name, version and date, USB VID/PID and
+      USB speed, and the processing modules (APOs) installed per endpoint
+      (`FxProperties` keys).
+- [ ] **Bluetooth battery level** for headsets paired directly with Windows
+      (from the Bluetooth device's PnP properties). Doesn't apply to headsets
+      behind a USB dongle.
+
+**Measurement**
+- [ ] **Signal generator.** Sine, sine sweep, pink noise, a polarity test and
+      spoken "left"/"right" channel labels, per output and per channel.
+- [ ] **Mic quality report.** After a mic test: noise floor, signal-to-noise
+      ratio, clipped samples and DC offset, next to N3's bandwidth verdict.
+
+**Privacy and security**
+- [ ] **Mic and camera access history.** Which apps used the microphone (and
+      camera) and when, from the `CapabilityAccessManager\ConsentStore`
+      registry data Windows keeps, shown as a per-app timeline.
+- [ ] **Live alert when an app opens the mic.** A notification (tray) when an
+      app starts capturing, built on N1's session tracking.
+- [ ] **Release hardening.** Code signing (see "Project setup"), GitHub
+      build-provenance attestation for the exe, GitHub Actions pinned to
+      commit SHAs, Dependabot, CodeQL for C#.
+- [ ] **Least privilege.** The app runs unelevated. Detect whether it runs as
+      administrator, and show features that need elevation only when they
+      can work (or show them disabled, with the reason in the tooltip).
+      If a feature needs admin rights, prefer a small elevated helper that
+      runs one narrow command and exits.
+
+**Code**
+- [ ] **Move to .NET 10 LTS** — see "Current priority" above.
+- [ ] **CsWin32 source generator** for new Win32/COM interop: declarations
+      generated from the Win32 metadata instead of written by hand.
+      Undocumented interfaces (`IPolicyConfig`) stay hand-written, and
+      existing working interop is only converted when it is touched anyway.
 
 ### Other ideas
 - [ ] Automated tests for the pure-logic parts that don't need audio hardware:
