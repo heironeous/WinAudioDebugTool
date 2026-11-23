@@ -6,24 +6,6 @@ and tested by hand — are listed in
 verification notes for the larger features are in
 [docs/design-notes.md](docs/design-notes.md).
 
-## Current priority
-- [ ] **Move to .NET 10 LTS.** .NET 8 support ended on 2026-11-10, so the
-      app now builds and ships on an unsupported runtime. .NET 10 is the
-      current LTS and is supported until November 2028.
-  - Retarget the app and `tools/PropertyKeyNameGenerator` to
-    `net10.0-windows` / `net10.0`, and update the publish profile.
-  - CI: `actions/setup-dotnet` to `10.0.x`.
-  - Check whether NAudio 2.2.1, the Win32 metadata package and the WPF
-    behaviour still work as before (build warnings, new analyzers, changed
-    defaults).
-  - The release is self-contained, so users don't need to install anything.
-    Local builds need the .NET 10 SDK.
-  - Update README (requirements, build), CLAUDE.md (environment) and
-    `docs/design-notes.md`.
-  - Verification: clean build, then exercise the full feature set on real
-    hardware, like a release check: enumeration, Set Default, volume, meters,
-    tests, A/B recording, side panels, event log file.
-
 ## Project setup
 - [ ] License file
 - [ ] Code signing of the published executable
@@ -240,7 +222,6 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       runs one narrow command and exits.
 
 **Code**
-- [ ] **Move to .NET 10 LTS** — see "Current priority" above.
 - [ ] **CsWin32 source generator** for new Win32/COM interop: declarations
       generated from the Win32 metadata instead of written by hand.
       Undocumented interfaces (`IPolicyConfig`) stay hand-written, and

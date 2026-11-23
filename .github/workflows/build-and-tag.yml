@@ -38,10 +38,10 @@ jobs:
         id: version
         run: bash .github/scripts/next-version.sh
 
-      - name: Set up .NET 8
+      - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       # Single-file, self-contained exe (runs without .NET installed), with the version stamped in.
       - name: Publish the app
@@ -62,7 +62,7 @@ jobs:
         run: |
           mkdir -p dist
           name="AudioDeviceDebugger-$TAG-win-x64.exe"
-          cp src/AudioDeviceDebugger/bin/Release/net8.0-windows/win-x64/publish/AudioDeviceDebugger.exe "dist/$name"
+          cp src/AudioDeviceDebugger/bin/Release/net10.0-windows/win-x64/publish/AudioDeviceDebugger.exe "dist/$name"
           (cd dist && sha256sum "$name" > "$name.sha256")
           ls -l dist
           echo "exe=dist/$name" >> "$GITHUB_OUTPUT"

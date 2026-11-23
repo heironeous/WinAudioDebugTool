@@ -8,7 +8,8 @@ and verification notes for the larger features are in
 [docs/design-notes.md](../docs/design-notes.md).
 
 ## Project setup
-- [x] Solution + WPF project (`.sln`, `.csproj`), .NET 8, NAudio 2.2.1
+- [x] Solution + WPF project (`.sln`, `.csproj`), .NET 10 LTS (.NET 8 until
+      2026-11-23), NAudio 2.2.1
 - [x] `.gitignore` for .NET build artifacts
 - [x] `README.md` (features, build, usage), `TODO.md`, `docs/design-notes.md`,
       `CLAUDE.md` (notes for AI coding agents)
@@ -170,6 +171,12 @@ and verification notes for the larger features are in
 - [x] Tab labels hide (icons only) when the strip is too short for all four
 - [x] Role column shows "Default" and "Comms" on separate lines (each with a
       tooltip), matching the name/subtitle lines; row height unchanged
+
+## Runtime
+- [x] Moved to .NET 10 LTS (2026-11-23): .NET 8 support ended on 2026-11-10.
+      The app, the property-key generator, the publish profile and CI target
+      .NET 10; no code changes were needed
+      (see docs/design-notes.md, ".NET 10 migration")
 
 ## Small follow-ups (2026-11-23)
 - [x] Call-mode hint for headsets whose mic reports form factor 4

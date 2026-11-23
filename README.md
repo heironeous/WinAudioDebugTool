@@ -61,7 +61,7 @@ All levels are shown in dBFS (−60…0 dB).
 - The effects list in RAW RECORDING needs Windows 11 (`IAudioEffectsManager`); raw capture needs a driver that
   supports it (the app tells you).
 - To run the released exe: nothing else — it includes the .NET runtime.
-- To build it yourself: the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+- To build it yourself: the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ## Getting it
 
@@ -86,7 +86,7 @@ file (about 70 MB, because it includes the .NET runtime): no installer, no admin
 git clone https://github.com/heironeous/WinAudioDebugTool.git
 cd WinAudioDebugTool\src\AudioDeviceDebugger
 dotnet build -c Release
-.\bin\Release\net8.0-windows\win-x64\AudioDeviceDebugger.exe
+.\bin\Release\net10.0-windows\win-x64\AudioDeviceDebugger.exe
 ```
 
 Or run it directly with `dotnet run` from `src\AudioDeviceDebugger`.
@@ -96,7 +96,7 @@ To produce a single self-contained `.exe` that runs on machines without .NET ins
 ```powershell
 cd src\AudioDeviceDebugger
 dotnet publish -p:PublishProfile=win-x64-selfcontained
-# → bin\Release\net8.0-windows\win-x64\publish\AudioDeviceDebugger.exe
+# → bin\Release\net10.0-windows\win-x64\publish\AudioDeviceDebugger.exe
 ```
 
 (The same profile can be picked in Visual Studio's Publish dialog.)
@@ -170,7 +170,7 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 
 ## How it works
 
-- **C# / .NET 8, WPF** — a native Windows UI with direct access to the Core Audio COM APIs (`IMMDeviceEnumerator`,
+- **C# / .NET 10 (LTS), WPF** — a native Windows UI with direct access to the Core Audio COM APIs (`IMMDeviceEnumerator`,
   `IAudioEndpointVolume`, `IAudioMeterInformation`, `IAudioSessionManager2`, …).
 - **[NAudio](https://github.com/naudio/NAudio) 2.2.1** for WASAPI playback/capture and most Core Audio wrappers.
 - **Own COM interop** where NAudio has no API or is too slow: `IPolicyConfig` (setting defaults), `IAudioClient2`
@@ -188,7 +188,7 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 ├── docs/design-notes.md         Implementation and verification notes for the larger features
 ├── docs/images/                 Screenshots used in this README
 ├── AudioDeviceDebugger.sln
-├── src/AudioDeviceDebugger/     The WPF app (net8.0-windows)
+├── src/AudioDeviceDebugger/     The WPF app (net10.0-windows)
 │   ├── Interop/                 Raw COM interop (IPolicyConfig, IAudioClient2, property reads, property-key names)
 │   ├── Models/                  Plain data (devices, formats, events, sessions, recordings)
 │   ├── Services/                Core Audio work, no UI: enumeration, defaults, details, volume, level meters,

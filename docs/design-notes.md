@@ -437,3 +437,26 @@ Jabra Evolve3 75 / Link 370 / Link 380 endpoints.
   - The hint with a form-factor-4 headset mic in a real call (no such headset
     was connected).
   - The log across midnight (the file is chosen per entry, so it should split).
+
+## .NET 10 migration (2026-11-23)
+.NET 8 support ended on 2026-11-10; .NET 10 is the current LTS (supported until November 2028).
+
+- **Changes.** Only the target frameworks changed: `net10.0-windows` for the app and the publish profile (also its
+  `PublishDir`), `net10.0` for `tools/PropertyKeyNameGenerator`, and `dotnet-version: 10.0.x` plus the publish path
+  in CI. No code changes, no package updates: NAudio 2.2.1 and the Win32 metadata package work as they are.
+- **Build.** SDK 10.0.404: 0 warnings, 0 errors for the app and the generator. The generator's output
+  (`PropertyKeyNames.g.cs`, `KnownGuidNames.g.cs`) is byte-identical. A CI-style publish
+  (`-p:PublishProfile=win-x64-selfcontained -p:Version=…`) gave a 75.9 MB single-file exe with the version stamped
+  in.
+- **Verified in the app** (desktop machine, UI Automation and screenshots; silent: both outputs were already muted at
+  0 %, only the C922 webcam mic was opened):
+  - the process loads `coreclr.dll` from the `net10.0-windows` output;
+  - 31 endpoints enumerated; volume and mute read back as the real endpoint state (checked separately with NAudio);
+  - PROPERTIES, EVENTS, PROCESSES and RAW RECORDING tabs open; the property table and live levels fill in;
+  - selecting the C922 mic opens its meter stream, minimising releases it, restoring reopens it;
+  - Record A/B captured Raw, Call and Standard at the same time (our IAudioClient2 interop), then playback was
+    stopped;
+  - the event log file got its start line; the app exits with code 0.
+  - Screenshots of the .NET 8 and .NET 10 builds in the same state were identical.
+- **Not verified:** audible tests (music, per-channel, mic playback), Set Default / Set Comms, volume changes, and
+  the laptop hardware (Intel array, Jabra Link 390). The CI workflow runs on the next push to `main`.

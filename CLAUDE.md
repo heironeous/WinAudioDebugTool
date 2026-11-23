@@ -6,12 +6,12 @@ reading too before changing services or interop.
 
 Agents: read this first, then `README.md` (features, build, layout, regenerating property names), `TODO.md` (open
 items and roadmap; finished items are in `planning/DONE-TODO.md`) and `docs/design-notes.md` (how the larger
-features were built and verified). This file records **where the project stands, how the maintainer likes to work, and the non-obvious things learned the hard
-way**. Keep it current: when you finish a piece of work, update "Current state" and "Open items".
+features were built and verified). This file records **where the project stands, how the maintainer likes to work,
+and the non-obvious things learned the hard way**. Keep it current: when you finish a piece of work, update "Current state" and "Open items".
 
 ## What this is
 
-**Audio Device Debugger** — a Windows WPF tool (C# / .NET 8, NAudio 2.2.1 + raw Core Audio COM interop) for
+**Audio Device Debugger** — a Windows WPF tool (C# / .NET 10 LTS, NAudio 2.2.1 + raw Core Audio COM interop) for
 inspecting and driving audio endpoints: list every input/output (incl. disabled / not-present / unplugged), set the
 default / communications / both roles, per-device volume + mute, live dB level meters, test playback (generated music)
 and mic record-and-playback tests, per-channel tests, an event timeline, the apps using each device, raw vs
@@ -24,7 +24,7 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
 - Builds cleanly (0 warnings) and runs on Windows 11; every feature in `planning/DONE-TODO.md` was exercised on
   real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
   the maintainer's decision. No automated tests.
-- CI: `.github/workflows/build-and-tag.yml` publishes every push to `main` (windows-latest, .NET 8) as the
+- CI: `.github/workflows/build-and-tag.yml` publishes every push to `main` (windows-latest, .NET 10) as the
   single-file self-contained exe (publish profile `win-x64-selfcontained`, version stamped in) and, on success,
   pushes an annotated tag `vX.Y.Z` and creates a GitHub Release for it with `AudioDeviceDebugger-vX.Y.Z-win-x64.exe`
   + `.sha256` attached (`gh release create --generate-notes`; a re-run of a tagged commit re-uploads the files). The bump comes from the commit subjects since the last tag
@@ -47,16 +47,17 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
 
 ## Environment & commands
 
-- .NET 8 SDK (8.0.427 on the laptop, 8.0.428 on the desktop, 2026-11-23) was installed via winget; only the runtime
-  was present before, and the desktop's `dotnet` defaulted to a 3.1 SDK. `dotnet` may not be on PATH in a
-  fresh shell — use `"C:\Program Files\dotnet\dotnet.exe"`.
+- The app targets .NET 10 (LTS) since 2026-11-23; .NET 8 support ended 2026-11-10. Builds need the .NET 10 SDK
+  (10.0.404 installed via winget on the desktop, 2026-11-23; the laptop still has only the 8.0.427 SDK — install
+  `Microsoft.DotNet.SDK.10` there first). Older SDKs on the desktop (3.1, 8.0.428) are harmless; the newest wins.
+  `dotnet` may not be on PATH in a fresh shell — use `"C:\Program Files\dotnet\dotnet.exe"`.
 - No Windows SDK is installed (no C++ headers); property-key names come from the Win32 metadata NuGet package instead.
 - Shells: PowerShell is primary; Git Bash is also available (and handy for heredocs / python one-off edits).
 
 ```powershell
 cd src\AudioDeviceDebugger
-dotnet build -c Release                                   # output: bin\Release\net8.0-windows\win-x64\AudioDeviceDebugger.exe
-Start-Process bin\Release\net8.0-windows\win-x64\AudioDeviceDebugger.exe
+dotnet build -c Release                                   # output: bin\Release\net10.0-windows\win-x64\AudioDeviceDebugger.exe
+Start-Process bin\Release\net10.0-windows\win-x64\AudioDeviceDebugger.exe
 dotnet run --project tools/PropertyKeyNameGenerator       # (from repo root) regenerate Interop/PropertyKeyNames.g.cs
 ```
 
