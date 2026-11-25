@@ -6,6 +6,22 @@
         Background="{StaticResource SurfaceBase}" FontSize="{StaticResource FontLabel}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+
+        <!-- A device's role pills (its data context is a DeviceRowViewModel, or null while nothing is selected). -->
+        <DataTemplate x:Key="RoleBadges">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Badge}"
+                        ToolTip="Default device: what music, videos and most apps use"
+                        Visibility="{Binding Device.IsDefaultDevice, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
+                    <TextBlock Text="Default" Style="{StaticResource BadgeText}"/>
+                </Border>
+                <Border Style="{StaticResource Badge}"
+                        ToolTip="Default communications device: what call apps (Teams, Webex…) use"
+                        Visibility="{Binding Device.IsDefaultCommunicationsDevice, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
+                    <TextBlock Text="Comms" Style="{StaticResource BadgeText}"/>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
     <Grid Margin="12,4,12,12">
         <Grid.RowDefinitions>
@@ -123,16 +139,7 @@
                                         <!-- The pills are docked right but the panel is only as wide as its content, so they
                                              sit right after the name; a long name is trimmed before they are. -->
                                         <DockPanel HorizontalAlignment="Left">
-                                            <Border DockPanel.Dock="Right" Style="{StaticResource Badge}"
-                                                    ToolTip="Default communications device: what call apps (Teams, Webex…) use"
-                                                    Visibility="{Binding Device.IsDefaultCommunicationsDevice, Converter={StaticResource BoolToVisibility}}">
-                                                <TextBlock Text="Comms" Style="{StaticResource BadgeText}"/>
-                                            </Border>
-                                            <Border DockPanel.Dock="Right" Style="{StaticResource Badge}"
-                                                    ToolTip="Default device: what music, videos and most apps use"
-                                                    Visibility="{Binding Device.IsDefaultDevice, Converter={StaticResource BoolToVisibility}}">
-                                                <TextBlock Text="Default" Style="{StaticResource BadgeText}"/>
-                                            </Border>
+                                            <ContentPresenter DockPanel.Dock="Right" Content="{Binding}" ContentTemplate="{StaticResource RoleBadges}"/>
                                             <TextBlock Text="{Binding Device.FriendlyName}" ToolTip="{Binding Device.FriendlyName}"
                                                        TextTrimming="CharacterEllipsis"/>
                                         </DockPanel>
@@ -295,18 +302,129 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Margin="0,0,0,8">
-                        <TextBlock Text="{Binding SelectedDevice.Device.FriendlyName}" FontSize="{StaticResource FontTitle}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>
-                        <TextBlock Text="{Binding SelectedDevice.Device.Id}" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
-                        <TextBlock Foreground="{StaticResource TextPrimary}" Margin="0,4,0,0">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="Shared mode: {0}&#x0a;Exclusive mode: {1}">
-                                    <Binding Path="SelectedDeviceDetails.SharedModeFormat" TargetNullValue="n/a (device not active)" FallbackValue="…"/>
-                                    <Binding Path="SelectedDeviceDetails.ExclusiveModeFormat" TargetNullValue="n/a" FallbackValue="…"/>
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
-                    </StackPanel>
+                    <!-- Header card: icon, name and role pills; state and formats as chips; the endpoint ID behind a copy button. -->
+                    <Border Grid.Row="0" Margin="0,0,0,8" Padding="12,10,8,6" CornerRadius="6" BorderThickness="1"
+                            Background="{StaticResource SurfacePanel}" BorderBrush="{StaticResource BorderSubtle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="44" Height="44" CornerRadius="6" Margin="0,0,12,4" VerticalAlignment="Top"
+                                    Background="{StaticResource SurfaceRaised}" ToolTip="{Binding SelectedDevice.IconToolTip}">
+                                <TextBlock Text="{Binding SelectedDevice.IconGlyph}" FontFamily="{StaticResource IconFont}"
+                                           FontSize="{StaticResource IconLarge}" Foreground="{StaticResource TextPrimary}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding SelectedDevice.Device.FriendlyName}" ToolTip="{Binding SelectedDevice.Device.FriendlyName}"
+                                           FontSize="{StaticResource FontTitle}" FontWeight="SemiBold" Margin="0,0,0,4"
+                                           Foreground="{StaticResource TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                <!-- MinHeight: the formats arrive a moment after the selection; the card shouldn't jump. -->
+                                <WrapPanel MinHeight="24">
+                                    <!-- The pills bring an 8 px left margin (for the list); pulled back so they align with the name.
+                                         A ContentControl, because a ContentPresenter's own data context is its content. -->
+                                    <ContentControl Content="{Binding SelectedDevice}" ContentTemplate="{StaticResource RoleBadges}"
+                                                      Margin="-8,0,8,4" Focusable="False">
+                                        <ContentControl.Style>
+                                            <Style TargetType="ContentControl">
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SelectedDevice.Device.IsDefaultDevice, FallbackValue=False}" Value="False"/>
+                                                            <Condition Binding="{Binding SelectedDevice.Device.IsDefaultCommunicationsDevice, FallbackValue=False}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContentControl.Style>
+                                    </ContentControl>
+                                    <Border>
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource Chip}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedDevice.IsActive, FallbackValue=True}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding SelectedDevice.StateText}" Style="{StaticResource ChipText}" Foreground="{StaticResource Caution}"/>
+                                    </Border>
+                                    <Border>
+                                        <Border.ToolTip>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <Run Text="Shared mode — the format every app sharing this device is converted to:"/><LineBreak/>
+                                                <Run Text="{Binding SelectedDeviceDetails.SharedModeFormat, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </Border.ToolTip>
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource Chip}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedDeviceDetails.SharedModeFormat, FallbackValue={x:Null}}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Style="{StaticResource ChipText}">
+                                            <Run Text="Shared" Foreground="{StaticResource TextTertiary}"/>
+                                            <Run Text="{Binding SelectedDeviceDetails.SharedModeFormat.ShortText, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </Border>
+                                    <Border>
+                                        <Border.ToolTip>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <Run Text="Exclusive mode — the format an app that takes over the device would use:"/><LineBreak/>
+                                                <Run Text="{Binding SelectedDeviceDetails.ExclusiveModeFormat, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </Border.ToolTip>
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource Chip}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedDeviceDetails.ExclusiveModeFormat, FallbackValue={x:Null}}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Style="{StaticResource ChipText}">
+                                            <Run Text="Exclusive" Foreground="{StaticResource TextTertiary}"/>
+                                            <Run Text="{Binding SelectedDeviceDetails.ExclusiveModeFormat.ShortText, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </Border>
+                                    <Border ToolTip="The driver says this microphone can be recorded without any processing (see RAW RECORDING)">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource Chip}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedDeviceDetails.RawProcessingSupported, FallbackValue={x:Null}}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="Raw capture" Style="{StaticResource ChipText}"/>
+                                    </Border>
+                                    <Button Click="CopyIdButton_Click" Style="{StaticResource FlatButton}" BorderThickness="0"
+                                            Padding="8,2,8,3" Margin="0,0,6,4" AutomationProperties.Name="Copy endpoint ID">
+                                        <Button.ToolTip>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <Run Text="Copy the endpoint ID:"/><LineBreak/>
+                                                <Run Text="{Binding SelectedDevice.Device.Id, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </Button.ToolTip>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontCaption}"
+                                                       Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <TextBlock Text="Copy ID" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondary}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
                     <Border Grid.Row="1" Margin="0,0,0,8" CornerRadius="6" BorderThickness="1"
                             Background="{StaticResource SurfacePanel}" BorderBrush="{StaticResource BorderSubtle}">

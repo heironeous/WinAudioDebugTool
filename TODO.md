@@ -41,7 +41,7 @@ item, so each can be rolled back on its own.
       repeat "Output ·" / "Input ·".
 - [x] **B2. Device-type icons.** A monochrome Segoe Fluent glyph per form
       factor (speakers, headphones, headset, microphone, digital, …).
-- [ ] **D1. Details header card.** Icon, name, badges and format chips; the
+- [x] **D1. Details header card.** Icon, name, badges and format chips; the
       endpoint ID behind a copy button.
 - [ ] **D2. Better level graph.** Soft fill, peak-hold line, yellow and red
       zones near 0 dB.

@@ -37,7 +37,7 @@
     <SolidColorBrush x:Key="Negative" Color="#E57373"/>
 
     <!-- Type scale: four text sizes, three icon sizes. -->
-    <sys:Double x:Key="FontTitle">18</sys:Double>
+    <sys:Double x:Key="FontTitle">16</sys:Double>
     <sys:Double x:Key="FontBody">13</sys:Double>
     <sys:Double x:Key="FontLabel">12</sys:Double>
     <sys:Double x:Key="FontCaption">11</sys:Double>
@@ -264,6 +264,18 @@
     <Style x:Key="BadgeText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{StaticResource FontCaption}"/>
         <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+    </Style>
+
+    <!-- Neutral chip: a fact about the device (format, state). -->
+    <Style x:Key="Chip" TargetType="Border">
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="8,2,8,3"/>
+        <Setter Property="Margin" Value="0,0,6,4"/>
+        <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+    </Style>
+    <Style x:Key="ChipText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource FontCaption}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
     </Style>
 
     <!-- Outlined flat button (Test). -->

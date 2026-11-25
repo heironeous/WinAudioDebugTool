@@ -108,6 +108,20 @@ public partial class MainWindow : Window
         DeviceColumn.Width = new DataGridLength(Math.Max(DeviceColumn.MinWidth, e.ViewportWidth - others));
     }
 
+    private void CopyIdButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.SelectedDevice is not { } row) return;
+        try
+        {
+            Clipboard.SetText(row.Device.Id);
+            _viewModel.ShowStatus($"Copied the endpoint ID of \"{row.Device.FriendlyName}\" to the clipboard.");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.ShowStatus($"Couldn't copy the endpoint ID: {ex.Message}");
+        }
+    }
+
     private void CopyEventsButton_Click(object sender, RoutedEventArgs e)
     {
         var events = _viewModel.EventLog.ShownEventsOldestFirst();
