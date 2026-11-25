@@ -224,9 +224,13 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       existing working interop is only converted when it is touched anyway.
 
 ### Other ideas
-- [ ] Automated tests for the pure-logic parts that don't need audio hardware:
+- [x] Automated tests for the pure-logic parts that don't need audio hardware:
       event log merging and filters, exporters, `LevelScale`, `ChannelLayout`
-      (an offline harness covered the event log during development)
+      (an offline harness covered the event log during development).
+      Done: `tests/AudioDeviceDebugger.Tests` (xUnit, 114 tests), also the
+      property-value decoders, the daily log files, the channel conversion and
+      the device rows' "in use" text; CI runs them on every push to `main` and
+      on pull requests, which are built but not released
 - [ ] A/B listening test for headsets in media vs call mode (pair speaker and
       mic by `DEVPKEY_Device_ContainerId`)
 - [ ] Disable a headset's mic endpoint so apps can't switch it into call mode

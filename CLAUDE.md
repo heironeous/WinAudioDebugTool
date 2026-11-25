@@ -24,8 +24,9 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   The maintainer pushes; agents don't, unless asked for that branch.
 - Builds cleanly (0 warnings) and runs on Windows 11; every feature in `planning/DONE-TODO.md` was exercised on
   real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
-  the maintainer's decision. No automated tests.
-- CI: `.github/workflows/build-and-tag.yml` publishes every push to `main` (windows-latest, .NET 10) as the
+  the maintainer's decision. Unit tests (xUnit) in `tests/AudioDeviceDebugger.Tests` cover the hardware-free logic;
+  run `dotnet test` from the repo root (CI runs them too). Add tests with new pure logic.
+- CI: `.github/workflows/build-and-tag.yml` runs the unit tests and publishes every push to `main` (windows-latest, .NET 10) as the
   single-file self-contained exe (publish profile `win-x64-selfcontained`, version stamped in) and, on success,
   pushes an annotated tag `vX.Y.Z` and creates a GitHub Release for it with `AudioDeviceDebugger-vX.Y.Z-win-x64.exe`
   + `.sha256` attached (`gh release create --generate-notes`; a re-run of a tagged commit re-uploads the files). The bump comes from the commit subjects since the last tag
@@ -33,7 +34,8 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   Documentation-only pushes (`**.md`, `docs/**` — `paths-ignore`) don't run the workflow and get no tag.
   So **the commit type matters** — use `feat:` only for user-visible features. Don't create version tags by hand
   and don't edit `<Version>` in the `.csproj` to release (it is only the first tag's version and the local-build
-  version). `.gitattributes` keeps `*.sh` LF — bash on the Windows runner fails on CRLF.
+  version). `.gitattributes` keeps `*.sh` LF — bash on the Windows runner fails on CRLF. Pull requests into `main`
+  run the same tests and build, but the tag and release steps are skipped for them.
 - Docs: `README.md` is for users (features, requirements, build, caveats) — update it when a user-visible feature
   changes; `TODO.md` holds the open items + roadmap (N3, N5 specified) and `planning/DONE-TODO.md` the finished
   items (move an item there once it's done); `docs/design-notes.md` holds implementation and verification notes for
@@ -62,6 +64,7 @@ cd src\AudioDeviceDebugger
 dotnet build -c Release                                   # output: bin\Release\net10.0-windows\win-x64\AudioDeviceDebugger.exe
 Start-Process bin\Release\net10.0-windows\win-x64\AudioDeviceDebugger.exe
 dotnet run --project tools/PropertyKeyNameGenerator       # (from repo root) regenerate Interop/PropertyKeyNames.g.cs
+dotnet test                                               # (from repo root) unit tests
 ```
 
 The running app locks its exe: stop it before rebuilding (`Get-Process AudioDeviceDebugger | Stop-Process`).
@@ -106,6 +109,9 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   details bottom: header card + `LevelGraph` + channel bars left, collapsible right-hand side panel showing one of four
   horizontal tabs — Properties, Events, Processes (apps using the device), Raw recording (A/B takes)), `LevelGraph`,
   `Theme.xaml` (palette, type scale and all control styles; merged in `App.xaml`).
+- `tests/AudioDeviceDebugger.Tests/` — xUnit tests of the hardware-free logic. It references the app (a self-contained
+  exe, hence `ValidateExecutableReferencesMatchSelfContained=false`; internals via `InternalsVisibleTo`), sets the
+  invariant culture for every test (`TestCulture.cs`), and uses `UseWPF` for the event log's CollectionView.
 - `tools/PropertyKeyNameGenerator/` — reads `Windows.Win32.winmd` from Microsoft.Windows.SDK.Win32Metadata and writes
   both generated tables (property keys; audio GUID constants).
 
@@ -205,4 +211,4 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   see lesson 16 and docs/design-notes.md.
 - The maintainer asked for explanations, not code, on the headset call-mode ideas (media-vs-call listening test,
   disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
-- Not started: license, automated tests, code signing (releases are unsigned, so SmartScreen warns).
+- Not started: license, code signing (releases are unsigned, so SmartScreen warns).

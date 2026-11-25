@@ -103,6 +103,12 @@ dotnet publish -p:PublishProfile=win-x64-selfcontained
 
 (The same profile can be picked in Visual Studio's Publish dialog.)
 
+To run the unit tests (from the repo root):
+
+```powershell
+dotnet test
+```
+
 ## Good to know
 
 - **Selecting a microphone opens it.** Windows only reports an input's level while something records from it, so
@@ -129,12 +135,15 @@ Every finished item in [planning/DONE-TODO.md](planning/DONE-TODO.md) was tested
 Smart Sound Technology 4-channel mic array and a Jabra Link 390 USB headset dongle. Other hardware — surround setups,
 pro audio interfaces, directly paired Bluetooth headsets — hasn't been tried; reports are welcome.
 
-A GitHub Actions workflow builds every push to `main` on Windows (except documentation-only pushes), tags it
-with the next version and publishes it as a release (see "Versioning" below). There are no automated tests yet. Most of the code is a thin layer over live Windows Core Audio calls, which
-can't be meaningfully unit-tested without real devices; the pure-logic parts (event log, exporters, level scale,
-channel layout) are candidates for a test project.
+A GitHub Actions workflow builds every push to `main` on Windows (except documentation-only pushes), runs the unit
+tests, tags it with the next version and publishes it as a release (see "Versioning" below). Pull requests into
+`main` get the same tests and build, without a tag or release.
 
-A quick manual check after building:
+The unit tests (`tests/AudioDeviceDebugger.Tests`, xUnit) cover the parts that need no audio hardware: the event
+log (merging bursts, filters, what gets written to disk), the exporters and the daily log files, the dB scale,
+channel names, the property-value decoders, the channel conversion for test playback and the device rows' "in use"
+text. Most of the rest is a thin layer over live Windows Core Audio calls, which can't be meaningfully unit-tested
+without real devices; that part is checked by hand. A quick manual check after building:
 
 1. The device list matches what Windows Sound settings shows; plugging/unplugging a USB headset updates it.
 2. **Set Default / Set Comms** change the defaults, and Windows Sound settings agrees.
@@ -198,6 +207,7 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 │   ├── ViewModels/              MVVM glue between services and views
 │   ├── Views/                   MainWindow, LevelGraph, Theme.xaml (flat dark theme)
 │   └── Assets/                  App icon
+├── tests/AudioDeviceDebugger.Tests/  Unit tests (xUnit) for the parts that need no audio hardware
 └── tools/PropertyKeyNameGenerator/   Regenerates the property-key name table
 ```
 
