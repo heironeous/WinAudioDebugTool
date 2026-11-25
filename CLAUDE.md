@@ -36,7 +36,10 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
 - Docs: `README.md` is for users (features, requirements, build, caveats) — update it when a user-visible feature
   changes; `TODO.md` holds the open items + roadmap (N3, N5 specified) and `planning/DONE-TODO.md` the finished
   items (move an item there once it's done); `docs/design-notes.md` holds implementation and verification notes for
-  N1, N2, N4 and the side-panel tabs.
+  N1, N2, N4, the side-panel tabs and the visual refresh.
+- **Visual refresh** (2026-11-25): on branch `feature/visual-refresh` (pushed at the maintainer's request, not merged),
+  one commit per item. All items are ticked in `TODO.md`; move them to `planning/DONE-TODO.md` once the maintainer has
+  tested and merged the branch. CI only runs on `main`, so the branch has no CI build.
 - The maintainer's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
   Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
   Poly BT700, Poly Voyager Focus 2, HP dock). **All headsets connect through USB dongles** — none are paired with
@@ -99,10 +102,10 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 - `ViewModels/` — `MainViewModel` (refresh/debounce, filters, selection, tests, side panels, event logging),
   `DeviceRowViewModel`, `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging),
   `SessionRowViewModel` (PROCESSES tab), `TakeRowViewModel` (RAW RECORDING tab: last take per processing mode). `Models/` — plain data + `LevelScale` (dB conversion).
-- `Views/` — `MainWindow` (toolbar 2 lines; device grid top; details bottom: info + `LevelGraph` + channel bars left,
-  collapsible right-hand side panel showing one of four tabs — PROPERTIES, EVENTS, PROCESSES (apps using the
-  device), RAW RECORDING (A/B takes) — picked from a vertical tab strip whose labels hide when it's too short),
-  `LevelGraph`.
+- `Views/` — `MainWindow` (toolbar 1 line, filter chips on the right; device grid top, grouped into OUTPUTS / INPUTS;
+  details bottom: header card + `LevelGraph` + channel bars left, collapsible right-hand side panel showing one of four
+  horizontal tabs — Properties, Events, Processes (apps using the device), Raw recording (A/B takes)), `LevelGraph`,
+  `Theme.xaml` (palette, type scale and all control styles; merged in `App.xaml`).
 - `tools/PropertyKeyNameGenerator/` — reads `Windows.Win32.winmd` from Microsoft.Windows.SDK.Win32Metadata and writes
   both generated tables (property keys; audio GUID constants).
 
@@ -129,7 +132,7 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
    (−60…0 dBFS). The property store is only read while the property panel is open (it's the expensive part of
    selection).
 10. WPF projects' implicit usings exclude `System.IO`; `Timer` is ambiguous (System.Timers vs System.Threading).
-11. **The UI uses a flat dark theme** (`Views/Theme.xaml`: list, buttons, checkboxes, meters, strip toggle). The DataGrid coerces
+11. **The UI uses a flat dark theme** (`Views/Theme.xaml`; use its named colours and sizes, never literals). The DataGrid coerces
     `DataGridRow.Background` to its `RowBackground`, so row-level hover/selection triggers do nothing — those colours
     are drawn in the `ListCell` template instead. Setting `CellStyle` doesn't remove the theme style's triggers, so
     pin `Foreground` or the selected row's text turns near-black ("inactive selection" colour). Thin icon glyphs get
@@ -166,6 +169,11 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     an output, or a laptop mic pairs with the headphone jack. Form factors don't help: the Jabra Evolve3 75 reports
     its headset as "Speakers" (1) and "Microphone" (4).
 
+18. **A grouped DataGrid stops recomputing star column widths** when its viewport changes (window resize, scrollbar shown
+    or hidden), which clips the last columns: `DeviceGrid_ScrollChanged` sets the DEVICE column's width instead.
+19. **A `ContentPresenter`'s own DataContext is its Content**: style triggers on it that bind to the outer view model
+    silently get the fallback value. Use a `ContentControl` when it needs triggers.
+
 ## Verifying changes (techniques that worked)
 
 - **UI Automation from PowerShell** (`UIAutomationClient`): find the DataGrid's `DataItem` rows by name, `Select()`
@@ -175,6 +183,8 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   `CopyFromScreen` returns black when the screen is locked, and WPF windows capture as plain white while the display
   is asleep (maintainer idle for minutes) — don't mistake that for a rendering bug. Re-declare the helper type in each new PowerShell process
   (or keep a script file in the session scratchpad).
+- **Meters with a signal but no sound**: a *muted* output's peak meter still shows what is played on it, so Test on a
+  muted device moves every meter silently. Check the mute state right before and after.
 - **Scratch harness projects** (in the session scratchpad, never in the repo) referencing NAudio to measure things
   directly: endpoint volume/mute readback, per-device active audio sessions of the app's PID (to prove which mics are
   open), timing of COM calls, FFT band energy of `TestMusic`, silent playback with `WasapiOut.Volume = 0`.

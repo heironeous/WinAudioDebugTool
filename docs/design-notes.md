@@ -305,7 +305,38 @@ was not built.
   5/6, never showed for it. Fixed 2026-11-23 by matching container IDs (see
   "Small follow-ups" below).
 
+## Visual refresh (2026-11-25)
+Branch `feature/visual-refresh`, one commit per item of "Visual refresh" in [TODO.md](../TODO.md). The layout stays:
+device list on top, details below.
+
+- **Theme.** `Theme.xaml` is merged in `App.xaml`, not in the window: tooltips live in their own popup window. It holds
+  the palette (three surface levels, three text colours, accent / positive / caution / negative), the type scale and
+  the icon sizes. Views use only those names. Tracks and outlines are translucent white, so they also show up on a
+  selected row.
+- **Title bar.** `Interop/WindowTheme.cs` sets DWM attributes 20 (dark mode, Windows 10 2004+) and 35 (caption colour,
+  Windows 11). Older versions return an error, which is ignored.
+- **PROPERTIES** was an unstyled `ListView`; now a `DataGrid` in the event log's style, with resizable columns
+  (`LogHeaderResizable` has the `PART_RightHeaderGripper`).
+- **Sections.** The default view is grouped by `DeviceRowViewModel.SectionText`. A grouped DataGrid doesn't recompute
+  star columns when its viewport changes, so `DeviceGrid_ScrollChanged` sets the DEVICE column's width.
+- **Icons** come from the form factor (`DeviceRowViewModel.IconGlyph`), so they are only as good as the driver: the Jabra
+  Evolve3 75 dongle reports "Speakers" and "Microphone".
+- **Header card.** The role pills are a `ContentControl`, because a `ContentPresenter`'s own data context is its content
+  and triggers on it would resolve against the wrong object.
+- **Level graph.** The gradient brushes use absolute mapping, so a colour always means the same dB value. Peak hold:
+  1.5 s, then 20 dB/s. Smooth scrolling animates one `TranslateTransform` per sample.
+- **Tabs.** With no tab open, the side-panel column shrinks to the tabs (Auto width) and the graph spans all columns
+  (`ApplySidePanelLayout`).
+- Verified by screenshot at 1200×800 and at 900 px width (the minimum), with the side panel open and closed; filters,
+  tabs and selection by UI Automation; tooltips and the graph's loud levels in a scratch harness with synthetic
+  samples; the test clip on a *muted* output (its meters still move). CPU use with the graph running: 4.7 % of one core
+  before, 3.8 % after (the difference is noise).
+- Not checked: dragging the splitters and the property columns, Windows 10, Windows high
+  contrast mode, "Copy ID" (it would have overwritten the maintainer's clipboard).
+
 ## Side-panel tabs (2026-11-11)
+Superseded in looks by "Visual refresh" above: the tabs are horizontal and labelled now; the rest still applies.
+
 The right-hand column now has four tabs: **PROPERTIES**, **EVENTS**,
 **PROCESSES** (the apps using the selected device, from N1) and **RAW
 RECORDING** (A/B recording, from N4).
