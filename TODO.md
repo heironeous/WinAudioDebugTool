@@ -28,7 +28,7 @@ item, so each can be rolled back on its own.
 ### Quick Win
 - [x] **A1. Finish the dark theme.** Title bar, thin scrollbars, tooltips and
       the PROPERTIES list, which still use the light Windows look.
-- [ ] **A2. One palette and type scale.** Three surface levels, one meter
+- [x] **A2. One palette and type scale.** Three surface levels, one meter
       green, named text colours and four text sizes instead of hard-coded
       values.
 - [ ] **B3. Role badges.** "Default" / "Comms" pills next to the device name,

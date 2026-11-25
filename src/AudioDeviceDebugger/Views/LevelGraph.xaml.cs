@@ -15,8 +15,6 @@ public partial class LevelGraph : UserControl
 {
     private const int MaxSamples = 150;
     private static readonly double[] GridlinesDb = { -12, -24, -36, -48 };
-    private static readonly Brush GridBrush = new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A));
-    private static readonly Brush GridLabelBrush = new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80));
 
     private readonly Queue<double> _samples = new(); // dB-scaled bar fill, 0–1
 
@@ -55,18 +53,22 @@ public partial class LevelGraph : UserControl
         GridCanvas.Children.Clear();
         if (ActualWidth <= 0 || ActualHeight <= 0) return;
 
+        var gridBrush = (Brush)FindResource("BorderSubtle");
+        var labelBrush = (Brush)FindResource("TextTertiary");
+        var labelSize = (double)FindResource("FontCaption");
+
         foreach (double db in GridlinesDb)
         {
             double y = ActualHeight - LevelScale.DbToMeter(db) * ActualHeight;
             GridCanvas.Children.Add(new Line
             {
                 X1 = 0, X2 = ActualWidth, Y1 = y, Y2 = y,
-                Stroke = GridBrush, StrokeThickness = 1, StrokeDashArray = new DoubleCollection { 4, 4 },
+                Stroke = gridBrush, StrokeThickness = 1, StrokeDashArray = new DoubleCollection { 4, 4 },
             });
 
-            var label = new TextBlock { Text = $"{db:0} dB", FontSize = 10, Foreground = GridLabelBrush };
+            var label = new TextBlock { Text = $"{db:0} dB", FontSize = labelSize, Foreground = labelBrush };
             Canvas.SetLeft(label, 4);
-            Canvas.SetTop(label, y - 13);
+            Canvas.SetTop(label, y - 16);
             GridCanvas.Children.Add(label);
         }
     }
