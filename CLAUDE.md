@@ -42,6 +42,10 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   N1, N2, N4, the side-panel tabs and the visual refresh.
 - **Visual refresh** (2026-11-25): merged into `main` from `feature/visual-refresh` (PR #1, released as v0.3.0); its
   items are in `planning/DONE-TODO.md`. CI only runs on `main`, so feature branches get no CI build.
+- **Branch `feature/tests-inventory-grouping-theme`** (2026-11-25, pushed at the maintainer's request, not merged):
+  unit tests + CI test step (which also runs on pull requests into `main`, without tag or release), the Driver tab
+  (device inventory), grouping by device, and the light / high-contrast themes; one commit each. The items are ticked
+  in `TODO.md`; move them to `planning/DONE-TODO.md` once the branch is merged.
 - The maintainer's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
   Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
   Poly BT700, Poly Voyager Focus 2, HP dock). **On the laptop, all headsets connect through USB dongles** — none
