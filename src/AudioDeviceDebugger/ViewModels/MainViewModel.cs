@@ -594,8 +594,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             LogForDevice(row.Device.Id, AudioEventKind.Error, AudioEventSource.ThisApp, $"Failed to set as the {roleText}: {ex.Message}");
         }
 
-        // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the Role column
-        // reflects what Windows actually has now. Debounced: the change also triggers device notifications.
+        // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the role badges
+        // reflect what Windows actually has now. Debounced: the change also triggers device notifications.
         RequestRefresh();
     }
 

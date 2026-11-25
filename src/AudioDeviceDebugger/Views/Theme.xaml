@@ -232,6 +232,19 @@
         </Setter>
     </Style>
 
+    <!-- Small pill: a device's role (Default, Comms). -->
+    <Style x:Key="Badge" TargetType="Border">
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,1,8,2"/>
+        <Setter Property="Margin" Value="8,0,0,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Background" Value="{StaticResource AccentSoft}"/>
+    </Style>
+    <Style x:Key="BadgeText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource FontCaption}"/>
+        <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+    </Style>
+
     <!-- Outlined flat button (Test). -->
     <Style x:Key="FlatButton" TargetType="Button">
         <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>

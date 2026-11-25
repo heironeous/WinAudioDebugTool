@@ -31,7 +31,7 @@ item, so each can be rolled back on its own.
 - [x] **A2. One palette and type scale.** Three surface levels, one meter
       green, named text colours and four text sizes instead of hard-coded
       values.
-- [ ] **B3. Role badges.** "Default" / "Comms" pills next to the device name,
+- [x] **B3. Role badges.** "Default" / "Comms" pills next to the device name,
       instead of a ROLE column.
 - [ ] **C1. Single-line toolbar.** The Show: filters become toggle chips on
       the right; "Selected: …" goes (the list and the details already say it).

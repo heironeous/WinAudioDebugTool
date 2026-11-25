@@ -96,32 +96,32 @@
                       RowStyle="{StaticResource ListRow}"
                       TextOptions.TextRenderingMode="Grayscale">
                 <DataGrid.Columns>
-                    <!-- Name with a quiet "Output · Active" line underneath (replaces the Dir and State columns). -->
+                    <!-- Name and role pills, with a quiet "Output · Active" line underneath. -->
                     <DataGridTemplateColumn Header="DEVICE" Width="*" MinWidth="220">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Device.FriendlyName}" TextTrimming="CharacterEllipsis"/>
+                                    <!-- The pills are docked right but the panel is only as wide as its content, so they
+                                         sit right after the name; a long name is trimmed before they are. -->
+                                    <DockPanel HorizontalAlignment="Left">
+                                        <Border DockPanel.Dock="Right" Style="{StaticResource Badge}"
+                                                ToolTip="Default communications device: what call apps (Teams, Webex…) use"
+                                                Visibility="{Binding Device.IsDefaultCommunicationsDevice, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="Comms" Style="{StaticResource BadgeText}"/>
+                                        </Border>
+                                        <Border DockPanel.Dock="Right" Style="{StaticResource Badge}"
+                                                ToolTip="Default device: what music, videos and most apps use"
+                                                Visibility="{Binding Device.IsDefaultDevice, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="Default" Style="{StaticResource BadgeText}"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Device.FriendlyName}" ToolTip="{Binding Device.FriendlyName}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DockPanel>
                                     <!-- "Output · Active", plus " · In use by <app>" (accent) while another app streams here. -->
                                     <TextBlock FontSize="{StaticResource FontCaption}" Margin="0,2,0,0" ToolTip="{Binding UsageToolTip}"
                                                Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis">
                                         <Run Text="{Binding Subtitle, Mode=OneWay}"/><Run Text="{Binding UsageSuffix, Mode=OneWay}" Foreground="{StaticResource Accent}"/>
                                     </TextBlock>
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="ROLE" Width="120">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <!-- One line per role, like the name/subtitle lines of the DEVICE column. -->
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Default" FontSize="{StaticResource FontLabel}" Foreground="{StaticResource Accent}"
-                                               ToolTip="Default device: what music, videos and most apps use"
-                                               Visibility="{Binding Device.IsDefaultDevice, Converter={StaticResource BoolToVisibility}}"/>
-                                    <TextBlock Text="Comms" FontSize="{StaticResource FontLabel}" Foreground="{StaticResource Accent}" Margin="0,2,0,0"
-                                               ToolTip="Default communications device: what call apps (Teams, Webex…) use"
-                                               Visibility="{Binding Device.IsDefaultCommunicationsDevice, Converter={StaticResource BoolToVisibility}}"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
