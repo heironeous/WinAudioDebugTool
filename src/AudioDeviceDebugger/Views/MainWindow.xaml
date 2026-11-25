@@ -5,12 +5,7 @@
         Title="Audio Device Debugger" Height="800" Width="1200" MinWidth="900" MinHeight="500"
         Background="#2D2D30">
     <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Theme.xaml"/>
-            </ResourceDictionary.MergedDictionaries>
-            <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
-        </ResourceDictionary>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     </Window.Resources>
     <Grid Margin="8">
         <Grid.RowDefinitions>
@@ -396,49 +391,83 @@
                 <GridSplitter x:Name="SidePanelSplitter" Grid.Column="1" Width="8" HorizontalAlignment="Center" VerticalAlignment="Stretch"
                               Background="Transparent" ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
 
-                <ListView x:Name="PropertiesList" Grid.Column="2" ItemsSource="{Binding SelectedDeviceProperties}">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Property" Width="260">
-                                <GridViewColumn.CellTemplate>
+                <!-- PROPERTIES: the selected device's property store, in the same table style as the event log. -->
+                <Border x:Name="PropertiesPanel" Grid.Column="2" Background="{StaticResource ListBackground}"
+                        BorderBrush="{StaticResource ListBorder}" BorderThickness="1" CornerRadius="6" Padding="0,0,0,2">
+                    <DataGrid x:Name="PropertiesGrid"
+                              ItemsSource="{Binding SelectedDeviceProperties}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserResizeRows="False"
+                              CanUserResizeColumns="True"
+                              CanUserReorderColumns="False"
+                              CanUserSortColumns="False"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="None"
+                              Background="Transparent"
+                              RowBackground="Transparent"
+                              BorderThickness="0"
+                              RowHeight="24"
+                              FontSize="12"
+                              ClipboardCopyMode="None"
+                              Foreground="{StaticResource ListText}"
+                              ColumnHeaderStyle="{StaticResource LogHeaderResizable}"
+                              CellStyle="{StaticResource LogCell}"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              TextOptions.TextRenderingMode="Grayscale">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="BorderBrush" Value="{StaticResource ListSeparator}"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="PROPERTY" Width="260" MinWidth="80">
+                                <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <!-- Unknown keys show their raw UID, greyed so named ones stand out. The tooltip
                                              gives the SDK symbol, or for undocumented keys how their meaning was confirmed. -->
-                                        <TextBlock Text="{Binding Name}" ToolTip="{Binding NameToolTip}">
+                                        <TextBlock Text="{Binding Name}" ToolTip="{Binding NameToolTip}" TextTrimming="CharacterEllipsis">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsKnown}" Value="False">
-                                                            <Setter Property="Foreground" Value="Gray"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource ListSubtleText}"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <!-- Decoded values (formats, jack types, dates, …) show the raw value in their tooltip. -->
-                            <GridViewColumn Header="Value" Width="320">
-                                <GridViewColumn.CellTemplate>
+                            <DataGridTemplateColumn Header="VALUE" Width="320" MinWidth="80">
+                                <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Value}" ToolTip="{Binding ValueToolTip}"/>
+                                        <TextBlock Text="{Binding Value}" ToolTip="{Binding ValueToolTip}" TextTrimming="CharacterEllipsis"/>
                                     </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Key" Width="330">
-                                <GridViewColumn.CellTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="KEY" Width="330" MinWidth="80">
+                                <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Foreground="Gray">
+                                        <TextBlock Foreground="{StaticResource ListSubtleText}" TextTrimming="CharacterEllipsis">
                                             <Run Text="{Binding KeyLabel, Mode=OneWay}"/>
                                             <Run Text="{Binding RawKey, Mode=OneWay}"/>
                                         </TextBlock>
                                     </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
 
                 <!-- Event timeline: shares the right-hand column with the property table (only one is open at a time). -->
                 <Border x:Name="EventsPanel" Grid.Column="2" DataContext="{Binding EventLog}"

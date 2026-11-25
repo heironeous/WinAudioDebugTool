@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using AudioDeviceDebugger.Interop;
 using AudioDeviceDebugger.Models;
 using AudioDeviceDebugger.Services;
 using AudioDeviceDebugger.ViewModels;
@@ -43,6 +45,15 @@ public partial class MainWindow : Window
         ApplySidePanelLayout();
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        if (Background is SolidColorBrush background)
+        {
+            WindowTheme.ApplyDarkTitleBar(this, background.Color);
+        }
+    }
+
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.SelectedDevice))
@@ -65,7 +76,7 @@ public partial class MainWindow : Window
     private void ApplySidePanelLayout()
     {
         var open = _viewModel.OpenSidePanel;
-        PropertiesList.Visibility = open == SidePanel.Properties ? Visibility.Visible : Visibility.Collapsed;
+        PropertiesPanel.Visibility = open == SidePanel.Properties ? Visibility.Visible : Visibility.Collapsed;
         EventsPanel.Visibility = open == SidePanel.Events ? Visibility.Visible : Visibility.Collapsed;
         ProcessesPanel.Visibility = open == SidePanel.Processes ? Visibility.Visible : Visibility.Collapsed;
         RecordingsPanel.Visibility = open == SidePanel.Recordings ? Visibility.Visible : Visibility.Collapsed;

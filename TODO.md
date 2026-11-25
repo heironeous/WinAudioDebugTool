@@ -26,7 +26,7 @@ details below). Built on the branch `feature/visual-refresh`, one commit per
 item, so each can be rolled back on its own.
 
 ### Quick Win
-- [ ] **A1. Finish the dark theme.** Title bar, thin scrollbars, tooltips and
+- [x] **A1. Finish the dark theme.** Title bar, thin scrollbars, tooltips and
       the PROPERTIES list, which still use the light Windows look.
 - [ ] **A2. One palette and type scale.** Three surface levels, one meter
       green, named text colours and four text sizes instead of hard-coded
