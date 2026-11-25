@@ -44,11 +44,12 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   items are in `planning/DONE-TODO.md`. CI only runs on `main`, so feature branches get no CI build.
 - The maintainer's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
   Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
-  Poly BT700, Poly Voyager Focus 2, HP dock). **All headsets connect through USB dongles** — none are paired with
-  Windows Bluetooth directly, so the A2DP/HFP ("call mode") switch happens inside the dongle, invisible to Windows.
+  Poly BT700, Poly Voyager Focus 2, HP dock). **On the laptop, all headsets connect through USB dongles** — none
+  are paired with Windows Bluetooth directly, so the A2DP/HFP ("call mode") switch happens inside the dongle, invisible to Windows.
   A second machine (desktop) is also used. It has Realtek USB Audio (only its digital output is active), an ASUS
   VP28U monitor on NVIDIA HDMI audio and a Logitech C922 webcam mic. Its Jabra Evolve3 75, Link 370 and Link 380 are
-  not present. Check which machine you are on (`Get-PnpDevice -Class AudioEndpoint`) before assuming hardware.
+  not present as USB devices; since 2026-11-25 the Evolve3 75 also shows up paired directly over Bluetooth LE Audio
+  (`APXENUM\…` endpoints under `BTHLE\…`, Unplugged while off). Check which machine you are on (`Get-PnpDevice -Class AudioEndpoint`) before assuming hardware.
 
 ## Environment & commands
 
@@ -99,7 +100,9 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   (CSV / Markdown / JSON Lines / text), `AudioSessionService` (per-endpoint app sessions — "used by" — polled
   every 500 ms on its own MTA thread, plus session peaks for the selected device), `ModeCapture` (one capture
   stream in a chosen processing mode — Standard / Call (communications category) / Raw — via our own
-  `Interop/AudioClient2.cs` IAudioClient2 interop, plus the stream's effects from IAudioEffectsManager); the test
+  `Interop/AudioClient2.cs` IAudioClient2 interop, plus the stream's effects from IAudioEffectsManager),
+  `DeviceInventoryService` (Driver tab: device tree via `Interop/DeviceNode.cs` (cfgmgr32), USB speed via
+  `Interop/UsbHub.cs`, APOs from the endpoint's `FxProperties` registry key; pure helpers in `InventoryFormat`); the test
   service's A/B recording runs three of them at once. `DeviceEnumerationService.EndpointNotified` carries each
   IMMNotificationClient callback in detail (for the event log) alongside the coarse `DevicesChanged`.
 - `ViewModels/` — `MainViewModel` (refresh/debounce, filters, selection, tests, side panels, event logging),
@@ -107,7 +110,7 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   `SessionRowViewModel` (PROCESSES tab), `TakeRowViewModel` (RAW RECORDING tab: last take per processing mode). `Models/` — plain data + `LevelScale` (dB conversion).
 - `Views/` — `MainWindow` (toolbar 1 line, filter chips on the right; device grid top, grouped into OUTPUTS / INPUTS;
   details bottom: header card + `LevelGraph` + channel bars left, collapsible right-hand side panel showing one of four
-  horizontal tabs — Properties, Events, Processes (apps using the device), Raw recording (A/B takes)), `LevelGraph`,
+  horizontal tabs — Properties, Events, Processes (apps using the device), Raw recording (A/B takes), Driver), `LevelGraph`,
   `Theme.xaml` (palette, type scale and all control styles; merged in `App.xaml`).
 - `tests/AudioDeviceDebugger.Tests/` — xUnit tests of the hardware-free logic. It references the app (a self-contained
   exe, hence `ValidateExecutableReferencesMatchSelfContained=false`; internals via `InternalsVisibleTo`), sets the

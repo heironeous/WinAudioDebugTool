@@ -53,6 +53,12 @@ colour zones (yellow from −12 dB, red from −3 dB), and per-channel meters.
   app's own processing) and **Standard** (what most apps get), then plays Raw and Call back to back. Each take shows
   its level, format, per-channel levels and the effects Windows applied (echo cancellation, noise suppression, …), and
   you can listen to each channel of each take — for example the individual capsules of a laptop mic array.
+- **Driver** — what is behind the endpoint: the audio device (name, manufacturer, how it's connected — USB,
+  HD Audio, Bluetooth, …, and whether Device Manager reports a problem), its driver (provider, version, date, INF, and
+  whether it's Windows' generic class driver), for USB devices the vendor and product ID and the speed the device is
+  connected at (with a warning when a faster device runs slower because of a USB 2 port or cable), and the audio
+  effects (APOs) Windows runs on the endpoint, named, with the driver package that installed them. **Copy** puts it on
+  the clipboard as text for a bug report (it contains device instance IDs).
 
 All levels are shown in dBFS (−60…0 dB).
 

@@ -189,9 +189,25 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
     noticeable (ITU-R BT.1359);
   - one-way delay in a call: up to ~150 ms is fine, beyond ~400 ms
     conversation breaks down (ITU-T G.114).
-- [ ] **Device inventory.** Driver name, version and date, USB VID/PID and
+- [x] **Device inventory.** Driver name, version and date, USB VID/PID and
       USB speed, and the processing modules (APOs) installed per endpoint
       (`FxProperties` keys).
+      Done as a fifth side-panel tab, **Driver** (read only while it is open):
+  - Device: name, manufacturer, connection (the first real bus in the device
+    tree, so a Bluetooth LE Audio headset reads "Bluetooth", not the USB
+    adapter its radio hangs off), Device Manager status, hardware and
+    instance ID.
+  - Driver: description, provider, version, date, INF file and section,
+    service, generic class driver or not.
+  - USB (USB audio devices only): product, VID / PID, revision, composite
+    interface, speed from the hub (IOCTL_USB_GET_NODE_CONNECTION_INFORMATION
+    _EX and _EX_V2; works unelevated), declared USB version, port and hub.
+  - Audio effects: every SFX / MFX / EFX (and composite, legacy, keyword and
+    offload) slot in the endpoint's `FxProperties` key, named from the APO
+    registration, the COM class or the driver package that installed it
+    (`{APO CLSID},100`); effect packs; supported processing modes; whether
+    enhancements are switched off.
+  - Copy as text.
 - [ ] **Bluetooth battery level** for headsets paired directly with Windows
       (from the Bluetooth device's PnP properties). Doesn't apply to headsets
       behind a USB dongle.

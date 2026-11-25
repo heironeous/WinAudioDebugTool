@@ -35,7 +35,8 @@ public partial class MainWindow : Window
 
         var logFile = new EventLogFile(message => Dispatcher.BeginInvoke(() => _viewModel?.ShowStatus(message)));
 
-        _viewModel = new MainViewModel(_enumerationService, _defaultDeviceService, _detailsService, _testService, _levelMeterService, _volumeService, _sessionService, logFile);
+        _viewModel = new MainViewModel(_enumerationService, _defaultDeviceService, _detailsService, _testService, _levelMeterService, _volumeService, _sessionService,
+            new DeviceInventoryService(), logFile);
         _viewModel.SelectedDeviceLevelChanged += (_, sample) => DetailGraph.AddSample(sample.MasterPeak);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
@@ -68,9 +69,9 @@ public partial class MainWindow : Window
 
     // Width the side panel had when last open (keeps the user's splitter position across collapse/expand).
     private GridLength _sidePanelWidth = new(3, GridUnitType.Star);
-    private const double SidePanelMinWidth = 440; // the row of tabs
+    private const double SidePanelMinWidth = 520; // the row of tabs
 
-    /// <summary>Shows the open panel (properties, events, processes or raw recording) in the right-hand column. With
+    /// <summary>Shows the open panel (properties, events, processes, raw recording or driver) in the right-hand column. With
     /// none open the column shrinks to the row of tabs, beside the header card, and the graph below takes the full
     /// width. Done here rather than in XAML because the GridSplitter writes local Width values that would override
     /// style triggers.</summary>
@@ -81,6 +82,7 @@ public partial class MainWindow : Window
         EventsPanel.Visibility = panel == SidePanel.Events ? Visibility.Visible : Visibility.Collapsed;
         ProcessesPanel.Visibility = panel == SidePanel.Processes ? Visibility.Visible : Visibility.Collapsed;
         RecordingsPanel.Visibility = panel == SidePanel.Recordings ? Visibility.Visible : Visibility.Collapsed;
+        DriverPanel.Visibility = panel == SidePanel.Driver ? Visibility.Visible : Visibility.Collapsed;
 
         bool open = panel != SidePanel.None;
         if (!open && !SidePanelColumn.Width.IsAuto)
@@ -165,6 +167,20 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _viewModel.ShowStatus($"Couldn't export the events: {ex.Message}");
+        }
+    }
+
+    private void CopyInventoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.SelectedDeviceInventory is not { } inventory) return;
+        try
+        {
+            Clipboard.SetText(inventory.ToText());
+            _viewModel.ShowStatus($"Copied the driver details of \"{inventory.EndpointName}\" to the clipboard.");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.ShowStatus($"Couldn't copy the driver details: {ex.Message}");
         }
     }
 

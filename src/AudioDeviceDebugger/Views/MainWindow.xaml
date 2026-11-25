@@ -602,6 +602,23 @@
                                 <TextBlock VerticalAlignment="Center"><Run Text="Raw recording"/></TextBlock>
                             </StackPanel>
                         </ToggleButton>
+                        <ToggleButton IsChecked="{Binding IsDriverPanelOpen}" AutomationProperties.Name="Driver">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton" BasedOn="{StaticResource PanelTab}">
+                                    <Setter Property="ToolTip" Value="Show the selected device's driver, USB connection and audio effects (APOs)"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDriverPanelOpen}" Value="True">
+                                            <Setter Property="ToolTip" Value="Hide the driver panel"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE950;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource IconNormal}"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock VerticalAlignment="Center"><Run Text="Driver"/></TextBlock>
+                            </StackPanel>
+                        </ToggleButton>
                     </StackPanel>
                     <Grid>
                         <!-- PROPERTIES: the selected device's property store, in the same table style as the event log. -->
@@ -1036,6 +1053,71 @@
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- DRIVER: what is behind the endpoint: its audio device, driver, USB connection and the audio
+                             effects (APOs) Windows runs on it (DeviceInventoryService). -->
+                        <Border x:Name="DriverPanel" Background="{StaticResource SurfacePanel}"
+                                BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="10,8,10,2">
+                                    <Button DockPanel.Dock="Right" Content="Copy" Click="CopyInventoryButton_Click" Padding="10,3"
+                                            ToolTip="Copy these details as text (for a bug report)">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource FlatButton}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedDeviceInventory}" Value="{x:Null}">
+                                                        <Setter Property="IsEnabled" Value="False"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondary}"
+                                               Text="{Binding SelectedDeviceInventory.EndpointName, FallbackValue='Select a device.', TargetNullValue='Select a device.'}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10,0,10,8">
+                                    <ItemsControl x:Name="InventoryList" ItemsSource="{Binding SelectedDeviceInventory.Sections}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,8,0,0">
+                                                    <TextBlock Text="{Binding Title}" FontSize="{StaticResource FontCaption}" FontWeight="SemiBold"
+                                                               Foreground="{StaticResource TextTertiary}" Margin="0,0,0,4"/>
+                                                    <ItemsControl ItemsSource="{Binding Rows}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <!-- The tooltip has the details: CLSIDs, files, all hardware IDs. -->
+                                                                <Grid Background="Transparent" ToolTip="{Binding ToolTip}" ToolTipService.ShowDuration="30000">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="150"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding Label}" FontSize="{StaticResource FontLabel}" Foreground="{StaticResource TextSecondary}"
+                                                                               TextTrimming="CharacterEllipsis" Margin="0,2,8,2"/>
+                                                                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="{StaticResource FontLabel}"
+                                                                               TextWrapping="Wrap" Margin="0,2">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                                                                        <Setter Property="Foreground" Value="{StaticResource TextTertiary}"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
                             </DockPanel>
                         </Border>
                     </Grid>

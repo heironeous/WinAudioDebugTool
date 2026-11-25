@@ -305,6 +305,34 @@ was not built.
   5/6, never showed for it. Fixed 2026-11-23 by matching container IDs (see
   "Small follow-ups" below).
 
+## Device inventory: the Driver tab (2026-11-25)
+`Services/DeviceInventoryService.cs`, `Interop/DeviceNode.cs` (cfgmgr32), `Interop/UsbHub.cs`; pure helpers in
+`Services/InventoryFormat.cs` (unit-tested).
+
+- **Endpoint → device.** Every endpoint is a device node `SWD\MMDEVAPI\{endpoint ID}`; its parent is the audio device
+  whose driver created it (e.g. `USB\VID_046D&PID_085C&MI_02\…`, `HDAUDIO\FUNC_01&VEN_10DE…`). Nodes of devices
+  that aren't connected are found with `CM_LOCATE_DEVNODE_PHANTOM` and still carry their driver properties. Old
+  endpoints whose device was removed from Device Manager have no node at all; the tab says so.
+- **Connection** is the first real bus walking up from the device. A Bluetooth LE Audio headset (the desktop's Jabra
+  Evolve3 75, 2026-11-25) is `APXENUM\{2D68507B…}&AUDIO\…` (Windows' audio proxy) under `BTHLE\DEV_…`, whose chain
+  ends at the USB Bluetooth adapter: without that rule the tab showed the adapter's USB details as the headset's.
+- **USB speed** comes from the hub: `IOCTL_USB_GET_NODE_CONNECTION_INFORMATION_EX` on the hub's interface
+  (`GUID_DEVINTERFACE_USB_HUB`) with the port number (`DEVPKEY_Device_Address` of the USB device), opened with
+  `GENERIC_WRITE` like USBView; no admin rights needed. `_EX_V2` adds "SuperSpeed capable", used for the "connected
+  slower than it could" note. Checked on the desktop: C922 high speed / USB 2.0, the MSI lighting controller and the
+  ASUS Bluetooth adapter full speed / USB 1.1, which matches their descriptors.
+- **APOs** are in `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\{Render|Capture}\{guid}\FxProperties`,
+  values named `{fmtid},pid`: `PKEY_FX_*` (d04e05a6…: 5 SFX, 6 MFX, 7 EFX, 13–15 their composite lists, 1/2 legacy LFX
+  / GFX, 3 the enhancements page), `PKEY_*FX_ProcessingModes_Supported_For_Streaming` (d3993a3f…, 5–7) and
+  `PKEY_AudioEndpoint_Disable_SysFx` (1da5d803…,5). Names: `HKLM\SOFTWARE\Classes\AudioEngine\AudioProcessingObjects`
+  (`FriendlyName`), else the COM class name, else the driver package. Packaged APOs (Realtek's on this desktop) are in
+  neither registry list; their `FxProperties` hold `{APO CLSID},100` = the instance ID of the package's software device
+  (`SWD\DRIVERENUM\…#REALTEKAPO…`, "Realtek Audio Effects Component"), which also names Windows 11 effect packs that
+  sit in no slot (Voice Clarity on the C922).
+- Reading one endpoint takes ~7 ms (27 not-present endpoints measured from PowerShell through the app's assembly).
+- Not checked: the laptop (Jabra Link 390, Intel array, Realtek HD Audio), a device with a Device Manager problem, a
+  SuperSpeed device held back by a USB 2 port, classic (non-LE) Bluetooth headsets.
+
 ## Visual refresh (2026-11-25)
 Branch `feature/visual-refresh`, one commit per item of "Visual refresh" in [TODO.md](../TODO.md). The layout stays:
 device list on top, details below.
