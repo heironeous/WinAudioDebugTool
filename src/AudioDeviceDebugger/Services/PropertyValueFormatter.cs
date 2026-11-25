@@ -56,7 +56,7 @@ public static class PropertyValueFormatter
 
     private static DecodedValue? DecodeByKey(string? symbol, object? value) => symbol switch
     {
-        "PKEY_AudioEndpoint_FormFactor" when AsUInt(value) is { } v => new(FormFactor(v)),
+        "PKEY_AudioEndpoint_FormFactor" when AsUInt(value) is { } v => new($"{FormFactorName(v)} ({v})"),
         "PKEY_AudioEndpoint_JackSubType" or "PKEY_AudioEndpoint_Association" when AsGuid(value) is { } g =>
             g == Guid.Empty ? new("None") : KnownGuidNames.Describe(g) is { } name ? new(name) : null,
         "PKEY_AudioEndpoint_PhysicalSpeakers" or "PKEY_AudioEndpoint_FullRangeSpeakers" when AsUInt(value) is { } mask =>
@@ -72,7 +72,8 @@ public static class PropertyValueFormatter
         _ => null,
     };
 
-    private static string FormFactor(uint value) => value switch
+    /// <summary>Readable name of an EndpointFormFactor value (PKEY_AudioEndpoint_FormFactor).</summary>
+    public static string FormFactorName(uint value) => value switch
     {
         0 => "Remote network device",
         1 => "Speakers",
@@ -85,8 +86,8 @@ public static class PropertyValueFormatter
         8 => "S/PDIF",
         9 => "Digital audio display device (HDMI / DisplayPort)",
         10 => "Unknown form factor",
-        _ => $"Unknown ({value})",
-    } + $" ({value})";
+        _ => "Unknown",
+    };
 
     /// <summary>KSAUDIO_MIC_ARRAY_GEOMETRY: angles in 1/10000 radian, coordinates in mm, frequencies in Hz.</summary>
     private static DecodedValue? MicArrayGeometry(byte[] b)

@@ -39,7 +39,7 @@ item, so each can be rolled back on its own.
 ### Better structure
 - [x] **B1. OUTPUTS / INPUTS sections** in the device list, so the rows don't
       repeat "Output ·" / "Input ·".
-- [ ] **B2. Device-type icons.** A monochrome Segoe Fluent glyph per form
+- [x] **B2. Device-type icons.** A monochrome Segoe Fluent glyph per form
       factor (speakers, headphones, headset, microphone, digital, …).
 - [ ] **D1. Details header card.** Icon, name, badges and format chips; the
       endpoint ID behind a copy button.

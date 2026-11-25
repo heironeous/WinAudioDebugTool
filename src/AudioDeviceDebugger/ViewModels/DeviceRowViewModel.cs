@@ -26,6 +26,26 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
 
     public bool IsActive => Device.State == DeviceConnectionState.Active;
 
+    /// <summary>Segoe Fluent Icons glyph for the kind of device (its form factor). Drivers often report a plain
+    /// "Speakers" or "Microphone" for a headset, so the icon is only as specific as they are.</summary>
+    public string IconGlyph => Device.FormFactor switch
+    {
+        0 => "\uE968",          // network device
+        1 => "\uE7F5",          // speaker
+        2 or 7 or 8 => "\uE95F", // plug: line level, digital passthrough, S/PDIF
+        3 => "\uE7F6",          // headphones
+        4 => "\uE720",          // microphone
+        5 => "\uE95B",          // headset
+        6 => "\uE717",          // phone handset
+        9 => "\uE7F4",          // display (HDMI / DisplayPort)
+        _ => IsOutput ? "\uE767" : "\uE720", // not reported or unknown: plain speaker sound / microphone
+    };
+
+    /// <summary>The kind of device as Windows reports it, e.g. "Headset".</summary>
+    public string IconToolTip => Device.FormFactor is { } form
+        ? Services.PropertyValueFormatter.FormFactorName((uint)form)
+        : "Form factor not reported";
+
     private double _currentPeak;
 
     /// <summary>Latest IAudioMeterInformation reading, linear 0.0–1.0. Updated on the UI thread by MainViewModel.</summary>

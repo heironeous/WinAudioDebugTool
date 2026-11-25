@@ -36,11 +36,12 @@
     <SolidColorBrush x:Key="Caution" Color="#E5B84B"/>
     <SolidColorBrush x:Key="Negative" Color="#E57373"/>
 
-    <!-- Type scale: four text sizes, two icon sizes. -->
+    <!-- Type scale: four text sizes, three icon sizes. -->
     <sys:Double x:Key="FontTitle">18</sys:Double>
     <sys:Double x:Key="FontBody">13</sys:Double>
     <sys:Double x:Key="FontLabel">12</sys:Double>
     <sys:Double x:Key="FontCaption">11</sys:Double>
+    <sys:Double x:Key="IconLarge">20</sys:Double>
     <sys:Double x:Key="IconNormal">14</sys:Double>
     <sys:Double x:Key="IconSmall">10</sys:Double>
     <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
