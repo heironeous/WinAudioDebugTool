@@ -33,7 +33,7 @@ item, so each can be rolled back on its own.
       values.
 - [x] **B3. Role badges.** "Default" / "Comms" pills next to the device name,
       instead of a ROLE column.
-- [ ] **C1. Single-line toolbar.** The Show: filters become toggle chips on
+- [x] **C1. Single-line toolbar.** The Show: filters become toggle chips on
       the right; "Selected: …" goes (the list and the details already say it).
 
 ### Better structure

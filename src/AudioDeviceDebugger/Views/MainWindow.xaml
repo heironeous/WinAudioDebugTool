@@ -14,51 +14,55 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Toolbar: actions + selected device on the first line, list filters on the second. -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,8">
-            <StackPanel Orientation="Horizontal">
-                <Button x:Name="RefreshButton" Content="Refresh" Click="RefreshButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,8,0"/>
-                <Border Width="1" Background="{StaticResource BorderSubtle}" Margin="0,4,8,4"/>
-                <Button Content="Set Default" Click="SetDefaultButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,6,0"
-                        IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
-                        ToolTip="Make the selected device the default device (Console + Multimedia roles)"/>
-                <Button Content="Set Comms" Click="SetCommsButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,6,0"
-                        IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
-                        ToolTip="Make the selected device the default communications device"/>
-                <Button Content="Set Both" Click="SetBothButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,10,0"
-                        IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
-                        ToolTip="Make the selected device both the default and the default communications device"/>
-                <TextBlock VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}">
-                    <Run Text="Selected:"/>
-                    <Run Text="{Binding SelectedDevice.Device.FriendlyName, Mode=OneWay, FallbackValue='(none)'}" Foreground="{StaticResource TextPrimary}"/>
-                    <Run Text="{Binding SelectedDevice.StateText, Mode=OneWay, StringFormat='({0})', FallbackValue=''}"/>
-                </TextBlock>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                <TextBlock Text="Show:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <CheckBox IsChecked="{Binding ShowDisabledDevices}" Style="{StaticResource FlatCheckBox}" VerticalAlignment="Center" Margin="0,0,16,0"
-                          ToolTip="Show endpoints disabled in Windows Sound settings">
-                    <TextBlock>
-                        <Run Text="Disabled"/>
-                        <Run Text="{Binding DisabledDeviceCount, Mode=OneWay, StringFormat='({0})'}" Foreground="{StaticResource TextSecondary}"/>
-                    </TextBlock>
-                </CheckBox>
-                <CheckBox IsChecked="{Binding ShowNotPresentDevices}" Style="{StaticResource FlatCheckBox}" VerticalAlignment="Center" Margin="0,0,16,0"
-                          ToolTip="Show endpoints whose hardware isn't connected (e.g. headsets that were used once)">
-                    <TextBlock>
-                        <Run Text="Not present"/>
-                        <Run Text="{Binding NotPresentDeviceCount, Mode=OneWay, StringFormat='({0})'}" Foreground="{StaticResource TextSecondary}"/>
-                    </TextBlock>
-                </CheckBox>
-                <CheckBox IsChecked="{Binding ShowUnpluggedDevices}" Style="{StaticResource FlatCheckBox}" VerticalAlignment="Center" Margin="0,0,12,0"
+        <!-- Toolbar: actions on the left, list filters on the right. -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,8" LastChildFill="False">
+            <Button x:Name="RefreshButton" Click="RefreshButton_Click" Style="{StaticResource FlatButton}" Padding="12,5" Margin="0,0,8,0"
+                    AutomationProperties.Name="Refresh" ToolTip="Read the device list again">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE72C;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontLabel}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Border Width="1" Background="{StaticResource BorderSubtle}" Margin="0,4,8,4"/>
+            <Button Content="Set Default" Click="SetDefaultButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,8,0"
+                    IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="Make the selected device the default device (Console + Multimedia roles)"/>
+            <Button Content="Set Comms" Click="SetCommsButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,8,0"
+                    IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="Make the selected device the default communications device"/>
+            <Button Content="Set Both" Click="SetBothButton_Click" Style="{StaticResource FlatButton}" Padding="14,5"
+                    IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="Make the selected device both the default and the default communications device"/>
+
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <TextBlock Text="Also show" Foreground="{StaticResource TextTertiary}" VerticalAlignment="Center" Margin="8,0,8,0"/>
+                <CheckBox IsChecked="{Binding ShowUnpluggedDevices}" Style="{StaticResource FilterChip}" VerticalAlignment="Center" Margin="0,0,8,0"
+                          AutomationProperties.Name="Unplugged"
                           ToolTip="Show endpoints whose hardware is present but has nothing plugged into the jack">
                     <TextBlock>
                         <Run Text="Unplugged"/>
-                        <Run Text="{Binding UnpluggedDeviceCount, Mode=OneWay, StringFormat='({0})'}" Foreground="{StaticResource TextSecondary}"/>
+                        <Run Text="{Binding UnpluggedDeviceCount, Mode=OneWay}" Foreground="{StaticResource TextTertiary}"/>
+                    </TextBlock>
+                </CheckBox>
+                <CheckBox IsChecked="{Binding ShowDisabledDevices}" Style="{StaticResource FilterChip}" VerticalAlignment="Center" Margin="0,0,8,0"
+                          AutomationProperties.Name="Disabled"
+                          ToolTip="Show endpoints disabled in Windows Sound settings">
+                    <TextBlock>
+                        <Run Text="Disabled"/>
+                        <Run Text="{Binding DisabledDeviceCount, Mode=OneWay}" Foreground="{StaticResource TextTertiary}"/>
+                    </TextBlock>
+                </CheckBox>
+                <CheckBox IsChecked="{Binding ShowNotPresentDevices}" Style="{StaticResource FilterChip}" VerticalAlignment="Center"
+                          AutomationProperties.Name="Not present"
+                          ToolTip="Show endpoints whose hardware isn't connected (e.g. headsets that were used once)">
+                    <TextBlock>
+                        <Run Text="Not present"/>
+                        <Run Text="{Binding NotPresentDeviceCount, Mode=OneWay}" Foreground="{StaticResource TextTertiary}"/>
                     </TextBlock>
                 </CheckBox>
             </StackPanel>
-        </StackPanel>
+        </DockPanel>
 
         <!-- Device list on top, selected device's details below; drag the splitter between them to resize. -->
         <Grid Grid.Row="1">
