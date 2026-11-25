@@ -10,17 +10,18 @@ Built for the "why isn't my mic/speaker working", "which of these five USB heads
 does my headset sound terrible in calls" situations, where Windows' own Sound settings only give you a name and a
 default toggle.
 
-![Audio Device Debugger: the device list with Default and Comms roles, live levels and volume, and the details of a USB headset microphone with its level graph and the RAW RECORDING tab open](docs/images/screenshot.png)
+![Audio Device Debugger: the device list with OUTPUTS and INPUTS sections, device icons, Default and Comms badges, live levels and volume; below it the selected output while a test clip plays, with its header card, level graph and channel meters, and the Events tab open](docs/images/screenshot.png)
 
-*The device list (Default and Comms roles, live levels, volume and mute, Test buttons) and, below it, the selected
-USB headset microphone: its format, rolling dB level graph, channel meter, and the RAW RECORDING tab, ready to record
-it raw and as call apps receive it.*
+*The device list (device icons, Default and Comms badges, live levels, volume and mute, Test buttons) and, below it,
+the selected output while a test clip plays: its format, rolling dB level graph with peak hold, channel meters, and the
+Events tab with the timeline.*
 
 ## Features
 
 **Device list**
-- Every audio endpoint, including disabled, not-present and unplugged ones (filter them with the **Show:**
-  checkboxes), with its role badge (Default · Comms), a live level meter, volume slider and mute button.
+- Every audio endpoint in two sections, **OUTPUTS** and **INPUTS**, including disabled, not-present and unplugged ones
+  (the **Also show** chips at the top right), with an icon for its type, its role badges (Default · Comms), a live level
+  meter, volume slider and mute button.
 - Updates by itself when devices are plugged in or removed, or when another app changes a volume.
 - "· In use by *App*" when another application is streaming to or from the device.
 
@@ -31,22 +32,23 @@ it raw and as call apps receive it.*
   a time (front left, centre, LFE, …) to check wiring and channel order.
 - **Inputs:** record 5 seconds and play it back; then listen to each microphone channel on its own.
 
-**Details** for the selected device: shared- and exclusive-mode formats, a rolling dB level graph, per-channel meters,
-and whether the driver supports raw (unprocessed) capture.
+**Details** for the selected device: a header card (roles, state, shared- and exclusive-mode formats, whether the driver
+supports raw (unprocessed) capture, a button that copies the endpoint ID), a rolling dB level graph with peak hold and
+colour zones (yellow from −12 dB, red from −3 dB), and per-channel meters.
 
-**Side panel tabs** (right edge of the details area; one open at a time)
-- **PROPERTIES** — the endpoint's full property store, with readable names for ~1,550 documented keys (plus a few
+**Side panel tabs** (beside the header card; one open at a time — click the open tab to close it)
+- **Properties** — the endpoint's full property store, with readable names for ~1,550 documented keys (plus a few
   undocumented ones whose meaning was confirmed) and readable values where the format is known: "Headset (5)",
   "Communication speaker", "48 kHz · 32-bit float · 2 ch (FL FR)", "20 dB", a mic array's microphone positions, … —
   the raw value is in the tooltip.
-- **EVENTS** — a timeline of device changes, default switches, volume/mute changes (by Windows or by this app), apps
+- **Events** — a timeline of device changes, default switches, volume/mute changes (by Windows or by this app), apps
   starting and stopping streams, and tests. Filter it, copy it, or export it as CSV, Markdown or JSON Lines — handy
   for "my mic died in the meeting at 14:03". The timeline is also saved to disk, one JSON Lines file per day in
   `%LOCALAPPDATA%\AudioDeviceDebugger`, kept for 14 days.
-- **PROCESSES** — which applications have the selected device open (app, process and PID, streaming or idle, the app's
+- **Processes** — which applications have the selected device open (app, process and PID, streaming or idle, the app's
   own volume, live level). Opening a Bluetooth/USB headset's mic is what switches it into low-quality "call mode", so
   this shows who is doing it.
-- **RAW RECORDING** — **Record A/B** records the selected mic three ways *at the same time*: **Raw** (no
+- **Raw recording** — **Record A/B** records the selected mic three ways *at the same time*: **Raw** (no
   processing), **Call** (what call apps such as Teams or Webex receive — i.e. what the other side hears, before the
   app's own processing) and **Standard** (what most apps get), then plays Raw and Call back to back. Each take shows
   its level, format, per-channel levels and the effects Windows applied (echo cancellation, noise suppression, …), and
@@ -58,7 +60,7 @@ All levels are shown in dBFS (−60…0 dB).
 
 - Windows 10 or 11, x64. Developed and tested on Windows 11.
 - No admin rights needed.
-- The effects list in RAW RECORDING needs Windows 11 (`IAudioEffectsManager`); raw capture needs a driver that
+- The effects list in Raw recording needs Windows 11 (`IAudioEffectsManager`); raw capture needs a driver that
   supports it (the app tells you).
 - To run the released exe: nothing else — it includes the .NET runtime.
 - To build it yourself: the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
@@ -116,7 +118,7 @@ dotnet publish -p:PublishProfile=win-x64-selfcontained
 - **Call ≠ exactly what the other side hears.** The Call take is what Windows and the driver deliver to call apps;
   Teams, Webex & co. add their own processing, a codec and the network on top. On many drivers Standard and Call use
   the same processing.
-- **PROCESSES only sees shared-mode streams** going through the Windows audio engine; exclusive-mode streams may not
+- **Processes only sees shared-mode streams** going through the Windows audio engine; exclusive-mode streams may not
   show up. Very short streams (under ~0.5 s) can be missed.
 - In a quiet room a microphone can read below the −60 dB meter floor and look dead — hover the meter for the exact
   dBFS value.
@@ -138,8 +140,8 @@ A quick manual check after building:
 2. **Set Default / Set Comms** change the defaults, and Windows Sound settings agrees.
 3. **Test** on an output plays from the right device; **Test** on a mic records and plays back what you said.
 4. Meters move for several devices at once; the channel strip plays one speaker at a time.
-5. EVENTS logs your volume changes and device switches; PROCESSES shows a call app or browser that has the mic open.
-6. RAW RECORDING → **Record A/B**: the Raw and Call takes sound different and list different effects.
+5. Events logs your volume changes and device switches; Processes shows a call app or browser that has the mic open.
+6. Raw recording → **Record A/B**: the Raw and Call takes sound different and list different effects.
 
 ## Versioning
 
@@ -165,7 +167,7 @@ stamps the version into the executable (file and product version); local builds 
 
 ## Reporting problems
 
-Please open an issue on GitHub with your Windows version, the device(s) involved, and — if relevant — the EVENTS log
+Please open an issue on GitHub with your Windows version, the device(s) involved, and — if relevant — the Events log
 exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log can contain hardware serial numbers.
 
 ## How it works
@@ -201,7 +203,7 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 
 ### Property names and values
 
-The PROPERTIES tab shows each endpoint property by a readable name ("Device: Friendly Name") instead of its raw
+The Properties tab shows each endpoint property by a readable name ("Device: Friendly Name") instead of its raw
 `{fmtid},pid`, and decodes values whose format is known (`Services/PropertyValueFormatter.cs`). The names come from
 tables compiled into the app:
 

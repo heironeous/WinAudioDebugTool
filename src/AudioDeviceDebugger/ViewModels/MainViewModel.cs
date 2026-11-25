@@ -87,6 +87,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         // without removing them, so metering / volume / running tests are unaffected.
         _devicesView = CollectionViewSource.GetDefaultView(Devices);
         _devicesView.Filter = item => item is DeviceRowViewModel row && IsShown(row);
+        _devicesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(DeviceRowViewModel.SectionText)));
 
         Refresh();
         LogStarted();
@@ -229,7 +230,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 : !isActive ? "The device isn't active"
                 : isOutput ? $"Play the test music on {vm.LongName} ({vm.ShortName}) only"
                 : take is not null ? $"Listen to {vm.LongName} of the {CaptureModeText.Name(take.Mode)} recording ({take.Duration.TotalSeconds:0.0} s) on the default output"
-                : "Record first (Test on the device row, or Record A/B below) — then listen to each channel here";
+                : "Record first (Test on the device row, or Record A/B in Raw recording) — then listen to each channel here";
         }
 
         HasChannels = SelectedDeviceChannelPeaks.Count > 0;
@@ -240,7 +241,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             : !isActive ? "The device isn't active"
             : isOutput ? "Play a short excerpt on each channel in turn"
             : take is not null ? $"Listen to each channel of the {CaptureModeText.Name(take.Mode)} recording in turn"
-            : "Record first (Test on the device row, or Record A/B below) — then listen to each channel here";
+            : "Record first (Test on the device row, or Record A/B in Raw recording) — then listen to each channel here";
 
         SyncTakeRows();
     }
@@ -294,7 +295,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private SidePanel _openSidePanel;
 
-    /// <summary>Which panel the right-hand column shows (the tab strip at the right edge picks it); None collapses
+    /// <summary>Which panel the right-hand column shows (the tabs pick it); None collapses
     /// the column. The property store is only read while the PROPERTIES panel is open: opening it fetches the
     /// selected device's properties, closing it drops them. Events are recorded whatever is shown.</summary>
     public SidePanel OpenSidePanel
@@ -319,7 +320,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    // One bool per tab, for the strip's toggle buttons: checking one opens its panel (closing any other).
+    // One bool per tab, for the tabs' toggle buttons: checking one opens its panel (closing any other).
     public bool IsPropertiesPanelOpen { get => _openSidePanel == SidePanel.Properties; set => SetSidePanel(SidePanel.Properties, value); }
     public bool IsEventsPanelOpen { get => _openSidePanel == SidePanel.Events; set => SetSidePanel(SidePanel.Events, value); }
     public bool IsProcessesPanelOpen { get => _openSidePanel == SidePanel.Processes; set => SetSidePanel(SidePanel.Processes, value); }
@@ -444,8 +445,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         RecordingsSummary = SelectedDeviceDetails?.Id != id ? ""
             : SelectedDeviceDetails.RawProcessingSupported switch
             {
-                true => "· the driver supports raw capture",
-                false => "· the driver says it can't do raw capture (Raw may still be processed)",
+                true => "The driver supports raw capture",
+                false => "The driver says it can't do raw capture (Raw may still be processed)",
                 null => "",
             };
         RecordAbToolTip = running is not null
@@ -594,8 +595,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             LogForDevice(row.Device.Id, AudioEventKind.Error, AudioEventSource.ThisApp, $"Failed to set as the {roleText}: {ex.Message}");
         }
 
-        // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the Role column
-        // reflects what Windows actually has now. Debounced: the change also triggers device notifications.
+        // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the role badges
+        // reflect what Windows actually has now. Debounced: the change also triggers device notifications.
         RequestRefresh();
     }
 
@@ -964,7 +965,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         var others = ordered.Where(s => !s.IsThisApp && !s.IsSystemSounds).ToList();
         int streaming = others.Count(s => s.State == AudioSessionActivity.Active);
         SessionsSummary = others.Count == 0
-            ? "no other app has this device open"
+            ? "No other app has this device open"
             : $"{others.Count} app session{(others.Count == 1 ? "" : "s")}, {streaming} streaming";
     }
 

@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using AudioDeviceDebugger.Interop;
 using AudioDeviceDebugger.Models;
 using AudioDeviceDebugger.Services;
 using AudioDeviceDebugger.ViewModels;
@@ -43,6 +45,15 @@ public partial class MainWindow : Window
         ApplySidePanelLayout();
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        if (Background is SolidColorBrush background)
+        {
+            WindowTheme.ApplyDarkTitleBar(this, background.Color);
+        }
+    }
+
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.SelectedDevice))
@@ -57,34 +68,53 @@ public partial class MainWindow : Window
 
     // Width the side panel had when last open (keeps the user's splitter position across collapse/expand).
     private GridLength _sidePanelWidth = new(3, GridUnitType.Star);
-    private const double SidePanelMinWidth = 400;
+    private const double SidePanelMinWidth = 440; // the row of tabs
 
-    /// <summary>Shows the open panel (properties, events, processes or raw recording) in the right-hand column, or
-    /// collapses the column to zero width (just the tab strip remains at the right edge). Done here rather than in
-    /// XAML because the GridSplitter writes local Width values that would override style triggers.</summary>
+    /// <summary>Shows the open panel (properties, events, processes or raw recording) in the right-hand column. With
+    /// none open the column shrinks to the row of tabs, beside the header card, and the graph below takes the full
+    /// width. Done here rather than in XAML because the GridSplitter writes local Width values that would override
+    /// style triggers.</summary>
     private void ApplySidePanelLayout()
     {
-        var open = _viewModel.OpenSidePanel;
-        PropertiesList.Visibility = open == SidePanel.Properties ? Visibility.Visible : Visibility.Collapsed;
-        EventsPanel.Visibility = open == SidePanel.Events ? Visibility.Visible : Visibility.Collapsed;
-        ProcessesPanel.Visibility = open == SidePanel.Processes ? Visibility.Visible : Visibility.Collapsed;
-        RecordingsPanel.Visibility = open == SidePanel.Recordings ? Visibility.Visible : Visibility.Collapsed;
+        var panel = _viewModel.OpenSidePanel;
+        PropertiesPanel.Visibility = panel == SidePanel.Properties ? Visibility.Visible : Visibility.Collapsed;
+        EventsPanel.Visibility = panel == SidePanel.Events ? Visibility.Visible : Visibility.Collapsed;
+        ProcessesPanel.Visibility = panel == SidePanel.Processes ? Visibility.Visible : Visibility.Collapsed;
+        RecordingsPanel.Visibility = panel == SidePanel.Recordings ? Visibility.Visible : Visibility.Collapsed;
 
-        if (open != SidePanel.None)
+        bool open = panel != SidePanel.None;
+        if (!open && !SidePanelColumn.Width.IsAuto)
         {
-            SidePanelColumn.MinWidth = SidePanelMinWidth;
-            SidePanelColumn.Width = _sidePanelWidth;
-            SidePanelSplitter.Visibility = Visibility.Visible;
+            _sidePanelWidth = SidePanelColumn.Width;
         }
-        else
+        SidePanelColumn.MinWidth = open ? SidePanelMinWidth : 0;
+        SidePanelColumn.Width = open ? _sidePanelWidth : GridLength.Auto;
+        SidePanelSplitter.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        SidePanelHost.Margin = new Thickness(open ? 0 : 8, 0, 0, 0); // the splitter's width, when it isn't there
+        Grid.SetRowSpan(SidePanelHost, open ? 2 : 1);
+        Grid.SetColumnSpan(DetailsBody, open ? 1 : 3);
+    }
+
+    /// <summary>Gives the DEVICE column the width the other columns leave. A grouped DataGrid doesn't recompute star
+    /// widths when its viewport changes (window resized, scrollbar shown or hidden), so this does.</summary>
+    private void DeviceGrid_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.ViewportWidthChange == 0) return;
+        double others = DeviceGrid.Columns.Where(c => c != DeviceColumn).Sum(c => c.ActualWidth);
+        DeviceColumn.Width = new DataGridLength(Math.Max(DeviceColumn.MinWidth, e.ViewportWidth - others));
+    }
+
+    private void CopyIdButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.SelectedDevice is not { } row) return;
+        try
         {
-            if (SidePanelColumn.Width.Value > 0)
-            {
-                _sidePanelWidth = SidePanelColumn.Width;
-            }
-            SidePanelColumn.MinWidth = 0;
-            SidePanelColumn.Width = new GridLength(0);
-            SidePanelSplitter.Visibility = Visibility.Collapsed;
+            Clipboard.SetText(row.Device.Id);
+            _viewModel.ShowStatus($"Copied the endpoint ID of \"{row.Device.FriendlyName}\" to the clipboard.");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.ShowStatus($"Couldn't copy the endpoint ID: {ex.Message}");
         }
     }
 
@@ -170,25 +200,6 @@ public partial class MainWindow : Window
 
     private void CycleChannelsButton_Click(object sender, RoutedEventArgs e) =>
         _ = _viewModel.ToggleChannelTestAsync(null);
-
-    // Height of the tab strip with its labels shown, remembered while they are (with them hidden it's shorter).
-    private double _labelledTabsHeight;
-
-    /// <summary>Hides the tab labels (icons only) when the strip is too short to show them all, and shows them again
-    /// once there's room.</summary>
-    private void SideTabsScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
-    {
-        bool labelsShown = PropertiesTabLabel.Visibility == Visibility.Visible;
-        if (labelsShown) _labelledTabsHeight = e.ExtentHeight;
-        bool fits = _labelledTabsHeight <= e.ViewportHeight + 0.5;
-        if (fits == labelsShown) return;
-
-        var visibility = fits ? Visibility.Visible : Visibility.Collapsed;
-        foreach (var label in new[] { PropertiesTabLabel, EventsTabLabel, ProcessesTabLabel, RecordingsTabLabel })
-        {
-            label.Visibility = visibility;
-        }
-    }
 
     private void RecordAbButton_Click(object sender, RoutedEventArgs e) =>
         _ = _viewModel.ToggleRecordAbAsync();
