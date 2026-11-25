@@ -43,8 +43,8 @@ item, so each can be rolled back on its own.
       factor (speakers, headphones, headset, microphone, digital, …).
 - [x] **D1. Details header card.** Icon, name, badges and format chips; the
       endpoint ID behind a copy button.
-- [ ] **D2. Better level graph.** Soft fill, peak-hold line, yellow and red
-      zones near 0 dB.
+- [x] **D2. Better level graph.** Soft fill, peak-hold line, yellow and red
+      zones near 0 dB, smooth scrolling.
 - [ ] **D3. Horizontal tabs with labels** for the side panel, instead of the
       icon strip at the right edge.
 

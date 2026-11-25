@@ -3,10 +3,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              MinHeight="16" MinWidth="40" Background="{StaticResource SurfacePanel}">
     <Grid ClipToBounds="True">
-        <!-- dB gridlines + labels, drawn in code-behind on resize. -->
+        <!-- Zone tints, dB gridlines and labels, drawn in code-behind on resize. -->
         <Canvas x:Name="GridCanvas" IsHitTestVisible="False"/>
-        <Polyline x:Name="GraphLine" Stroke="{StaticResource Positive}" StrokeThickness="1.25" />
-        <TextBlock x:Name="LevelReadout" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,6,0"
-                   Foreground="{StaticResource Positive}" FontSize="{StaticResource FontLabel}" FontFamily="Consolas"/>
+        <!-- The trace: filled area + line, both coloured by level. Shifted sideways between samples (smooth scrolling). -->
+        <Canvas IsHitTestVisible="False">
+            <Canvas.RenderTransform>
+                <TranslateTransform x:Name="Scroll"/>
+            </Canvas.RenderTransform>
+            <Polygon x:Name="GraphFill"/>
+            <Polyline x:Name="GraphLine" StrokeThickness="1.5" StrokeLineJoin="Round"/>
+        </Canvas>
+        <!-- Peak hold: the recent maximum, held for a moment before it falls. -->
+        <Line x:Name="PeakLine" StrokeThickness="1" Opacity="0.7" StrokeDashArray="2 3" Visibility="Collapsed"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,8,0">
+            <TextBlock x:Name="PeakReadout" Foreground="{StaticResource TextSecondary}" FontSize="{StaticResource FontLabel}" FontFamily="Consolas"
+                       Margin="0,0,12,0" ToolTip="Peak hold: the recent maximum"/>
+            <TextBlock x:Name="LevelReadout" Foreground="{StaticResource Positive}" FontSize="{StaticResource FontLabel}" FontFamily="Consolas"/>
+        </StackPanel>
     </Grid>
 </UserControl>
