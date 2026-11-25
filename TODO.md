@@ -37,7 +37,7 @@ item, so each can be rolled back on its own.
       the right; "Selected: …" goes (the list and the details already say it).
 
 ### Better structure
-- [ ] **B1. OUTPUTS / INPUTS sections** in the device list, so the rows don't
+- [x] **B1. OUTPUTS / INPUTS sections** in the device list, so the rows don't
       repeat "Output ·" / "Input ·".
 - [ ] **B2. Device-type icons.** A monochrome Segoe Fluent glyph per form
       factor (speakers, headphones, headset, microphone, digital, …).

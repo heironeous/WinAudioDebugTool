@@ -99,6 +99,15 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Gives the DEVICE column the width the other columns leave. A grouped DataGrid doesn't recompute star
+    /// widths when its viewport changes (window resized, scrollbar shown or hidden), so this does.</summary>
+    private void DeviceGrid_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.ViewportWidthChange == 0) return;
+        double others = DeviceGrid.Columns.Where(c => c != DeviceColumn).Sum(c => c.ActualWidth);
+        DeviceColumn.Width = new DataGridLength(Math.Max(DeviceColumn.MinWidth, e.ViewportWidth - others));
+    }
+
     private void CopyEventsButton_Click(object sender, RoutedEventArgs e)
     {
         var events = _viewModel.EventLog.ShownEventsOldestFirst();

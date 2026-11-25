@@ -87,6 +87,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         // without removing them, so metering / volume / running tests are unaffected.
         _devicesView = CollectionViewSource.GetDefaultView(Devices);
         _devicesView.Filter = item => item is DeviceRowViewModel row && IsShown(row);
+        _devicesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(DeviceRowViewModel.SectionText)));
 
         Refresh();
         LogStarted();

@@ -106,6 +106,26 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Section in the device list (OUTPUTS / INPUTS): a heading with the number of devices shown, then its rows. -->
+    <Style x:Key="ListSection" TargetType="GroupItem">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GroupItem">
+                    <StackPanel>
+                        <Border Padding="14,12,14,6" BorderBrush="{StaticResource Separator}" BorderThickness="0,0,0,1">
+                            <TextBlock FontSize="{StaticResource FontCaption}" FontWeight="SemiBold">
+                                <Run Text="{Binding Name, Mode=OneWay}" Foreground="{StaticResource TextSecondary}"/>
+                                <Run Text="{Binding ItemCount, Mode=OneWay}" Foreground="{StaticResource TextTertiary}" FontWeight="Normal"/>
+                            </TextBlock>
+                        </Border>
+                        <ItemsPresenter/>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Compact variants for dense tables (event log): same look as the device list, tighter padding. -->
     <Style x:Key="LogHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource ListHeader}">
         <Setter Property="Template">

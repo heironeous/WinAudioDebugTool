@@ -98,10 +98,17 @@
                       ColumnHeaderStyle="{StaticResource ListHeader}"
                       CellStyle="{StaticResource ListCell}"
                       RowStyle="{StaticResource ListRow}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.ScrollChanged="DeviceGrid_ScrollChanged"
+                      VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                       TextOptions.TextRenderingMode="Grayscale">
+                <!-- OUTPUTS / INPUTS sections; MainViewModel groups the view by SectionText. -->
+                <DataGrid.GroupStyle>
+                    <GroupStyle ContainerStyle="{StaticResource ListSection}"/>
+                </DataGrid.GroupStyle>
                 <DataGrid.Columns>
-                    <!-- Name and role pills, with a quiet "Output · Active" line underneath. -->
-                    <DataGridTemplateColumn Header="DEVICE" Width="*" MinWidth="220">
+                    <!-- Name and role pills, with a quiet state line underneath. -->
+                    <DataGridTemplateColumn x:Name="DeviceColumn" Header="DEVICE" Width="*" MinWidth="220">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel VerticalAlignment="Center">
@@ -121,10 +128,10 @@
                                         <TextBlock Text="{Binding Device.FriendlyName}" ToolTip="{Binding Device.FriendlyName}"
                                                    TextTrimming="CharacterEllipsis"/>
                                     </DockPanel>
-                                    <!-- "Output · Active", plus " · In use by <app>" (accent) while another app streams here. -->
+                                    <!-- "Active", plus " · In use by <app>" (accent) while another app streams here. -->
                                     <TextBlock FontSize="{StaticResource FontCaption}" Margin="0,2,0,0" ToolTip="{Binding UsageToolTip}"
                                                Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis">
-                                        <Run Text="{Binding Subtitle, Mode=OneWay}"/><Run Text="{Binding UsageSuffix, Mode=OneWay}" Foreground="{StaticResource Accent}"/>
+                                        <Run Text="{Binding StateText, Mode=OneWay}"/><Run Text="{Binding UsageSuffix, Mode=OneWay}" Foreground="{StaticResource Accent}"/>
                                     </TextBlock>
                                 </StackPanel>
                             </DataTemplate>

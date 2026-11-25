@@ -14,8 +14,10 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
 
     public DeviceInfo Device { get; }
 
-    public string DirectionText => Device.Direction == AudioDirection.Output ? "Output" : "Input";
+    /// <summary>Heading of the list section the device is in.</summary>
+    public string SectionText => Device.Direction == AudioDirection.Output ? "OUTPUTS" : "INPUTS";
 
+    /// <summary>Secondary line under the device name in the list.</summary>
     public string StateText => Device.State switch
     {
         DeviceConnectionState.NotPresent => "Not present",
@@ -23,9 +25,6 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
     };
 
     public bool IsActive => Device.State == DeviceConnectionState.Active;
-
-    /// <summary>Secondary line under the device name in the list, e.g. "Output · Active".</summary>
-    public string Subtitle => $"{DirectionText} · {StateText}";
 
     private double _currentPeak;
 
@@ -149,7 +148,7 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
 
     private string _usageSuffix = "";
 
-    /// <summary>Appended to the subtitle when other apps are streaming on this device, e.g.
+    /// <summary>Appended to the state line when other apps are streaming on this device, e.g.
     /// " · In use by Webex Meetings" (" +1" for more). Empty otherwise.</summary>
     public string UsageSuffix
     {
