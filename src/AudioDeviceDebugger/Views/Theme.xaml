@@ -398,30 +398,35 @@
         </Setter>
     </Style>
 
-    <!-- Tall strip toggle at a panel edge (Properties): flat panel matching the list border, subtle text. -->
-    <Style x:Key="FlatStripToggle" TargetType="ToggleButton">
+    <!-- Side-panel tab: text with an accent underline while its panel is open. -->
+    <Style x:Key="PanelTab" TargetType="ToggleButton">
         <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
-        <Setter Property="Background" Value="{StaticResource SurfacePanel}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource BorderSubtle}"/>
-        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="10,6,10,6"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Bd" CornerRadius="6" Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                    </Border>
+                    <Grid Background="Transparent">
+                        <Border x:Name="Bd" CornerRadius="4" Margin="0,0,0,4" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <Border x:Name="Underline" Height="2" CornerRadius="1" Margin="10,0" VerticalAlignment="Bottom"
+                                Background="{StaticResource Accent}" Visibility="Hidden"/>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceRaised}"/>
                             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
                         </Trigger>
+                        <!-- Keyboard focus (there is no dotted focus rectangle). -->
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceRaised}"/>
+                        </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource RowSelected}"/>
-                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Accent}"/>
-                            <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                            <Setter TargetName="Underline" Property="Visibility" Value="Visible"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlPressed}"/>

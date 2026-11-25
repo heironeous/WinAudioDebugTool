@@ -45,7 +45,7 @@ item, so each can be rolled back on its own.
       endpoint ID behind a copy button.
 - [x] **D2. Better level graph.** Soft fill, peak-hold line, yellow and red
       zones near 0 dB, smooth scrolling.
-- [ ] **D3. Horizontal tabs with labels** for the side panel, instead of the
+- [x] **D3. Horizontal tabs with labels** for the side panel, instead of the
       icon strip at the right edge.
 
 ## Roadmap
