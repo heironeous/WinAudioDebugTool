@@ -20,6 +20,34 @@ verification notes for the larger features are in
 ## Raw recording (N4)
 - [ ] Raw *playback* (render) path — not covered
 
+## Visual refresh
+Make the window look less clunky while keeping its layout (device list on top,
+details below). Built on the branch `feature/visual-refresh`, one commit per
+item, so each can be rolled back on its own.
+
+### Quick Win
+- [ ] **A1. Finish the dark theme.** Title bar, thin scrollbars, tooltips and
+      the PROPERTIES list, which still use the light Windows look.
+- [ ] **A2. One palette and type scale.** Three surface levels, one meter
+      green, named text colours and four text sizes instead of hard-coded
+      values.
+- [ ] **B3. Role badges.** "Default" / "Comms" pills next to the device name,
+      instead of a ROLE column.
+- [ ] **C1. Single-line toolbar.** The Show: filters become toggle chips on
+      the right; "Selected: …" goes (the list and the details already say it).
+
+### Better structure
+- [ ] **B1. OUTPUTS / INPUTS sections** in the device list, so the rows don't
+      repeat "Output ·" / "Input ·".
+- [ ] **B2. Device-type icons.** A monochrome Segoe Fluent glyph per form
+      factor (speakers, headphones, headset, microphone, digital, …).
+- [ ] **D1. Details header card.** Icon, name, badges and format chips; the
+      endpoint ID behind a copy button.
+- [ ] **D2. Better level graph.** Soft fill, peak-hold line, yellow and red
+      zones near 0 dB.
+- [ ] **D3. Horizontal tabs with labels** for the side panel, instead of the
+      icon strip at the right edge.
+
 ## Roadmap
 
 Planned features, specified in enough detail to implement. If you'd like to
@@ -167,10 +195,6 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       per active device, for watching during a call.
 - [ ] **Follow the Windows theme.** A light theme next to the dark one, chosen
       from the Windows app mode, plus high-contrast support.
-- [ ] **Device-type icons.** A monochrome Segoe Fluent glyph per form factor
-      (speakers, headphones, headset, microphone, mic array, HDMI/digital,
-      line in), matching the flat theme. Windows' own icon
-      (`PKEY_DeviceClass_IconPath`) as a fallback, e.g. in the tooltip.
 - [ ] **Device grouping.** Group the endpoints of one physical device by
       container ID (`DEVPKEY_Device_ContainerId`), e.g. "Jabra Evolve3 75"
       with its Speakers and Microphone rows. Switch the device list from a
