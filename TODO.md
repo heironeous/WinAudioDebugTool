@@ -20,34 +20,6 @@ verification notes for the larger features are in
 ## Raw recording (N4)
 - [ ] Raw *playback* (render) path — not covered
 
-## Visual refresh
-Make the window look less clunky while keeping its layout (device list on top,
-details below). Built on the branch `feature/visual-refresh`, one commit per
-item, so each can be rolled back on its own.
-
-### Quick Win
-- [x] **A1. Finish the dark theme.** Title bar, thin scrollbars, tooltips and
-      the PROPERTIES list, which still use the light Windows look.
-- [x] **A2. One palette and type scale.** Three surface levels, one meter
-      green, named text colours and four text sizes instead of hard-coded
-      values.
-- [x] **B3. Role badges.** "Default" / "Comms" pills next to the device name,
-      instead of a ROLE column.
-- [x] **C1. Single-line toolbar.** The Show: filters become toggle chips on
-      the right; "Selected: …" goes (the list and the details already say it).
-
-### Better structure
-- [x] **B1. OUTPUTS / INPUTS sections** in the device list, so the rows don't
-      repeat "Output ·" / "Input ·".
-- [x] **B2. Device-type icons.** A monochrome Segoe Fluent glyph per form
-      factor (speakers, headphones, headset, microphone, digital, …).
-- [x] **D1. Details header card.** Icon, name, badges and format chips; the
-      endpoint ID behind a copy button.
-- [x] **D2. Better level graph.** Soft fill, peak-hold line, yellow and red
-      zones near 0 dB, smooth scrolling.
-- [x] **D3. Horizontal tabs with labels** for the side panel, instead of the
-      icon strip at the right edge.
-
 ## Roadmap
 
 Planned features, specified in enough detail to implement. If you'd like to

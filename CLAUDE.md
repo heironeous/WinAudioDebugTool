@@ -17,10 +17,11 @@ default / communications / both roles, per-device volume + mute, live dB level m
 and mic record-and-playback tests, per-channel tests, an event timeline, the apps using each device, raw vs
 call-processed mic recording (A/B), and a full property-store dump with human-readable key names.
 
-## Current state (as of commit `16b86d5`, 2026-11-11)
+## Current state (as of commit `c3b38b2`, v0.3.0, 2026-11-25)
 
 - Public on GitHub: <https://github.com/heironeous/WinAudioDebugTool>, branch `main` (work is committed straight to
-  `main`). The maintainer pushes; agents don't.
+  `main`, or on a feature branch merged by pull request when the maintainer asks for one, as for the visual refresh).
+  The maintainer pushes; agents don't, unless asked for that branch.
 - Builds cleanly (0 warnings) and runs on Windows 11; every feature in `planning/DONE-TODO.md` was exercised on
   real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
   the maintainer's decision. No automated tests.
@@ -37,9 +38,8 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   changes; `TODO.md` holds the open items + roadmap (N3, N5 specified) and `planning/DONE-TODO.md` the finished
   items (move an item there once it's done); `docs/design-notes.md` holds implementation and verification notes for
   N1, N2, N4, the side-panel tabs and the visual refresh.
-- **Visual refresh** (2026-11-25): on branch `feature/visual-refresh` (pushed at the maintainer's request, not merged),
-  one commit per item. All items are ticked in `TODO.md`; move them to `planning/DONE-TODO.md` once the maintainer has
-  tested and merged the branch. CI only runs on `main`, so the branch has no CI build.
+- **Visual refresh** (2026-11-25): merged into `main` from `feature/visual-refresh` (PR #1, released as v0.3.0); its
+  items are in `planning/DONE-TODO.md`. CI only runs on `main`, so feature branches get no CI build.
 - The maintainer's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
   Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
   Poly BT700, Poly Voyager Focus 2, HP dock). **All headsets connect through USB dongles** — none are paired with

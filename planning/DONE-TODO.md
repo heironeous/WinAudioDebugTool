@@ -189,3 +189,29 @@ and verification notes for the larger features are in
       `%LOCALAPPDATA%\AudioDeviceDebugger\events-YYYY-MM-DD.log`, same format
       as Export… → JSON Lines; files older than 14 days are deleted at
       startup (N2)
+
+## Visual refresh (v0.3.0, 2026-11-25)
+Built on `feature/visual-refresh`, one commit per item, merged in PR #1. It
+replaces the look described under "Device enumeration" and "Side panel"
+above (Show: checkboxes, ROLE column, icon strip at the right edge); see
+docs/design-notes.md, "Visual refresh".
+- [x] **A1. Finish the dark theme.** Title bar, thin scrollbars, tooltips and
+      the PROPERTIES list, which still used the light Windows look
+- [x] **A2. One palette and type scale.** Three surface levels, one meter
+      green, named text colours and four text sizes instead of hard-coded
+      values
+- [x] **B3. Role badges.** "Default" / "Comms" pills next to the device name,
+      instead of a ROLE column
+- [x] **C1. Single-line toolbar.** The Show: filters became "Also show" chips
+      on the right; "Selected: …" went (the list and the details already say
+      it)
+- [x] **B1. OUTPUTS / INPUTS sections** in the device list, so the rows don't
+      repeat "Output ·" / "Input ·"
+- [x] **B2. Device-type icons.** A monochrome Segoe Fluent glyph per form
+      factor (speakers, headphones, headset, microphone, digital, …)
+- [x] **D1. Details header card.** Icon, name, badges and format chips; the
+      endpoint ID behind a copy button
+- [x] **D2. Better level graph.** Soft fill, peak-hold line, yellow and red
+      zones near 0 dB, smooth scrolling
+- [x] **D3. Horizontal tabs with labels** for the side panel, instead of the
+      icon strip at the right edge
