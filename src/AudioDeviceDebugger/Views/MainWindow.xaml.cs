@@ -49,9 +49,18 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        if (Background is SolidColorBrush background)
+        ApplyTitleBar();
+        ThemeManager.ThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e) => ApplyTitleBar();
+
+    private void ApplyTitleBar()
+    {
+        if (TryFindResource("SurfaceBase") is SolidColorBrush background)
         {
-            WindowTheme.ApplyDarkTitleBar(this, background.Color);
+            WindowTheme.ApplyTitleBar(this, background.Color, dark: ThemeManager.Current == AppTheme.Dark,
+                systemColors: ThemeManager.Current == AppTheme.HighContrast);
         }
     }
 
@@ -188,6 +197,7 @@ public partial class MainWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        ThemeManager.ThemeChanged -= OnThemeChanged;
         _viewModel.Dispose();
         _levelMeterService.Dispose();
         _volumeService.Dispose();

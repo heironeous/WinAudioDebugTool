@@ -165,8 +165,16 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
 **Visual**
 - [ ] **Mini meter window.** A small, always-on-top window with one level bar
       per active device, for watching during a call.
-- [ ] **Follow the Windows theme.** A light theme next to the dark one, chosen
+- [x] **Follow the Windows theme.** A light theme next to the dark one, chosen
       from the Windows app mode, plus high-contrast support.
+      Done: palettes in `Views/Themes/Dark.xaml` and `Light.xaml`; with high
+      contrast on, a palette from Windows' system colours (no translucency,
+      the selected row outlined). `ThemeManager` follows changes while the
+      app runs (title bar and level graph too); `--theme=light|dark|
+      high-contrast` forces one. Unit tests check that the palettes define
+      the same keys and that text meets 4.5:1 contrast (dark tertiary text
+      was brightened from #8F8F96 to #9C9CA3 to pass on raised surfaces).
+      Not tested with a real Windows contrast theme switched on.
 - [x] **Device grouping.** Group the endpoints of one physical device by
       container ID (`DEVPKEY_Device_ContainerId`), e.g. "Jabra Evolve3 75"
       with its Speakers and Microphone rows. Switch the device list from a

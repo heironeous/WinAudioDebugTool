@@ -1,7 +1,7 @@
 <UserControl x:Class="AudioDeviceDebugger.Views.LevelGraph"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinHeight="16" MinWidth="40" Background="{StaticResource SurfacePanel}">
+             MinHeight="16" MinWidth="40" Background="{DynamicResource SurfacePanel}">
     <Grid ClipToBounds="True">
         <!-- Zone tints, dB gridlines and labels, drawn in code-behind on resize. -->
         <Canvas x:Name="GridCanvas" IsHitTestVisible="False"/>
@@ -16,14 +16,12 @@
         <!-- Peak hold: the recent maximum, held for a moment before it falls. -->
         <Line x:Name="PeakLine" StrokeThickness="1" Opacity="0.7" StrokeDashArray="2 3" Visibility="Collapsed"/>
         <!-- Readouts, on a plate so a loud trace doesn't run through the text. -->
-        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Padding="6,2,6,3" CornerRadius="4">
-            <Border.Background>
-                <SolidColorBrush Color="{Binding Color, Source={StaticResource SurfacePanel}}" Opacity="0.85"/>
-            </Border.Background>
+        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Padding="6,2,6,3" CornerRadius="4"
+                Background="{DynamicResource GraphPlate}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock x:Name="PeakReadout" Foreground="{StaticResource TextSecondary}" FontSize="{StaticResource FontLabel}" FontFamily="Consolas"
+                <TextBlock x:Name="PeakReadout" Foreground="{DynamicResource TextSecondary}" FontSize="{StaticResource FontLabel}" FontFamily="Consolas"
                            Margin="0,0,12,0" ToolTip="Peak hold: the recent maximum"/>
-                <TextBlock x:Name="LevelReadout" Foreground="{StaticResource Positive}" FontSize="{StaticResource FontLabel}" FontFamily="Consolas"/>
+                <TextBlock x:Name="LevelReadout" Foreground="{DynamicResource Positive}" FontSize="{StaticResource FontLabel}" FontFamily="Consolas"/>
             </StackPanel>
         </Border>
     </Grid>

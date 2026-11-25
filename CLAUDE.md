@@ -112,7 +112,8 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   or by physical device (`Services/DeviceGrouping.cs`, the "By device" chip in the DEVICE header);
   details bottom: header card + `LevelGraph` + channel bars left, collapsible right-hand side panel showing one of four
   horizontal tabs — Properties, Events, Processes (apps using the device), Raw recording (A/B takes), Driver), `LevelGraph`,
-  `Theme.xaml` (palette, type scale and all control styles; merged in `App.xaml`).
+  `Theme.xaml` (type scale and all control styles; merged in `App.xaml`), `Themes/Dark.xaml` + `Themes/Light.xaml`
+  (the colour palettes), `ThemeManager` (picks dark / light / high contrast from Windows, follows changes, `--theme=`).
 - `tests/AudioDeviceDebugger.Tests/` — xUnit tests of the hardware-free logic. It references the app (a self-contained
   exe, hence `ValidateExecutableReferencesMatchSelfContained=false`; internals via `InternalsVisibleTo`), sets the
   invariant culture for every test (`TestCulture.cs`), and uses `UseWPF` for the event log's CollectionView.
@@ -142,7 +143,11 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
    (−60…0 dBFS). The property store is only read while the property panel is open (it's the expensive part of
    selection).
 10. WPF projects' implicit usings exclude `System.IO`; `Timer` is ambiguous (System.Timers vs System.Threading).
-11. **The UI uses a flat dark theme** (`Views/Theme.xaml`; use its named colours and sizes, never literals). The DataGrid coerces
+11. **The UI uses a flat theme in dark, light and high contrast** (styles and sizes in `Views/Theme.xaml`, colours in
+    `Views/Themes/*.xaml`). Use the named colours and sizes, never literals, and refer to palette colours with
+    **`DynamicResource`** (a `StaticResource` keeps the startup palette when Windows switches); a new palette key goes
+    into Dark.xaml, Light.xaml, `ThemeManager.HighContrastPalette` and `ThemeManager.PaletteKeys` (a test checks the
+    XAML ones). Code that reads palette brushes must listen to `ThemeManager.ThemeChanged`. The DataGrid coerces
     `DataGridRow.Background` to its `RowBackground`, so row-level hover/selection triggers do nothing — those colours
     are drawn in the `ListCell` template instead. Setting `CellStyle` doesn't remove the theme style's triggers, so
     pin `Foreground` or the selected row's text turns near-black ("inactive selection" colour). Thin icon glyphs get

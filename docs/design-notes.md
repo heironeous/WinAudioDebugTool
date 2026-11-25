@@ -305,6 +305,35 @@ was not built.
   5/6, never showed for it. Fixed 2026-11-23 by matching container IDs (see
   "Small follow-ups" below).
 
+## Light theme and high contrast (2026-11-25)
+`Views/ThemeManager.cs`, `Views/Themes/Dark.xaml`, `Views/Themes/Light.xaml`; `Theme.xaml` keeps the sizes and styles.
+
+- **Mechanism.** The palette is the first merged dictionary of `App.Resources` (Dark.xaml in `App.xaml`, so the XAML
+  designer still has colours). Every palette reference in the views is a `DynamicResource` (163 of them), so
+  replacing that dictionary repaints the running app. Brushes in setters can't simply be recoloured instead: WPF
+  freezes them when a style is sealed. Code that builds brushes from palette colours (the level graph's gridlines and
+  gradient brushes, the title bar) listens to `ThemeManager.ThemeChanged`.
+- **Choice**: `--theme=` override, then `SystemParameters.HighContrast`, then
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme` (missing = light, as in
+  Windows). Re-evaluated on `SystemEvents.UserPreferenceChanged` (General / Color / VisualStyle / Accessibility) and
+  when `SystemParameters.HighContrast` changes.
+- **High contrast** builds the palette from `SystemColors` (Window, WindowText, Highlight, HotTrack, GrayText):
+  no translucent overlays, every text level in WindowText, the selected row outlined in Highlight (a 2 px top/bottom
+  border on each cell that is transparent in the other palettes) rather than filled, and the title bar left to
+  Windows (`DWMWA_CAPTION_COLOR` = default).
+- **Title bar**: `DWMWA_USE_IMMERSIVE_DARK_MODE` 1 for dark, 0 for light and high contrast; caption colour = the
+  palette's `SurfaceBase`.
+- **Light palette**: white panels on a light grey window; the meaning colours are darker than in the dark palette
+  (accent #0F6CBD, positive #107C41, caution #8A5300, negative #C42B1C) so they read as text on white.
+  `ThemeTests` checks both palettes: same keys as `ThemeManager.PaletteKeys`, primary and secondary text ≥ 4.5:1 on
+  every surface and on hovered / selected rows, tertiary text and the meaning colours ≥ 4.5:1 on the surfaces. The dark
+  palette's tertiary text failed on raised surfaces (3.97:1) and is now #9C9CA3.
+- Verified: screenshots with `--theme=light`, `dark` and `high-contrast` (the last with this desktop's normal system
+  colours, since contrast themes are off here), and the live switch dark → light → dark in a scratch harness that
+  opens the real main window and swaps the palette (everything repainted, `ThemeChanged` raised twice). Not checked:
+  a real Windows contrast theme, the app-mode change coming from Windows itself (the registry value wasn't changed on
+  the maintainer's machine), Windows 10.
+
 ## Device grouping (2026-11-25)
 `Services/DeviceGrouping.cs` (pure, unit-tested), `ViewModels/DeviceListGroup.cs`, `ListSection` / `SectionExpander`
 in `Theme.xaml`.

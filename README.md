@@ -65,6 +65,10 @@ colour zones (yellow from −12 dB, red from −3 dB), and per-channel meters.
 
 All levels are shown in dBFS (−60…0 dB).
 
+**Light, dark and high contrast** — the app follows Windows: light or dark after the app mode in Settings →
+Personalisation → Colours, and Windows' own colours when a contrast theme is on. It switches while running. To force
+one (for screenshots, say), start it with `--theme=light`, `--theme=dark` or `--theme=high-contrast`.
+
 ## Requirements
 
 - Windows 10 or 11, x64. Developed and tested on Windows 11.
@@ -214,7 +218,8 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 │   ├── Services/                Core Audio work, no UI: enumeration, defaults, details, volume, level meters,
 │   │                            tests and recordings, app sessions, event-log export
 │   ├── ViewModels/              MVVM glue between services and views
-│   ├── Views/                   MainWindow, LevelGraph, Theme.xaml (flat dark theme)
+│   ├── Views/                   MainWindow, LevelGraph, Theme.xaml (control styles), Themes/ (dark and light
+│   │                            palettes), ThemeManager (follows the Windows app mode and high contrast)
 │   └── Assets/                  App icon
 ├── tests/AudioDeviceDebugger.Tests/  Unit tests (xUnit) for the parts that need no audio hardware
 └── tools/PropertyKeyNameGenerator/   Regenerates the property-key name table
