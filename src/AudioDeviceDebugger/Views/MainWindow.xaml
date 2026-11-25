@@ -118,13 +118,23 @@
                       ScrollViewer.ScrollChanged="DeviceGrid_ScrollChanged"
                       VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                       TextOptions.TextRenderingMode="Grayscale">
-                <!-- OUTPUTS / INPUTS sections; MainViewModel groups the view by SectionText. -->
+                <!-- OUTPUTS / INPUTS sections, or one group per physical device (the "By device" chip); MainViewModel
+                     sets the view's grouping. Clicking a group's heading collapses it. -->
                 <DataGrid.GroupStyle>
                     <GroupStyle ContainerStyle="{StaticResource ListSection}"/>
                 </DataGrid.GroupStyle>
                 <DataGrid.Columns>
                     <!-- Device-type icon, name and role pills, with a quiet state line underneath. -->
-                    <DataGridTemplateColumn x:Name="DeviceColumn" Header="DEVICE" Width="*" MinWidth="220">
+                    <DataGridTemplateColumn x:Name="DeviceColumn" Width="*" MinWidth="220">
+                        <DataGridTemplateColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="DEVICE" VerticalAlignment="Center"/>
+                                <CheckBox IsChecked="{Binding DataContext.GroupByDevice, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                          Content="By device" FontSize="{StaticResource FontCaption}" Padding="8,1,8,2" Margin="12,-3,0,-3"
+                                          Style="{StaticResource FilterChip}" VerticalAlignment="Center" AutomationProperties.Name="Group by device"
+                                          ToolTip="Group the list by physical device (a headset's speaker and mic together; built-in audio under This PC) instead of outputs and inputs"/>
+                            </StackPanel>
+                        </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Grid>
@@ -146,7 +156,7 @@
                                         <!-- "Active", plus " · In use by <app>" (accent) while another app streams here. -->
                                         <TextBlock FontSize="{StaticResource FontCaption}" Margin="0,2,0,0" ToolTip="{Binding UsageToolTip}"
                                                    Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis">
-                                            <Run Text="{Binding StateText, Mode=OneWay}"/><Run Text="{Binding UsageSuffix, Mode=OneWay}" Foreground="{StaticResource Accent}"/>
+                                            <Run Text="{Binding DirectionPrefix, Mode=OneWay}"/><Run Text="{Binding StateText, Mode=OneWay}"/><Run Text="{Binding UsageSuffix, Mode=OneWay}" Foreground="{StaticResource Accent}"/>
                                         </TextBlock>
                                     </StackPanel>
                                 </Grid>

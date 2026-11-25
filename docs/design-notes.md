@@ -305,6 +305,28 @@ was not built.
   5/6, never showed for it. Fixed 2026-11-23 by matching container IDs (see
   "Small follow-ups" below).
 
+## Device grouping (2026-11-25)
+`Services/DeviceGrouping.cs` (pure, unit-tested), `ViewModels/DeviceListGroup.cs`, `ListSection` / `SectionExpander`
+in `Theme.xaml`.
+
+- **Key**: `DEVPKEY_Device_ContainerId`; Windows' "this PC" container (`00000000-0000-0000-ffff-ffffffffffff`) is
+  "This PC", endpoints without one are "Other". On the desktop each old HDMI output has a container of its own (one per
+  monitor ever connected), so several "High Definition Audio Device" groups appear when Not present is shown.
+- **Names**: the container's own name (`DEVPKEY_ItemNameDisplay` through `DevGetObjectProperties`,
+  DevObjectTypeDeviceContainer) would be ideal, but on the desktop every call took 60 s and then failed with
+  ERROR_FILE_NOT_FOUND, so the name comes from the endpoints: `PKEY_DeviceInterface_FriendlyName` (the part in brackets
+  of "Speakers (Jabra Link 380)", a "2- " duplicate prefix removed), except for display endpoints (form factor 9),
+  whose interface is the graphics card's audio: there the endpoint part ("ASUS VP28U") is used, unless it's generic
+  ("Digital Output", "NVIDIA Output"). The most common name among the active endpoints wins.
+- **Grouping in WPF**: the view is grouped by a `DeviceListGroup` object per row (`SectionGroup` or `DeviceGroup`,
+  swapped by `MainViewModel.ApplyGrouping`), sorted by `GroupDescription.CustomSort`. Refresh rebuilds every row, so
+  the group objects are cached by key in the view model; they carry `IsExpanded`, which is why a collapsed group stays
+  collapsed. The group template is an `Expander`: with a plain ToggleButton heading the GroupItem exposed no
+  expand / collapse pattern to UI Automation (screen readers couldn't open a group).
+- Verified on the desktop with all states shown: 14 groups, each collapsed through UI Automation; collapsed state
+  survives Refresh; switching back restores OUTPUTS / INPUTS. Not checked: the laptop (Jabra Link 390 should group
+  its speaker and mic, the Intel array and Realtek speakers under This PC), keyboard navigation across collapsed groups.
+
 ## Device inventory: the Driver tab (2026-11-25)
 `Services/DeviceInventoryService.cs`, `Interop/DeviceNode.cs` (cfgmgr32), `Interop/UsbHub.cs`; pure helpers in
 `Services/InventoryFormat.cs` (unit-tested).

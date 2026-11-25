@@ -107,21 +107,78 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Section in the device list (OUTPUTS / INPUTS): a heading with the number of devices shown, then its rows. -->
+    <!-- Heading of a device-list group: the whole line is a toggle that collapses the group. -->
+    <Style x:Key="SectionHeading" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="14,12,14,6"
+                            BorderBrush="{StaticResource Separator}" BorderThickness="0,0,0,1">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceRaised}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A device-list group as a flat expander: the heading line (chevron + header) toggles the body. -->
+    <Style x:Key="SectionExpander" TargetType="Expander">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <StackPanel>
+                        <ToggleButton Style="{StaticResource SectionHeading}"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="Chevron" Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource IconSmall}"
+                                           Foreground="{StaticResource TextTertiary}" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <ContentPresenter x:Name="Body"/>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="False">
+                            <Setter TargetName="Body" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="Chevron" Property="Text" Value="&#xE76C;"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Group in the device list (OUTPUTS / INPUTS, or one physical device): a heading with the number of devices
+         shown, then its rows. The group object (DeviceListGroup) is the CollectionViewGroup's Name; clicking the
+         heading collapses the group, and the group object keeps that across refreshes. An Expander (not a plain
+         toggle) so UI Automation and screen readers get the group's expand / collapse pattern. -->
     <Style x:Key="ListSection" TargetType="GroupItem">
         <Setter Property="Focusable" Value="False"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="GroupItem">
-                    <StackPanel>
-                        <Border Padding="14,12,14,6" BorderBrush="{StaticResource Separator}" BorderThickness="0,0,0,1">
+                    <Expander Style="{StaticResource SectionExpander}" IsExpanded="{Binding Name.IsExpanded}" ToolTip="{Binding Name.ToolTip}">
+                        <Expander.Header>
                             <TextBlock FontSize="{StaticResource FontCaption}" FontWeight="SemiBold">
-                                <Run Text="{Binding Name, Mode=OneWay}" Foreground="{StaticResource TextSecondary}"/>
+                                <Run Text="{Binding Name.Title, Mode=OneWay}"/>
                                 <Run Text="{Binding ItemCount, Mode=OneWay}" Foreground="{StaticResource TextTertiary}" FontWeight="Normal"/>
                             </TextBlock>
-                        </Border>
+                        </Expander.Header>
                         <ItemsPresenter/>
-                    </StackPanel>
+                    </Expander>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

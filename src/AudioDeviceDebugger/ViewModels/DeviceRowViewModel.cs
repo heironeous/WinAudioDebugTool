@@ -14,8 +14,28 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
 
     public DeviceInfo Device { get; }
 
-    /// <summary>Heading of the list section the device is in.</summary>
-    public string SectionText => Device.Direction == AudioDirection.Output ? "OUTPUTS" : "INPUTS";
+    /// <summary>The list section (OUTPUTS / INPUTS) when the list is grouped by direction. Set by MainViewModel.</summary>
+    public DeviceListGroup? SectionGroup { get; set; }
+
+    /// <summary>The physical device when the list is grouped by device. Set by MainViewModel.</summary>
+    public DeviceListGroup? DeviceGroup { get; set; }
+
+    private bool _showDirection;
+
+    /// <summary>On while the list is grouped by device: the sections no longer say which rows are outputs, so the
+    /// state line does ("Output · Active").</summary>
+    public bool ShowDirection
+    {
+        get => _showDirection;
+        set
+        {
+            if (_showDirection == value) return;
+            _showDirection = value;
+            OnPropertyChanged(nameof(DirectionPrefix));
+        }
+    }
+
+    public string DirectionPrefix => _showDirection ? (IsOutput ? "Output · " : "Input · ") : "";
 
     /// <summary>Secondary line under the device name in the list.</summary>
     public string StateText => Device.State switch

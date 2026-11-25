@@ -167,11 +167,19 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       per active device, for watching during a call.
 - [ ] **Follow the Windows theme.** A light theme next to the dark one, chosen
       from the Windows app mode, plus high-contrast support.
-- [ ] **Device grouping.** Group the endpoints of one physical device by
+- [x] **Device grouping.** Group the endpoints of one physical device by
       container ID (`DEVPKEY_Device_ContainerId`), e.g. "Jabra Evolve3 75"
       with its Speakers and Microphone rows. Switch the device list from a
       flat list to a grouped view (collapsible groups; built-in devices in a
       "This PC" group).
+      Done: a **By device** chip in the DEVICE header switches between
+      OUTPUTS / INPUTS and one group per container (state lines then say
+      "Output ·" / "Input ·"). Group names come from the endpoints: the
+      interface name ("Jabra Link 380"), or the monitor name for HDMI /
+      DisplayPort ("ASUS VP28U", not "NVIDIA High Definition Audio"). Groups
+      with an active endpoint come first. Every group heading (sections too)
+      collapses on click and stays collapsed across refreshes. Not kept
+      between app starts (the app has no settings file yet).
 
 **Functional**
 - [ ] **Setup snapshots.** Save the whole audio setup (defaults, volumes, mute,

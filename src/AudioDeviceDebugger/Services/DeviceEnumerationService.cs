@@ -78,6 +78,7 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
                     IsDefaultCommunicationsDevice = string.Equals(device.ID, defaultCommsId, StringComparison.Ordinal),
                     FormFactor = formFactor,
                     ContainerId = containerId,
+                    InterfaceName = _propertyReader.TryGetString(device.ID, PropertyKeys.PKEY_DeviceInterface_FriendlyName),
                     LinkedOutputName = linkedOutput,
                 });
             }

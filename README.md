@@ -22,6 +22,9 @@ Events tab with the timeline.*
 - Every audio endpoint in two sections, **OUTPUTS** and **INPUTS**, including disabled, not-present and unplugged ones
   (the **Also show** chips at the top right), with an icon for its type, its role badges (Default · Comms), a live level
   meter, volume slider and mute button.
+- **By device** (in the list's header) groups the endpoints by physical device instead: a headset's speaker and
+  microphone together, a monitor's outputs together, everything built in under **This PC**. Click a group's heading to
+  collapse it.
 - Updates by itself when devices are plugged in or removed, or when another app changes a volume.
 - "· In use by *App*" when another application is streaming to or from the device.
 

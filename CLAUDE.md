@@ -105,10 +105,11 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   `Interop/UsbHub.cs`, APOs from the endpoint's `FxProperties` registry key; pure helpers in `InventoryFormat`); the test
   service's A/B recording runs three of them at once. `DeviceEnumerationService.EndpointNotified` carries each
   IMMNotificationClient callback in detail (for the event log) alongside the coarse `DevicesChanged`.
-- `ViewModels/` — `MainViewModel` (refresh/debounce, filters, selection, tests, side panels, event logging),
-  `DeviceRowViewModel`, `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging),
+- `ViewModels/` — `MainViewModel` (refresh/debounce, filters, grouping, selection, tests, side panels, event logging),
+  `DeviceRowViewModel`, `DeviceListGroup` (a list group; cached per key, carries the collapsed state), `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging),
   `SessionRowViewModel` (PROCESSES tab), `TakeRowViewModel` (RAW RECORDING tab: last take per processing mode). `Models/` — plain data + `LevelScale` (dB conversion).
-- `Views/` — `MainWindow` (toolbar 1 line, filter chips on the right; device grid top, grouped into OUTPUTS / INPUTS;
+- `Views/` — `MainWindow` (toolbar 1 line, filter chips on the right; device grid top, grouped into OUTPUTS / INPUTS
+  or by physical device (`Services/DeviceGrouping.cs`, the "By device" chip in the DEVICE header);
   details bottom: header card + `LevelGraph` + channel bars left, collapsible right-hand side panel showing one of four
   horizontal tabs — Properties, Events, Processes (apps using the device), Raw recording (A/B takes), Driver), `LevelGraph`,
   `Theme.xaml` (palette, type scale and all control styles; merged in `App.xaml`).
@@ -182,6 +183,10 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     or hidden), which clips the last columns: `DeviceGrid_ScrollChanged` sets the DEVICE column's width instead.
 19. **A `ContentPresenter`'s own DataContext is its Content**: style triggers on it that bind to the outer view model
     silently get the fallback value. Use a `ContentControl` when it needs triggers.
+20. **Device containers can't be named through DevQuery here**: `DevGetObjectProperties` on a container took 60 s per
+    call and failed (desktop, 2026-11-25). Group names come from the endpoints (`DeviceGrouping.DeviceNameOf`).
+21. **A GroupItem only exposes expand / collapse to UI Automation when its template holds an `Expander`**; a plain
+    ToggleButton heading is invisible to UIA and screen readers.
 
 ## Verifying changes (techniques that worked)
 

@@ -33,6 +33,10 @@ public sealed class DeviceInfo
     /// headset or dongle share it. Null if not reported.</summary>
     public Guid? ContainerId { get; init; }
 
+    /// <summary>PKEY_DeviceInterface_FriendlyName: the audio device (adapter) the endpoint belongs to, e.g.
+    /// "Jabra Link 390" — the part in brackets of "Speakers (Jabra Link 390)". Null if not reported.</summary>
+    public string? InterfaceName { get; init; }
+
     /// <summary>
     /// For an input with form factor 4 (Microphone): the name of an output endpoint in the same container — the
     /// mic and the speaker are one device, e.g. a headset dongle that reports its mic as a plain "Microphone"
