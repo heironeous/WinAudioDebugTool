@@ -598,3 +598,29 @@ The Windows Sound settings' **Connect** / **Disconnect** button for a Bluetooth 
   sending anything; in the app UI Automation showed the button disabled with the right tooltip for the Realtek
   speakers and the webcam and "Disconnect" for the connected Jabra. The maintainer then used Disconnect and Connect on
   the Jabra Evolve3 75 (Bluetooth Classic, laptop): both worked. LE Audio (`APXENUM` under `BTHLE`) is untried.
+
+## Disable / enable an endpoint (2026-11-26)
+
+The Windows Sound settings' **Disable** ("Don't allow" in the Windows 11 settings) is available in the toolbar.
+
+- **Mechanism.** `IPolicyConfig::SetEndpointVisibility(endpointId, visible)`, already declared next to
+  `SetDefaultEndpoint` and called the same way (`PolicyConfigClient`). It works on one *endpoint*, not the device:
+  the driver and the device's other endpoints keep running. Windows' audio service records it as a `0x10000000` flag
+  on top of the real state in the endpoint's `MMDevices\Audio\{Render|Capture}\{guid}\DeviceState` (Stereo Mix,
+  disabled by default, reads `0x10000001` = disabled + active), so it is kept per endpoint ID across reboots and
+  reconnects; enumeration reports `DEVICE_STATE_DISABLED`. No elevation needed. Device Manager's "Disable device"
+  (stops the driver, needs admin) is a different thing and isn't offered.
+- **Keeping the row.** Disabled rows are hidden by default, so a row disabled here is pinned (`_keepShownId`) until
+  another device is selected. `Refresh()` rebuilds the rows with `Devices.Clear()`, which makes the DataGrid push a
+  *null* selection into `SelectedDevice`; the first build treated that as "another device was picked", unpinned the
+  row and the selection jumped to the first visible row. `_isRebuildingRows` now marks the rebuild so those
+  transient selection changes are ignored.
+- **Verification.** UI Automation on the Realtek speakers and the Intel array (both not defaults): Disable → row
+  stays, selected, "Disabled", button reads Enable; Enable → Active again; the array, disabled while selected (meter
+  capture stream open), left the list once the speakers were selected, came back with the Disabled chip, and after
+  Enable the app's capture session on it was Active again (checked with a NAudio session harness). The maintainer
+  checked defaults (disabling a default moves it to another device; enabling moves it back) and the Jabra Evolve3 75
+  Hands-Free mic (disabled, the headphones keep playing). Not tried: a USB dongle's mic (Jabra Link 390).
+- **Test-script lesson.** The first run clicked the button twice blindly; with the bug above the selection had moved
+  to the Jabra Headphones (default output), which the second click disabled (re-enabled within minutes; Windows
+  restored the defaults). Scripts that press state-changing buttons must check the selected row before every click.

@@ -35,6 +35,12 @@ Windows Sound settings (it stays paired). It acts on the whole headset, so its H
 or down together. Only enabled for Bluetooth devices: a headset behind a USB dongle (Jabra Link, Poly BT700, …) is a
 USB device to Windows, and the dongle's own link can't be switched from here.
 
+**Disable / Enable** — switch off the selected input or output, like Disable in the Windows Sound settings: apps can't
+use it until it's enabled again, while the device's other endpoints keep working (disable a headset's mic and its
+headphones still play). Works for every kind of device and needs no admin rights. If it was a default device, Windows
+moves the default to another device, and back when it's enabled again. A row you disable stays in the list while it's
+selected, even with the **Disabled** chip off.
+
 **Tests**
 - **Outputs:** play a short generated music clip (drums, bass, chords, melody), or play it on one speaker channel at
   a time (front left, centre, LFE, …) to check wiring and channel order.
@@ -139,8 +145,9 @@ dotnet test
   audio); files older than 14 days are deleted. Nothing is sent anywhere.
 - **Bluetooth Connect / Disconnect** was tried with a Bluetooth Classic headset (Jabra Evolve3 75). LE Audio
   headsets get the button too, but haven't been tried; if Windows refuses, the status line shows why.
-- **Set Default uses an undocumented Windows interface** (`IPolicyConfig`) — the same one Windows' own Sound settings
-  use. It has been stable for many Windows versions, but Microsoft doesn't guarantee it.
+- **Disabling a USB headset dongle's mic** (to keep the headset out of call mode) hasn't been tried yet.
+- **Set Default and Disable / Enable use an undocumented Windows interface** (`IPolicyConfig`) — the same one Windows'
+  own Sound settings use. It has been stable for many Windows versions, but Microsoft doesn't guarantee it.
 - **Call ≠ exactly what the other side hears.** The Call take is what Windows and the driver deliver to call apps;
   Teams, Webex & co. add their own processing, a codec and the network on top. On many drivers Standard and Call use
   the same processing.

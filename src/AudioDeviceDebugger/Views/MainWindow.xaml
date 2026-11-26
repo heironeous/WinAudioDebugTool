@@ -52,13 +52,23 @@
                     ToolTip="Make the selected device both the default and the default communications device"/>
             <!-- Bluetooth Connect / Disconnect, like the Windows Sound settings; only for Bluetooth-paired devices. -->
             <Border Width="1" Background="{DynamicResource BorderSubtle}" Margin="0,4,8,4"/>
-            <Button Click="BluetoothButton_Click" Style="{StaticResource FlatButton}" Padding="12,5"
+            <Button Click="BluetoothButton_Click" Style="{StaticResource FlatButton}" Padding="12,5" Margin="0,0,8,0"
                     IsEnabled="{Binding CanToggleBluetoothConnection}" ToolTipService.ShowOnDisabled="True"
                     ToolTip="{Binding BluetoothButtonToolTip}" AutomationProperties.Name="{Binding BluetoothButtonText}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE702;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontLabel}"
                                VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBlock Text="{Binding BluetoothButtonText}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <!-- Disable / Enable the selected endpoint, like the Windows Sound settings (any device type). -->
+            <Button Click="EnableButton_Click" Style="{StaticResource FlatButton}" Padding="12,5"
+                    IsEnabled="{Binding CanToggleEndpointEnabled}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="{Binding EnableButtonToolTip}" AutomationProperties.Name="{Binding EnableButtonText}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding EnableButtonGlyph}" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontLabel}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding EnableButtonText}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Button>
 

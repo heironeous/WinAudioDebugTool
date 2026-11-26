@@ -52,6 +52,8 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   (`MainViewModel.CanOpenRecordingsPanel`; selecting an output closes the panel).
 - Bluetooth **Connect / Disconnect** toolbar button (2026-11-26, `feat:`): see docs/design-notes.md. Verified by the
   maintainer on the Jabra Evolve3 75 over Bluetooth Classic; LE Audio untried (open item in `TODO.md`).
+- **Disable / Enable** toolbar button (2026-11-26): `IPolicyConfig::SetEndpointVisibility` on the selected endpoint;
+  no admin needed; Windows moves a disabled default away and back on Enable. A USB dongle's mic is untried.
 - The maintainer's hardware (laptop): Jabra Link 390 USB dongle (headset speakers + mic; not plugged in on
   2026-11-26), Realtek laptop speakers, Intel Smart Sound Technology 4-channel mic array, an HP 325 FHD webcam mic,
   plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380, Poly BT700, Poly Voyager Focus 2, HP
@@ -209,6 +211,9 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     call and failed (desktop, 2026-11-25). Group names come from the endpoints (`DeviceGrouping.DeviceNameOf`).
 21. **A GroupItem only exposes expand / collapse to UI Automation when its template holds an `Expander`**; a plain
     ToggleButton heading is invisible to UIA and screen readers.
+22. **`Refresh()` rebuilds the rows (`Devices.Clear()`), and the DataGrid pushes a null selection into
+    `SelectedDevice` meanwhile.** Logic that reacts to "the user picked another device" must ignore changes while
+    `_isRebuildingRows` is set (the Disable button's pinned row was lost this way).
 
 ## Verifying changes (techniques that worked)
 
@@ -247,4 +252,7 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
 - Bluetooth Connect / Disconnect: don't press it in automated checks without asking — it drops the maintainer's
   headset (often their default device). Check it silently by its label, enabled state and tooltip.
+- Disable / Enable: test only on endpoints the maintainer agreed to (the Realtek speakers and Intel array, never the
+  Jabra), and have the script check the *selected row* before every click — a blind second click once disabled the
+  Jabra Headphones.
 - Not started: license, code signing (releases are unsigned, so SmartScreen warns).

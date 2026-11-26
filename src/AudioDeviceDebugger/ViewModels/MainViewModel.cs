@@ -194,7 +194,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    private bool IsShown(DeviceRowViewModel row) => row.Device.State switch
+    // The endpoint the user just disabled here: it stays in the list (and selected) even while Disabled rows are
+    // hidden, until another device is selected, so Enable is one click away.
+    private string? _keepShownId;
+
+    // True while Refresh rebuilds the rows: clearing the list makes the DataGrid push a null selection, which isn't
+    // the user picking another device.
+    private bool _isRebuildingRows;
+
+    private bool IsShown(DeviceRowViewModel row) => row.Device.Id == _keepShownId || row.Device.State switch
     {
         DeviceConnectionState.Disabled => _showDisabledDevices,
         DeviceConnectionState.NotPresent => _showNotPresentDevices,
@@ -300,8 +308,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         set
         {
             if (!SetField(ref _selectedDevice, value)) return;
+            if (_keepShownId is not null && !_isRebuildingRows && value?.Device.Id != _keepShownId)
+            {
+                // Another device was picked: the disabled row follows the Disabled filter again. Deferred, so the
+                // list isn't refiltered in the middle of its own selection change.
+                _keepShownId = null;
+                _dispatcher.BeginInvoke(DispatcherPriority.Background, () => _devicesView.Refresh());
+            }
             OnPropertyChanged(nameof(CanSetDefaults));
             OnBluetoothButtonChanged();
+            OnEnableButtonChanged();
             OnPropertyChanged(nameof(CanOpenRecordingsPanel));
             if (!CanOpenRecordingsPanel && _openSidePanel == SidePanel.Recordings)
             {
@@ -605,6 +621,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             _volumeService.StopMonitoring(id);
         }
 
+        _isRebuildingRows = true;
         Devices.Clear();
         var deviceGroups = DeviceGrouping.ByDevice(latest);
         foreach (var info in latest
@@ -636,6 +653,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
         _sessionService.SetDevices(activeIds);
 
+        _isRebuildingRows = false;
         SelectedDevice = Devices.FirstOrDefault(d => d.Device.Id == previousId && IsShown(d)) ?? FirstShownDevice();
         OnPropertyChanged(nameof(DisabledDeviceCount));
         OnPropertyChanged(nameof(NotPresentDeviceCount));
@@ -680,6 +698,64 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
         // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the role badges
         // reflect what Windows actually has now. Debounced: the change also triggers device notifications.
+        RequestRefresh();
+    }
+
+    // ---- Enable / disable an endpoint ------------------------------------------------------------------------------
+
+    /// <summary>Any endpoint Windows still has (Not present ones are only remembered, not there to switch).</summary>
+    public bool CanToggleEndpointEnabled =>
+        SelectedDevice?.Device is { } d && d.State != DeviceConnectionState.NotPresent;
+
+    private bool IsSelectedDisabled => SelectedDevice?.Device.State == DeviceConnectionState.Disabled;
+
+    /// <summary>"Enable" while the selected endpoint is disabled, else "Disable".</summary>
+    public string EnableButtonText => IsSelectedDisabled ? "Enable" : "Disable";
+
+    /// <summary>Segoe Fluent glyph: a check mark for Enable, the "blocked" sign for Disable.</summary>
+    public string EnableButtonGlyph => IsSelectedDisabled ? "\uE73E" : "\uE733";
+
+    public string EnableButtonToolTip => SelectedDevice?.Device switch
+    {
+        null => "Select a device to enable or disable it",
+        { State: DeviceConnectionState.NotPresent } => "This device isn't connected; Windows only remembers it",
+        { State: DeviceConnectionState.Disabled } => "Enable this endpoint again, like Enable in the Windows Sound settings",
+        { Direction: AudioDirection.Input } => "Disable this input, like Disable in the Windows Sound settings: apps can't use it until it's enabled again. Disabling a headset's mic stops apps from switching the headset into call mode.",
+        _ => "Disable this output, like Disable in the Windows Sound settings: apps can't use it until it's enabled again. The device's other endpoints keep working.",
+    };
+
+    private void OnEnableButtonChanged()
+    {
+        OnPropertyChanged(nameof(CanToggleEndpointEnabled));
+        OnPropertyChanged(nameof(EnableButtonText));
+        OnPropertyChanged(nameof(EnableButtonGlyph));
+        OnPropertyChanged(nameof(EnableButtonToolTip));
+    }
+
+    /// <summary>Disables the selected endpoint, or enables it if it is disabled. Only that endpoint, like Windows:
+    /// a headset's mic can be disabled while its speaker keeps playing.</summary>
+    public void ToggleSelectedEndpointEnabled()
+    {
+        var row = SelectedDevice;
+        if (row is null || !CanToggleEndpointEnabled) return;
+
+        var device = row.Device;
+        bool enable = device.State == DeviceConnectionState.Disabled;
+        string verb = enable ? "enable" : "disable";
+        try
+        {
+            _defaultDeviceService.SetEndpointEnabled(device.Id, enable);
+            if (!enable) _keepShownId = device.Id;
+            SetStatus(enable
+                ? $"Enabled \"{device.FriendlyName}\"."
+                : $"Disabled \"{device.FriendlyName}\": apps can't use it until it's enabled again.");
+            LogForDevice(device.Id, AudioEventKind.EnableRequested, AudioEventSource.ThisApp, enable ? "Enabled" : "Disabled");
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Failed to {verb} \"{device.FriendlyName}\": {ex.Message}");
+            LogForDevice(device.Id, AudioEventKind.Error, AudioEventSource.ThisApp, $"Failed to {verb}: {ex.Message}");
+        }
         RequestRefresh();
     }
 

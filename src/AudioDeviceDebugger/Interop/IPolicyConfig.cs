@@ -53,12 +53,23 @@ internal interface IPolicyConfig
     int SetEndpointVisibility([MarshalAs(UnmanagedType.LPWStr)] string deviceId, bool bVisible);
 }
 
-/// <summary>Activates the undocumented CPolicyConfigClient COM object and exposes the one call we need.</summary>
+/// <summary>Activates the undocumented CPolicyConfigClient COM object and exposes the calls we need.</summary>
 internal static class PolicyConfigClient
 {
     private static readonly Guid ClsidPolicyConfigClient = new("870af99c-171d-4f9e-af0d-e63df40c2bc9");
 
-    public static void SetDefaultEndpoint(string deviceId, NAudio.CoreAudioApi.Role role)
+    public static void SetDefaultEndpoint(string deviceId, NAudio.CoreAudioApi.Role role) =>
+        Invoke(policyConfig => policyConfig.SetDefaultEndpoint(deviceId, role));
+
+    /// <summary>Enables or disables an endpoint, like Disable / Enable in the Windows Sound control panel ("Don't
+    /// allow" / "Allow" in the Windows 11 Sound settings): a disabled endpoint reports DEVICE_STATE_DISABLED and apps
+    /// can't open it, while the driver and the device's other endpoints keep working. Windows' audio service keeps it
+    /// per endpoint ID (a flag in the endpoint's MMDevices registry DeviceState), so it survives reboots and
+    /// reconnects.</summary>
+    public static void SetEndpointVisibility(string deviceId, bool visible) =>
+        Invoke(policyConfig => policyConfig.SetEndpointVisibility(deviceId, visible));
+
+    private static void Invoke(Func<IPolicyConfig, int> call)
     {
         var comType = Type.GetTypeFromCLSID(ClsidPolicyConfigClient)
             ?? throw new InvalidOperationException("CPolicyConfigClient COM class is not registered on this system.");
@@ -68,9 +79,7 @@ internal static class PolicyConfigClient
 
         try
         {
-            var policyConfig = (IPolicyConfig)comObject;
-            int hr = policyConfig.SetDefaultEndpoint(deviceId, role);
-            Marshal.ThrowExceptionForHR(hr);
+            Marshal.ThrowExceptionForHR(call((IPolicyConfig)comObject));
         }
         finally
         {

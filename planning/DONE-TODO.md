@@ -232,3 +232,13 @@ docs/design-notes.md, "Visual refresh".
       Unplugged (→ Connect); a tooltip says why otherwise. Logged as a
       "Bluetooth" event. Tested with the Jabra Evolve3 75 (Bluetooth Classic)
       by the maintainer (see docs/design-notes.md)
+
+## Disable / enable an endpoint (2026-11-26)
+- [x] **Disable / Enable** toolbar button next to Connect / Disconnect, like
+      Disable in the Windows Sound settings: `IPolicyConfig::
+      SetEndpointVisibility` on the selected endpoint only, any device type,
+      no admin rights. A row disabled here stays listed (and selected) until
+      another device is selected, even with the Disabled chip off. Logged as
+      an "Endpoint" event. Tested on the Realtek speakers and the Intel array
+      (meter stream reopens after Enable) and by the maintainer on default
+      devices and the Jabra Evolve3 75 mic (see docs/design-notes.md)

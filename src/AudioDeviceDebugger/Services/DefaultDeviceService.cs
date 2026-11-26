@@ -17,4 +17,7 @@ public sealed class DefaultDeviceService : IDefaultDeviceService
     {
         PolicyConfigClient.SetDefaultEndpoint(deviceId, Role.Communications);
     }
+
+    public void SetEndpointEnabled(string deviceId, bool enabled) =>
+        PolicyConfigClient.SetEndpointVisibility(deviceId, enabled);
 }

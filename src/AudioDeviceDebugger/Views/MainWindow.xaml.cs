@@ -259,4 +259,7 @@ public partial class MainWindow : Window
 
     private async void BluetoothButton_Click(object sender, RoutedEventArgs e) =>
         await _viewModel.ToggleBluetoothConnectionAsync();
+
+    private void EnableButton_Click(object sender, RoutedEventArgs e) =>
+        _viewModel.ToggleSelectedEndpointEnabled();
 }

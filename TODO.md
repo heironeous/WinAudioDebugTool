@@ -269,7 +269,8 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       on pull requests, which are built but not released
 - [ ] A/B listening test for headsets in media vs call mode (pair speaker and
       mic by `DEVPKEY_Device_ContainerId`)
-- [ ] Disable a headset's mic endpoint so apps can't switch it into call mode
-      (`IPolicyConfig::SetEndpointVisibility`; check whether it needs
-      elevation)
+- [ ] Check that disabling a USB dongle's mic (Jabra Link 390) keeps the
+      headset out of call mode. Disable / Enable itself is done (see
+      planning/DONE-TODO.md); it needs no elevation, and a disabled Bluetooth
+      Hands-Free mic leaves the headphones working.
 - [ ] Toggle for Windows' "communications activity" ducking

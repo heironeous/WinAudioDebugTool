@@ -8,4 +8,7 @@ public interface IDefaultDeviceService
 
     /// <summary>Sets the endpoint as the default Communications device (calls, VoIP apps, etc.).</summary>
     void SetDefaultCommunicationsDevice(string deviceId);
+
+    /// <summary>Enables or disables the endpoint, like Enable / Disable in the Windows Sound settings.</summary>
+    void SetEndpointEnabled(string deviceId, bool enabled);
 }
