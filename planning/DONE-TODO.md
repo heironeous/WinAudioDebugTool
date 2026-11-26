@@ -222,3 +222,13 @@ docs/design-notes.md, "Visual refresh".
       chip's "on" highlight (which would make that label look current)
 - [x] The **Raw recording** tab is greyed out while an output is selected
       (raw capture is for microphones); selecting an output closes the panel
+
+## Bluetooth connect / disconnect (2026-11-26)
+- [x] **Connect / Disconnect** toolbar button for devices paired with Windows
+      over Bluetooth, like the Windows Sound settings: Windows' Bluetooth audio
+      one-shot reconnect / disconnect (`KSPROPSETID_BtAudio`) sent to every
+      Bluetooth endpoint of the headset, so A2DP and Hands-Free go together.
+      Enabled only for Bluetooth endpoints that are Active (→ Disconnect) or
+      Unplugged (→ Connect); a tooltip says why otherwise. Logged as a
+      "Bluetooth" event. Tested with the Jabra Evolve3 75 (Bluetooth Classic)
+      by the maintainer (see docs/design-notes.md)

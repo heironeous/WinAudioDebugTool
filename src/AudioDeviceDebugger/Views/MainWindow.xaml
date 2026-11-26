@@ -47,9 +47,20 @@
             <Button Content="Set Comms" Click="SetCommsButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,8,0"
                     IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
                     ToolTip="Make the selected device the default communications device"/>
-            <Button Content="Set Both" Click="SetBothButton_Click" Style="{StaticResource FlatButton}" Padding="14,5"
+            <Button Content="Set Both" Click="SetBothButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,8,0"
                     IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
                     ToolTip="Make the selected device both the default and the default communications device"/>
+            <!-- Bluetooth Connect / Disconnect, like the Windows Sound settings; only for Bluetooth-paired devices. -->
+            <Border Width="1" Background="{DynamicResource BorderSubtle}" Margin="0,4,8,4"/>
+            <Button Click="BluetoothButton_Click" Style="{StaticResource FlatButton}" Padding="12,5"
+                    IsEnabled="{Binding CanToggleBluetoothConnection}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="{Binding BluetoothButtonToolTip}" AutomationProperties.Name="{Binding BluetoothButtonText}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE702;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontLabel}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding BluetoothButtonText}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
 
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <TextBlock Text="Also show" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="8,0,8,0"/>

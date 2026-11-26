@@ -9,6 +9,7 @@ public class AudioEventTests
     [InlineData(AudioEventKind.DeviceAdded, AudioEventCategory.Devices)]
     [InlineData(AudioEventKind.StateChanged, AudioEventCategory.Devices)]
     [InlineData(AudioEventKind.DefaultRequested, AudioEventCategory.Defaults)]
+    [InlineData(AudioEventKind.ConnectionRequested, AudioEventCategory.Devices)]
     [InlineData(AudioEventKind.MuteChanged, AudioEventCategory.Volume)]
     [InlineData(AudioEventKind.TestFinished, AudioEventCategory.Tests)]
     [InlineData(AudioEventKind.SessionStarted, AudioEventCategory.Apps)]

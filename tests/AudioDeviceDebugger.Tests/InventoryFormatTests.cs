@@ -45,6 +45,24 @@ public class InventoryFormatTests
         Assert.Equal("Unknown", InventoryFormat.ConnectionName(Array.Empty<string>()));
     }
 
+    [Fact]
+    public void Bluetooth_is_recognised_but_a_usb_dongle_is_not()
+    {
+        // Bluetooth Classic: A2DP (BTHENUM) and Hands-Free (BTHHFENUM) audio devices.
+        Assert.True(InventoryFormat.IsBluetooth(new[] { @"BTHENUM\{0000110B-0000-1000-8000-00805F9B34FB}_VID&00010067_PID&2546\7&1&0" }));
+        Assert.True(InventoryFormat.IsBluetooth(new[] { @"BTHHFENUM\BTHHFPAUDIO\8&A586FA2&2&97", @"BTHENUM\{0000111E}\7&1" }));
+        // LE Audio: proxy → LE device → radio → USB adapter.
+        Assert.True(InventoryFormat.IsBluetooth(new[]
+        {
+            @"APXENUM\{2D68507B-1813-40EF-A1D6-DB4A25EF1408}&AUDIO\9&57c85c7&0&Speaker",
+            @"BTHLE\DEV_0123456789AB\8&1&0", @"BTH\MS_BTHLE\7&1&0", @"USB\VID_0B05&PID_1D70\5&28a11e14&0&7",
+        }));
+        // A Jabra Link 390 dongle is plain USB audio to Windows.
+        Assert.False(InventoryFormat.IsBluetooth(new[] { @"USB\VID_0B0E&PID_2E56&MI_00\6&1&0", @"USB\VID_0B0E&PID_2E56\1" }));
+        Assert.False(InventoryFormat.IsBluetooth(new[] { @"INTELAUDIO\FUNC_01&VEN_10EC\5&1&1" }));
+        Assert.False(InventoryFormat.IsBluetooth(Array.Empty<string>()));
+    }
+
     [Theory]
     [InlineData(0x0110, "USB 1.1")]
     [InlineData(0x0200, "USB 2.0")]

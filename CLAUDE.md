@@ -17,7 +17,7 @@ default / communications / both roles, per-device volume + mute, live dB level m
 and mic record-and-playback tests, per-channel tests, an event timeline, the apps using each device, raw vs
 call-processed mic recording (A/B), and a full property-store dump with human-readable key names.
 
-## Current state (as of commit `3580b53`, v0.4.1, 2026-11-26)
+## Current state (as of v0.4.1 + Bluetooth connect, 2026-11-26)
 
 - Public on GitHub: <https://github.com/heironeous/WinAudioDebugTool>, branch `main` (work is committed straight to
   `main`, or on a feature branch merged by pull request when the maintainer asks for one, as for the visual refresh).
@@ -50,6 +50,8 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
 - v0.4.1 (2026-11-26): the grouping chip names the grouping a click switches to ("By device" / "By input / output",
   style `SwitchChip`, no checked highlight), and the Raw recording tab is disabled while an output is selected
   (`MainViewModel.CanOpenRecordingsPanel`; selecting an output closes the panel).
+- Bluetooth **Connect / Disconnect** toolbar button (2026-11-26, `feat:`): see docs/design-notes.md. Verified by the
+  maintainer on the Jabra Evolve3 75 over Bluetooth Classic; LE Audio untried (open item in `TODO.md`).
 - The maintainer's hardware (laptop): Jabra Link 390 USB dongle (headset speakers + mic; not plugged in on
   2026-11-26), Realtek laptop speakers, Intel Smart Sound Technology 4-channel mic array, an HP 325 FHD webcam mic,
   plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380, Poly BT700, Poly Voyager Focus 2, HP
@@ -113,7 +115,9 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   stream in a chosen processing mode — Standard / Call (communications category) / Raw — via our own
   `Interop/AudioClient2.cs` IAudioClient2 interop, plus the stream's effects from IAudioEffectsManager),
   `DeviceInventoryService` (Driver tab: device tree via `Interop/DeviceNode.cs` (cfgmgr32), USB speed via
-  `Interop/UsbHub.cs`, APOs from the endpoint's `FxProperties` registry key; pure helpers in `InventoryFormat`); the test
+  `Interop/UsbHub.cs`, APOs from the endpoint's `FxProperties` registry key; pure helpers in `InventoryFormat`),
+  `BluetoothConnectionService` (Connect / Disconnect via `Interop/BluetoothAudioControl.cs`: device topology →
+  `IKsControl` → `KSPROPSETID_BtAudio` one-shot reconnect / disconnect); the test
   service's A/B recording runs three of them at once. `DeviceEnumerationService.EndpointNotified` carries each
   IMMNotificationClient callback in detail (for the event log) alongside the coarse `DevicesChanged`.
 - `ViewModels/` — `MainViewModel` (refresh/debounce, filters, grouping, selection, tests, side panels, event logging),
@@ -241,4 +245,6 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   see lesson 16 and docs/design-notes.md.
 - The maintainer asked for explanations, not code, on the headset call-mode ideas (media-vs-call listening test,
   disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
+- Bluetooth Connect / Disconnect: don't press it in automated checks without asking — it drops the maintainer's
+  headset (often their default device). Check it silently by its label, enabled state and tooltip.
 - Not started: license, code signing (releases are unsigned, so SmartScreen warns).

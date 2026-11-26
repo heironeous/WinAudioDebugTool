@@ -80,10 +80,28 @@ public sealed class DeviceEnumerationService : IDeviceEnumerationService
                     ContainerId = containerId,
                     InterfaceName = _propertyReader.TryGetString(device.ID, PropertyKeys.PKEY_DeviceInterface_FriendlyName),
                     LinkedOutputName = linkedOutput,
+                    IsBluetooth = IsBluetooth(device.ID),
                 });
             }
         }
     }
+
+    // An endpoint's bus never changes, so the device-tree walk is done once per endpoint.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _isBluetooth = new();
+
+    /// <summary>Whether the endpoint's audio device hangs off Bluetooth, from its device-tree chain (cfgmgr32).</summary>
+    private bool IsBluetooth(string endpointId) => _isBluetooth.GetOrAdd(endpointId, id =>
+    {
+        try
+        {
+            var device = DeviceNode.Find(@"SWD\MMDEVAPI\" + id)?.Parent();
+            return device is not null && InventoryFormat.IsBluetooth(device.SelfAndAncestors().Select(n => n.InstanceId));
+        }
+        catch
+        {
+            return false;
+        }
+    });
 
     private string? TryGetDefaultEndpointId(DataFlow dataFlow, Role role)
     {

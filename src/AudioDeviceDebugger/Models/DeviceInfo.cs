@@ -45,6 +45,10 @@ public sealed class DeviceInfo
     /// </summary>
     public string? LinkedOutputName { get; init; }
 
+    /// <summary>The endpoint's audio device is connected to Windows over Bluetooth (Classic or LE Audio), so Windows
+    /// can connect and disconnect it. False for USB dongles: their Bluetooth link is inside the dongle.</summary>
+    public bool IsBluetooth { get; init; }
+
     /// <summary>A mic whose device also plays audio over the same link, so opening the mic can switch that device
     /// into call (hands-free) mode: a headset/handset form factor, or a plain mic with a linked output.</summary>
     public bool IsHeadsetMic =>

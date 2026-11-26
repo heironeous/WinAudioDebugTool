@@ -84,6 +84,11 @@ public static class InventoryFormat
         return BusName(first);
     }
 
+    /// <summary>True if the device-tree chain (as for <see cref="ConnectionName"/>) is a Bluetooth device, Classic or
+    /// LE Audio — not a USB dongle, whose Bluetooth link is hidden inside the dongle.</summary>
+    public static bool IsBluetooth(IEnumerable<string> chain) =>
+        ConnectionName(chain).StartsWith("Bluetooth", StringComparison.Ordinal);
+
     /// <summary>"USB 1.1", "USB 2.0", "USB 3.2" from a bcdUSB value (0x0110, 0x0200, 0x0320).</summary>
     public static string UsbVersionText(int bcd) => $"USB {(bcd >> 8) & 0xFF:X}.{(bcd >> 4) & 0xF:X}";
 

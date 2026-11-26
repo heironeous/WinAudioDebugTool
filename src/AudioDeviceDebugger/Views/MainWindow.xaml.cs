@@ -36,7 +36,7 @@ public partial class MainWindow : Window
         var logFile = new EventLogFile(message => Dispatcher.BeginInvoke(() => _viewModel?.ShowStatus(message)));
 
         _viewModel = new MainViewModel(_enumerationService, _defaultDeviceService, _detailsService, _testService, _levelMeterService, _volumeService, _sessionService,
-            new DeviceInventoryService(), logFile);
+            new DeviceInventoryService(), new BluetoothConnectionService(), logFile);
         _viewModel.SelectedDeviceLevelChanged += (_, sample) => DetailGraph.AddSample(sample.MasterPeak);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
@@ -256,4 +256,7 @@ public partial class MainWindow : Window
 
     private void SetBothButton_Click(object sender, RoutedEventArgs e) =>
         _viewModel.SetSelectedAsDefault(DefaultRoles.Both);
+
+    private async void BluetoothButton_Click(object sender, RoutedEventArgs e) =>
+        await _viewModel.ToggleBluetoothConnectionAsync();
 }

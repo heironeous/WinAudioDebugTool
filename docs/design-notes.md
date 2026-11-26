@@ -574,3 +574,27 @@ Jabra Evolve3 75 / Link 370 / Link 380 endpoints.
   inputs (`fetch-depth`, `dotnet-version`) didn't change. Checkout v6+ keeps the credentials in a separate file,
   which still works for the workflow's `git push` of the tag.
 - **Not verified:** volume changes, and the laptop hardware (Intel array, Jabra Link 390).
+
+## Bluetooth connect / disconnect (2026-11-26)
+
+The Windows Sound settings' **Connect** / **Disconnect** button for a Bluetooth headset is available in the toolbar.
+
+- **Mechanism.** The Bluetooth audio drivers (A2DP `BTHENUM`, Hands-Free `BTHHFENUM`) support two one-shot KS
+  properties in `KSPROPSETID_BtAudio` (`7fa06c40-b8f6-4c7e-8556-e8c33a12e54d`): `KSPROPERTY_ONESHOT_RECONNECT` (0)
+  and `KSPROPERTY_ONESHOT_DISCONNECT` (1), sent as a GET with no data. The values were read from the Win32 metadata;
+  like other GUID constants there, the property set is an empty struct with a GuidAttribute, not a field (lesson 16).
+- **Reaching the driver** (`Interop/BluetoothAudioControl.cs`). Endpoint `IMMDevice` → `IDeviceTopology` → connector
+  0 → `GetConnectedTo` (the KS filter's connector) → `IPart.GetTopologyObject` → `IDeviceTopology.GetDeviceId`
+  (e.g. `{2}.\\?\bthhfenum#bthhfpaudio#…\wave`) → `IMMDeviceEnumerator.GetDevice` on that ID →
+  `Activate(IKsControl)` → `KsProperty`. A Classic headset has two filters — A2DP behind "Headphones", Hands-Free
+  behind the "Headset" output and mic — so `BluetoothConnectionService` collects the filter IDs of every Bluetooth
+  endpoint in the selected device's container, de-duplicates them and signals each once, on a pool (MTA) thread.
+  The enumerator is never `ReleaseComObject`ed: by CLSID it can be the same RCW as NAudio's (lesson 15).
+- **Which devices.** `DeviceInfo.IsBluetooth` comes from the endpoint's device-tree chain
+  (`InventoryFormat.IsBluetooth`, the same first-real-bus rule as the Driver tab's "Connection"), cached per endpoint
+  in `DeviceEnumerationService`. USB dongles are USB to Windows and stay disabled. The button needs the endpoint to
+  be Active (→ Disconnect) or Unplugged (paired but not connected → Connect); Not present means unpaired.
+- **Verification.** A scratch harness opened `IKsControl` through this path on all three Evolve3 75 endpoints without
+  sending anything; in the app UI Automation showed the button disabled with the right tooltip for the Realtek
+  speakers and the webcam and "Disconnect" for the connected Jabra. The maintainer then used Disconnect and Connect on
+  the Jabra Evolve3 75 (Bluetooth Classic, laptop): both worked. LE Audio (`APXENUM` under `BTHLE`) is untried.

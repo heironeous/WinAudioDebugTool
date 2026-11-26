@@ -225,6 +225,9 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
     (`{APO CLSID},100`); effect packs; supported processing modes; whether
     enhancements are switched off.
   - Copy as text.
+- [ ] **Bluetooth Connect / Disconnect on LE Audio.** The button (see
+      planning/DONE-TODO.md) is enabled for LE Audio headsets too, but was only
+      tried over Bluetooth Classic; check on the desktop's Evolve3 75.
 - [ ] **Bluetooth battery level** for headsets paired directly with Windows
       (from the Bluetooth device's PnP properties). Doesn't apply to headsets
       behind a USB dongle.

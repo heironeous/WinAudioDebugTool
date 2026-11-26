@@ -30,6 +30,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly IEndpointVolumeService _volumeService;
     private readonly IAudioSessionService _sessionService;
     private readonly IDeviceInventoryService _inventoryService;
+    private readonly IBluetoothConnectionService _bluetoothService;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _refreshDebounce;
     private readonly EventLogFile? _logFile;
@@ -47,6 +48,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         IEndpointVolumeService volumeService,
         IAudioSessionService sessionService,
         IDeviceInventoryService inventoryService,
+        IBluetoothConnectionService bluetoothService,
         EventLogFile? logFile = null)
     {
         _enumerationService = enumerationService;
@@ -57,6 +59,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _volumeService = volumeService;
         _sessionService = sessionService;
         _inventoryService = inventoryService;
+        _bluetoothService = bluetoothService;
         _dispatcher = Dispatcher.CurrentDispatcher;
         _logFile = logFile;
 
@@ -298,6 +301,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (!SetField(ref _selectedDevice, value)) return;
             OnPropertyChanged(nameof(CanSetDefaults));
+            OnBluetoothButtonChanged();
             OnPropertyChanged(nameof(CanOpenRecordingsPanel));
             if (!CanOpenRecordingsPanel && _openSidePanel == SidePanel.Recordings)
             {
@@ -676,6 +680,83 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
         // Refresh even on partial failure (e.g. Default succeeded, Communications threw) so the role badges
         // reflect what Windows actually has now. Debounced: the change also triggers device notifications.
+        RequestRefresh();
+    }
+
+    // ---- Bluetooth connect / disconnect ----------------------------------------------------------------------------
+
+    private bool _isBluetoothRequestRunning;
+
+    /// <summary>A Bluetooth endpoint that Windows still knows (paired): Active means connected, Unplugged means paired
+    /// but not connected. Not present (unpaired) and Disabled endpoints can't be connected from here.</summary>
+    private static bool IsConnectable(DeviceInfo d) =>
+        d.IsBluetooth && d.State is DeviceConnectionState.Active or DeviceConnectionState.Unplugged;
+
+    public bool CanToggleBluetoothConnection =>
+        !_isBluetoothRequestRunning && SelectedDevice?.Device is { } d && IsConnectable(d);
+
+    /// <summary>"Disconnect" while the selected Bluetooth endpoint is active (connected), else "Connect".</summary>
+    public string BluetoothButtonText =>
+        SelectedDevice?.Device is { IsBluetooth: true, State: DeviceConnectionState.Active } ? "Disconnect" : "Connect";
+
+    public string BluetoothButtonToolTip => SelectedDevice?.Device switch
+    {
+        null => "Select a Bluetooth device to connect or disconnect it",
+        { IsBluetooth: false } => "Only for devices paired with Windows over Bluetooth (not USB dongles or wired devices)",
+        { State: DeviceConnectionState.Active } => "Disconnect this Bluetooth device from Windows (it stays paired), like Disconnect in the Windows Sound settings",
+        { State: DeviceConnectionState.Unplugged } => "Connect this paired Bluetooth device, like Connect in the Windows Sound settings. The device has to be on and in range.",
+        { State: DeviceConnectionState.Disabled } => "This endpoint is disabled in Windows",
+        _ => "Windows doesn't know this Bluetooth device any more (not paired): pair it in the Windows Bluetooth settings first",
+    };
+
+    private void OnBluetoothButtonChanged()
+    {
+        OnPropertyChanged(nameof(CanToggleBluetoothConnection));
+        OnPropertyChanged(nameof(BluetoothButtonText));
+        OnPropertyChanged(nameof(BluetoothButtonToolTip));
+    }
+
+    /// <summary>Connects the selected Bluetooth device if it isn't connected, disconnects it if it is. Acts on every
+    /// Bluetooth endpoint of the same physical device (container), like the Windows Sound settings: a headset's
+    /// Headphones (A2DP) and Hands-Free endpoints go up or down together.</summary>
+    public async Task ToggleBluetoothConnectionAsync()
+    {
+        var row = SelectedDevice;
+        if (row is null || !CanToggleBluetoothConnection) return;
+
+        var selected = row.Device;
+        bool connect = selected.State != DeviceConnectionState.Active;
+        var endpointIds = _knownDevices.Values
+            .Where(d => IsConnectable(d) && (d.Id == selected.Id || (selected.ContainerId is { } c && d.ContainerId == c)))
+            .Select(d => d.Id)
+            .Append(selected.Id)
+            .Distinct()
+            .ToList();
+        string name = selected.InterfaceName ?? selected.FriendlyName;
+        string verb = connect ? "connect" : "disconnect";
+
+        _isBluetoothRequestRunning = true;
+        OnBluetoothButtonChanged();
+        try
+        {
+            int profiles = await _bluetoothService.SetConnectedAsync(endpointIds, connect);
+            string what = profiles == 1 ? "1 Bluetooth audio profile" : $"{profiles} Bluetooth audio profiles";
+            SetStatus(connect
+                ? $"Asked Windows to connect \"{name}\" ({what}). The device has to be on and in range; its endpoints turn Active once it is connected."
+                : $"Asked Windows to disconnect \"{name}\" ({what}). It stays paired.");
+            LogForDevice(selected.Id, AudioEventKind.ConnectionRequested, AudioEventSource.ThisApp,
+                $"Asked Windows to {verb} the Bluetooth device ({what})");
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Failed to {verb} \"{name}\": {ex.Message}");
+            LogForDevice(selected.Id, AudioEventKind.Error, AudioEventSource.ThisApp, $"Failed to {verb} the Bluetooth device: {ex.Message}");
+        }
+        finally
+        {
+            _isBluetoothRequestRunning = false;
+            OnBluetoothButtonChanged();
+        }
         RequestRefresh();
     }
 
@@ -1319,6 +1400,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         FormFactor = info.FormFactor,
         ContainerId = info.ContainerId,
         LinkedOutputName = info.LinkedOutputName,
+        IsBluetooth = info.IsBluetooth,
     };
 
     private void OnLevelChanged(object? sender, DeviceLevelChangedEventArgs e)

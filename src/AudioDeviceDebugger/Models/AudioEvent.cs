@@ -8,6 +8,7 @@ public enum AudioEventKind
     StateChanged,
     DefaultChanged,
     DefaultRequested,
+    ConnectionRequested,
     VolumeChanged,
     MuteChanged,
     TestStarted,
@@ -76,6 +77,7 @@ public sealed record AudioEvent
         AudioEventKind.StateChanged => "State",
         AudioEventKind.DefaultChanged => "Default",
         AudioEventKind.DefaultRequested => "Set default",
+        AudioEventKind.ConnectionRequested => "Bluetooth",
         AudioEventKind.VolumeChanged => "Volume",
         AudioEventKind.MuteChanged => "Mute",
         AudioEventKind.TestStarted => "Test",
@@ -109,7 +111,8 @@ public sealed record AudioEvent
 
     public static AudioEventCategory CategoryOf(AudioEventKind kind) => kind switch
     {
-        AudioEventKind.DeviceAdded or AudioEventKind.DeviceRemoved or AudioEventKind.StateChanged => AudioEventCategory.Devices,
+        AudioEventKind.DeviceAdded or AudioEventKind.DeviceRemoved or AudioEventKind.StateChanged
+            or AudioEventKind.ConnectionRequested => AudioEventCategory.Devices,
         AudioEventKind.DefaultChanged or AudioEventKind.DefaultRequested => AudioEventCategory.Defaults,
         AudioEventKind.VolumeChanged or AudioEventKind.MuteChanged => AudioEventCategory.Volume,
         AudioEventKind.TestStarted or AudioEventKind.TestFinished => AudioEventCategory.Tests,

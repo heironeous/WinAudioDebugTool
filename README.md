@@ -30,6 +30,11 @@ Events tab with the timeline.*
 
 **Defaults** — make the selected device the default, the default *communications* device, or both.
 
+**Bluetooth** — **Connect** / **Disconnect** a headset paired with Windows over Bluetooth, like the button in the
+Windows Sound settings (it stays paired). It acts on the whole headset, so its Headphones and Headset endpoints go up
+or down together. Only enabled for Bluetooth devices: a headset behind a USB dongle (Jabra Link, Poly BT700, …) is a
+USB device to Windows, and the dongle's own link can't be switched from here.
+
 **Tests**
 - **Outputs:** play a short generated music clip (drums, bass, chords, melody), or play it on one speaker channel at
   a time (front left, centre, LFE, …) to check wiring and channel order.
@@ -132,6 +137,8 @@ dotnet test
 - **Your audio stays on your machine.** Recordings are kept in memory only and are gone when you close the app. The
   event log is saved locally in `%LOCALAPPDATA%\AudioDeviceDebugger` (device names and IDs, apps and their PIDs, no
   audio); files older than 14 days are deleted. Nothing is sent anywhere.
+- **Bluetooth Connect / Disconnect** was tried with a Bluetooth Classic headset (Jabra Evolve3 75). LE Audio
+  headsets get the button too, but haven't been tried; if Windows refuses, the status line shows why.
 - **Set Default uses an undocumented Windows interface** (`IPolicyConfig`) — the same one Windows' own Sound settings
   use. It has been stable for many Windows versions, but Microsoft doesn't guarantee it.
 - **Call ≠ exactly what the other side hears.** The Call take is what Windows and the driver deliver to call apps;
@@ -160,6 +167,7 @@ without real devices; that part is checked by hand. A quick manual check after b
 
 1. The device list matches what Windows Sound settings shows; plugging/unplugging a USB headset updates it.
 2. **Set Default / Set Comms** change the defaults, and Windows Sound settings agrees.
+   **Disconnect** / **Connect** on a Bluetooth headset drops and restores it (its rows go Unplugged and back).
 3. **Test** on an output plays from the right device; **Test** on a mic records and plays back what you said.
 4. Meters move for several devices at once; the channel strip plays one speaker at a time.
 5. Events logs your volume changes and device switches; Processes shows a call app or browser that has the mic open.
