@@ -17,11 +17,11 @@ default / communications / both roles, per-device volume + mute, live dB level m
 and mic record-and-playback tests, per-channel tests, an event timeline, the apps using each device, raw vs
 call-processed mic recording (A/B), and a full property-store dump with human-readable key names.
 
-## Current state (as of commit `c3b38b2`, v0.3.0, 2026-11-25)
+## Current state (as of commit `3580b53`, v0.4.1, 2026-11-26)
 
 - Public on GitHub: <https://github.com/heironeous/WinAudioDebugTool>, branch `main` (work is committed straight to
   `main`, or on a feature branch merged by pull request when the maintainer asks for one, as for the visual refresh).
-  The maintainer pushes; agents don't, unless asked for that branch.
+  The maintainer usually pushes; agents push only when asked to (e.g. "commit and push to main").
 - Builds cleanly (0 warnings) and runs on Windows 11; every feature in `planning/DONE-TODO.md` was exercised on
   real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
   the maintainer's decision. Unit tests (xUnit) in `tests/AudioDeviceDebugger.Tests` cover the hardware-free logic;
@@ -42,14 +42,21 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   N1, N2, N4, the side-panel tabs and the visual refresh.
 - **Visual refresh** (2026-11-25): merged into `main` from `feature/visual-refresh` (PR #1, released as v0.3.0); its
   items are in `planning/DONE-TODO.md`. CI only runs on `main`, so feature branches get no CI build.
-- **Branch `feature/tests-inventory-grouping-theme`** (2026-11-25, pushed at the maintainer's request, not merged):
-  unit tests + CI test step (which also runs on pull requests into `main`, without tag or release), the Driver tab
-  (device inventory), grouping by device, and the light / high-contrast themes; one commit each. The items are ticked
-  in `TODO.md`; move them to `planning/DONE-TODO.md` once the branch is merged.
-- The maintainer's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
-  Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
-  Poly BT700, Poly Voyager Focus 2, HP dock). **On the laptop, all headsets connect through USB dongles** — none
-  are paired with Windows Bluetooth directly, so the A2DP/HFP ("call mode") switch happens inside the dongle, invisible to Windows.
+- **Tests, Driver tab, grouping, themes** (2026-11-26): merged into `main` from
+  `feature/tests-inventory-grouping-theme` (PR #2, released as v0.4.0): unit tests + CI test step (which also runs on
+  pull requests into `main`, without tag or release), the Driver tab (device inventory), grouping by device, and the
+  light / high-contrast themes. Their items are still ticked in place in `TODO.md` ("Ideas from the 2026-11-23
+  brainstorm"); they have not been moved to `planning/DONE-TODO.md` yet.
+- v0.4.1 (2026-11-26): the grouping chip names the grouping a click switches to ("By device" / "By input / output",
+  style `SwitchChip`, no checked highlight), and the Raw recording tab is disabled while an output is selected
+  (`MainViewModel.CanOpenRecordingsPanel`; selecting an output closes the panel).
+- The maintainer's hardware (laptop): Jabra Link 390 USB dongle (headset speakers + mic; not plugged in on
+  2026-11-26), Realtek laptop speakers, Intel Smart Sound Technology 4-channel mic array, an HP 325 FHD webcam mic,
+  plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380, Poly BT700, Poly Voyager Focus 2, HP
+  dock). Through a dongle the A2DP/HFP ("call mode") switch happens inside the dongle, invisible to Windows. Since
+  2026-11-26 the laptop also has the **Jabra Evolve3 75 paired directly over Bluetooth Classic**: a "Headphones"
+  endpoint (A2DP, `BTHENUM\…`, form factor 3) and a "Headset … Hands-Free" output + mic (`BTHHFENUM\…`, form factor 5),
+  all in one container; Unplugged while the headset is off.
   A second machine (desktop) is also used. It has Realtek USB Audio (only its digital output is active), an ASUS
   VP28U monitor on NVIDIA HDMI audio and a Logitech C922 webcam mic. Its Jabra Evolve3 75, Link 370 and Link 380 are
   not present as USB devices; since 2026-11-25 the Evolve3 75 also shows up paired directly over Bluetooth LE Audio
@@ -58,8 +65,8 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
 ## Environment & commands
 
 - The app targets .NET 10 (LTS) since 2026-11-23; .NET 8 support ended 2026-11-10. Builds need the .NET 10 SDK
-  (10.0.404 installed via winget on the desktop, 2026-11-23; the laptop still has only the 8.0.427 SDK — install
-  `Microsoft.DotNet.SDK.10` there first). Older SDKs on the desktop (3.1, 8.0.428) are harmless; the newest wins.
+  (10.0.404, installed via winget — on the desktop 2026-11-23, on the laptop 2026-11-26). Older SDKs (3.1 and 8.0.428
+  on the desktop, 8.0.428 on the laptop) are harmless; the newest wins.
   `dotnet` may not be on PATH in a fresh shell — use `"C:\Program Files\dotnet\dotnet.exe"`.
 - No Windows SDK is installed (no C++ headers); property-key names come from the Win32 metadata NuGet package instead.
 - Shells: PowerShell is primary; Git Bash is also available (and handy for heredocs / python one-off edits).
@@ -80,7 +87,7 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   build, **relaunch the app**, verify what you can, report briefly, and say what you could *not* verify.
 - **Commit only when the maintainer says "commit"** (they always ask explicitly, in a separate message). One commit per
   feature/fix, conventional-commit subject (`feat:`, `fix:`, `perf:`), a body explaining *why* (root cause for fixes),
-  ending with the `Co-Authored-By:` trailer given in the session's system prompt. Never push. Keep `TODO.md` /
+  ending with the `Co-Authored-By:` trailer given in the session's system prompt. Push only when asked. Keep `TODO.md` /
   `planning/DONE-TODO.md` (and `README.md` / `docs/design-notes.md` where relevant) updated in the same commit as the
   feature. Never commit `bin/` or `obj/` output, and keep scratch harnesses out of the repo.
 - When the maintainer asks to *explain first* (e.g. the call-mode question), explain and propose options — don't build.
@@ -185,9 +192,11 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     decoders must be strict: loose "UTF-16 text" detection turned binary blobs into CJK-looking garbage.
 17. **Container IDs** (`DEVPKEY_Device_ContainerId`) group the endpoints of one physical device, but every built-in
     device shares `{00000000-0000-0000-ffff-ffffffffffff}` ("this PC"). Ignore that container when you pair a mic with
-    an output, or a laptop mic pairs with the headphone jack. Form factors don't help: the Jabra Evolve3 75 reports
-    its headset as "Speakers" (1) and "Microphone" (4).
-
+    an output, or a laptop mic pairs with the headphone jack. Form factors don't help: the Jabra Link 390 reports
+    "Speakers" (1) and "Microphone" (4), and so does the Evolve3 75 over LE Audio (desktop), while over Bluetooth
+    Classic HFP (laptop) the same headset reports "Headset" (5). A container match alone can't tell a Bluetooth
+    dongle from a wired USB headset either: the HP dock's headset jack also has Headphones (3) + Microphone (4) in
+    one USB container.
 18. **A grouped DataGrid stops recomputing star column widths** when its viewport changes (window resize, scrollbar shown
     or hidden), which clips the last columns: `DeviceGrid_ScrollChanged` sets the DEVICE column's width instead.
 19. **A `ContentPresenter`'s own DataContext is its Content**: style triggers on it that bind to the outer view model
@@ -201,7 +210,10 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 
 - **UI Automation from PowerShell** (`UIAutomationClient`): find the DataGrid's `DataItem` rows by name, `Select()`
   rows, `Invoke()` buttons, `Toggle()` checkboxes/toggle buttons, read `RangeValuePattern` (sliders, level bars) and
-  `HelpText` (tooltips). DataGrid virtualises rows, so only on-screen rows are visible to UIA.
+  `HelpText` (tooltips). DataGrid virtualises rows, so only on-screen rows are visible to UIA. PowerShell variable
+  names ignore case: `$t = …` overwrites a `$T = [TreeScope]` alias, so name such aliases distinctly (`$Scope`).
+  Selecting a headset *mic* row opens it (lesson 5) and can switch the headset into call mode — select the Intel
+  array or an output when a test only needs "some input".
 - **Screenshots**: `PrintWindow(hwnd, hdc, 2)` via a small Add-Type helper works even when the window is covered;
   `CopyFromScreen` returns black when the screen is locked, and WPF windows capture as plain white while the display
   is asleep (maintainer idle for minutes) — don't mistake that for a rendering bug. Re-declare the helper type in each new PowerShell process
@@ -222,7 +234,8 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   The Intel array's "channels 2 and 4 below −60 dB" is explained by N4: the processed paths output one
   noise-suppressed signal on all four channels, far below the raw room noise.
 - N1's call-mode hint covers form factor 4 mics through container IDs since 2026-11-23, but that was only checked on a
-  not-present Jabra Evolve3 75. Still to check with the Jabra Link 390 in a real call.
+  not-present Jabra Evolve3 75. Still to check with the Jabra Link 390 in a real call. Expect it to fire for wired
+  USB headsets and docks too (see lesson 17).
 - ~170 undocumented endpoint property keys still show as raw `{fmtid},pid` (most belong to driver/APO-private sets
   such as `{f112024a-…}` and `{5510c7ab-…}`); add to `PropertyKeyNames.Undocumented` only with a confirmed meaning —
   see lesson 16 and docs/design-notes.md.
