@@ -32,13 +32,20 @@ public partial class LevelGraph : UserControl
     public LevelGraph()
     {
         InitializeComponent();
-        SizeChanged += (_, _) =>
-        {
-            DrawBackground();
-            GraphLine.Stroke = LevelBrush(top: 0xFF, bottom: 0xFF);
-            GraphFill.Fill = LevelBrush(top: 0x60, bottom: 0x14);
-            Redraw();
-        };
+        SizeChanged += (_, _) => Repaint();
+        // The gridlines and the trace's brushes are built from palette colours: rebuild them when the theme changes.
+        Loaded += (_, _) => ThemeManager.ThemeChanged += OnThemeChanged;
+        Unloaded += (_, _) => ThemeManager.ThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e) => Repaint();
+
+    private void Repaint()
+    {
+        DrawBackground();
+        GraphLine.Stroke = LevelBrush(top: 0xFF, bottom: 0xFF);
+        GraphFill.Fill = LevelBrush(top: 0x60, bottom: 0x14);
+        Redraw();
     }
 
     /// <param name="peak">Linear peak amplitude, 0–1, as reported by Windows.</param>

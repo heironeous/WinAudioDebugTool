@@ -1,0 +1,41 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Dark palette. Light.xaml has the same keys; ThemeManager puts one of them (or a high-contrast palette built
+        from Windows' system colours) into the app's resources, and the views refer to the keys with DynamicResource
+        so a change of the Windows app mode repaints the running app. Add a key to all three.
+    -->
+
+    <!-- Surfaces: three levels, each a bit lighter than the one it sits on. -->
+    <SolidColorBrush x:Key="SurfaceBase" Color="#1C1C1F"/>   <!-- window, title bar -->
+    <SolidColorBrush x:Key="SurfacePanel" Color="#252528"/>  <!-- device list, side panels, graph -->
+    <SolidColorBrush x:Key="SurfaceRaised" Color="#323237"/> <!-- tooltips, hovered controls -->
+
+    <!-- States. Pressed, track and outline are translucent, so they also show up on a selected row. -->
+    <SolidColorBrush x:Key="RowHover" Color="#2B2B2F"/>
+    <SolidColorBrush x:Key="RowSelected" Color="#2B3B4F"/>
+    <SolidColorBrush x:Key="RowSelectedBorder" Color="Transparent"/> <!-- only high contrast outlines the selection -->
+    <SolidColorBrush x:Key="ControlPressed" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="ControlTrack" Color="#24FFFFFF"/>
+    <SolidColorBrush x:Key="ControlOutline" Color="#30FFFFFF"/>
+
+    <!-- Lines -->
+    <SolidColorBrush x:Key="BorderSubtle" Color="#38383D"/>
+    <SolidColorBrush x:Key="Separator" Color="#303034"/>
+
+    <!-- Text: what you read, what supports it, and labels. -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#E8E8EA"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#A6A6AC"/>
+    <SolidColorBrush x:Key="TextTertiary" Color="#9C9CA3"/>
+
+    <!-- Meaning: accent (selection, roles), good / level, caution, bad / stop. -->
+    <SolidColorBrush x:Key="Accent" Color="#5AB4F0"/>
+    <SolidColorBrush x:Key="AccentSoft" Color="#335AB4F0"/>
+    <SolidColorBrush x:Key="Positive" Color="#4CC27B"/>
+    <SolidColorBrush x:Key="Caution" Color="#E5B84B"/>
+    <SolidColorBrush x:Key="Negative" Color="#E57373"/>
+
+    <!-- The level graph's readout plate: the panel colour, slightly see-through. -->
+    <SolidColorBrush x:Key="GraphPlate" Color="#D9252528"/>
+</ResourceDictionary>

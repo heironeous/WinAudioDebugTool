@@ -7,6 +7,7 @@ public partial class App : Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
+        Views.ThemeManager.Initialize(this, e.Args);
         base.OnStartup(e);
         DispatcherUnhandledException += OnDispatcherUnhandledException;
     }

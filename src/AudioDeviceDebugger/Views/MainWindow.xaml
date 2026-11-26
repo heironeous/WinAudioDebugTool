@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:AudioDeviceDebugger.Views"
         Title="Audio Device Debugger" Height="800" Width="1200" MinWidth="900" MinHeight="500"
-        Background="{StaticResource SurfaceBase}" FontSize="{StaticResource FontLabel}">
+        Background="{DynamicResource SurfaceBase}" FontSize="{StaticResource FontLabel}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
 
@@ -40,7 +40,7 @@
                     <TextBlock Text="Refresh" VerticalAlignment="Center"/>
                 </StackPanel>
             </Button>
-            <Border Width="1" Background="{StaticResource BorderSubtle}" Margin="0,4,8,4"/>
+            <Border Width="1" Background="{DynamicResource BorderSubtle}" Margin="0,4,8,4"/>
             <Button Content="Set Default" Click="SetDefaultButton_Click" Style="{StaticResource FlatButton}" Padding="14,5" Margin="0,0,8,0"
                     IsEnabled="{Binding CanSetDefaults}" ToolTipService.ShowOnDisabled="True"
                     ToolTip="Make the selected device the default device (Console + Multimedia roles)"/>
@@ -52,13 +52,13 @@
                     ToolTip="Make the selected device both the default and the default communications device"/>
 
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <TextBlock Text="Also show" Foreground="{StaticResource TextTertiary}" VerticalAlignment="Center" Margin="8,0,8,0"/>
+                <TextBlock Text="Also show" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="8,0,8,0"/>
                 <CheckBox IsChecked="{Binding ShowUnpluggedDevices}" Style="{StaticResource FilterChip}" VerticalAlignment="Center" Margin="0,0,8,0"
                           AutomationProperties.Name="Unplugged"
                           ToolTip="Show endpoints whose hardware is present but has nothing plugged into the jack">
                     <TextBlock>
                         <Run Text="Unplugged"/>
-                        <Run Text="{Binding UnpluggedDeviceCount, Mode=OneWay}" Foreground="{StaticResource TextTertiary}"/>
+                        <Run Text="{Binding UnpluggedDeviceCount, Mode=OneWay}" Foreground="{DynamicResource TextTertiary}"/>
                     </TextBlock>
                 </CheckBox>
                 <CheckBox IsChecked="{Binding ShowDisabledDevices}" Style="{StaticResource FilterChip}" VerticalAlignment="Center" Margin="0,0,8,0"
@@ -66,7 +66,7 @@
                           ToolTip="Show endpoints disabled in Windows Sound settings">
                     <TextBlock>
                         <Run Text="Disabled"/>
-                        <Run Text="{Binding DisabledDeviceCount, Mode=OneWay}" Foreground="{StaticResource TextTertiary}"/>
+                        <Run Text="{Binding DisabledDeviceCount, Mode=OneWay}" Foreground="{DynamicResource TextTertiary}"/>
                     </TextBlock>
                 </CheckBox>
                 <CheckBox IsChecked="{Binding ShowNotPresentDevices}" Style="{StaticResource FilterChip}" VerticalAlignment="Center"
@@ -74,7 +74,7 @@
                           ToolTip="Show endpoints whose hardware isn't connected (e.g. headsets that were used once)">
                     <TextBlock>
                         <Run Text="Not present"/>
-                        <Run Text="{Binding NotPresentDeviceCount, Mode=OneWay}" Foreground="{StaticResource TextTertiary}"/>
+                        <Run Text="{Binding NotPresentDeviceCount, Mode=OneWay}" Foreground="{DynamicResource TextTertiary}"/>
                     </TextBlock>
                 </CheckBox>
             </StackPanel>
@@ -88,7 +88,7 @@
                 <RowDefinition Height="*" MinHeight="200"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Background="{StaticResource SurfacePanel}" BorderBrush="{StaticResource BorderSubtle}"
+            <Border Grid.Row="0" Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderSubtle}"
                     BorderThickness="1" CornerRadius="6" Padding="0,0,0,2">
             <DataGrid x:Name="DeviceGrid"
                       ItemsSource="{Binding Devices}"
@@ -110,7 +110,7 @@
                       BorderThickness="0"
                       RowHeight="48"
                       FontSize="{StaticResource FontBody}"
-                      Foreground="{StaticResource TextPrimary}"
+                      Foreground="{DynamicResource TextPrimary}"
                       ColumnHeaderStyle="{StaticResource ListHeader}"
                       CellStyle="{StaticResource ListCell}"
                       RowStyle="{StaticResource ListRow}"
@@ -118,13 +118,23 @@
                       ScrollViewer.ScrollChanged="DeviceGrid_ScrollChanged"
                       VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                       TextOptions.TextRenderingMode="Grayscale">
-                <!-- OUTPUTS / INPUTS sections; MainViewModel groups the view by SectionText. -->
+                <!-- OUTPUTS / INPUTS sections, or one group per physical device (the "By device" chip); MainViewModel
+                     sets the view's grouping. Clicking a group's heading collapses it. -->
                 <DataGrid.GroupStyle>
                     <GroupStyle ContainerStyle="{StaticResource ListSection}"/>
                 </DataGrid.GroupStyle>
                 <DataGrid.Columns>
                     <!-- Device-type icon, name and role pills, with a quiet state line underneath. -->
-                    <DataGridTemplateColumn x:Name="DeviceColumn" Header="DEVICE" Width="*" MinWidth="220">
+                    <DataGridTemplateColumn x:Name="DeviceColumn" Width="*" MinWidth="220">
+                        <DataGridTemplateColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="DEVICE" VerticalAlignment="Center"/>
+                                <CheckBox IsChecked="{Binding DataContext.GroupByDevice, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                          Content="By device" FontSize="{StaticResource FontCaption}" Padding="8,1,8,2" Margin="12,-3,0,-3"
+                                          Style="{StaticResource FilterChip}" VerticalAlignment="Center" AutomationProperties.Name="Group by device"
+                                          ToolTip="Group the list by physical device (a headset's speaker and mic together; built-in audio under This PC) instead of outputs and inputs"/>
+                            </StackPanel>
+                        </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Grid>
@@ -133,7 +143,7 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding IconGlyph}" ToolTip="{Binding IconToolTip}" FontFamily="{StaticResource IconFont}"
-                                               FontSize="{StaticResource IconLarge}" Foreground="{StaticResource TextSecondary}"
+                                               FontSize="{StaticResource IconLarge}" Foreground="{DynamicResource TextSecondary}"
                                                VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <!-- The pills are docked right but the panel is only as wide as its content, so they
@@ -145,8 +155,8 @@
                                         </DockPanel>
                                         <!-- "Active", plus " · In use by <app>" (accent) while another app streams here. -->
                                         <TextBlock FontSize="{StaticResource FontCaption}" Margin="0,2,0,0" ToolTip="{Binding UsageToolTip}"
-                                                   Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis">
-                                            <Run Text="{Binding StateText, Mode=OneWay}"/><Run Text="{Binding UsageSuffix, Mode=OneWay}" Foreground="{StaticResource Accent}"/>
+                                                   Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis">
+                                            <Run Text="{Binding DirectionPrefix, Mode=OneWay}"/><Run Text="{Binding StateText, Mode=OneWay}"/><Run Text="{Binding UsageSuffix, Mode=OneWay}" Foreground="{DynamicResource Accent}"/>
                                         </TextBlock>
                                     </StackPanel>
                                 </Grid>
@@ -202,7 +212,7 @@
                                                                 <Condition Binding="{Binding IsMuted}" Value="True"/>
                                                             </MultiDataTrigger.Conditions>
                                                             <Setter Property="Text" Value="&#xE74F;"/>
-                                                            <Setter Property="Foreground" Value="{StaticResource Negative}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
                                                         </MultiDataTrigger>
                                                         <MultiDataTrigger>
                                                             <MultiDataTrigger.Conditions>
@@ -210,7 +220,7 @@
                                                                 <Condition Binding="{Binding IsMuted}" Value="True"/>
                                                             </MultiDataTrigger.Conditions>
                                                             <Setter Property="Text" Value="&#xEC54;"/>
-                                                            <Setter Property="Foreground" Value="{StaticResource Negative}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
                                                         </MultiDataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -222,7 +232,7 @@
                                             Value="{Binding VolumePercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             IsMoveToPointEnabled="True" SmallChange="1" LargeChange="10"/>
                                     <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right"
-                                               Foreground="{StaticResource TextSecondary}" FontSize="{StaticResource FontLabel}"
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="{StaticResource FontLabel}"
                                                Text="{Binding VolumePercent, StringFormat={}{0:0}%}"/>
                                 </Grid>
                             </DataTemplate>
@@ -261,11 +271,11 @@
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Text" Value="&#xE768;"/>
-                                                    <Setter Property="Foreground" Value="{StaticResource Positive}"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource Positive}"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsTesting}" Value="True">
                                                             <Setter Property="Text" Value="&#xE71A;"/>
-                                                            <Setter Property="Foreground" Value="{StaticResource Negative}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -300,22 +310,22 @@
 
                 <!-- Header card: icon, name and role pills; state and formats as chips; the endpoint ID behind a copy button. -->
                 <Border Grid.Row="0" Grid.Column="0" Margin="0,0,0,8" Padding="12,10,8,6" CornerRadius="6" BorderThickness="1"
-                        Background="{StaticResource SurfacePanel}" BorderBrush="{StaticResource BorderSubtle}">
+                        Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderSubtle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Width="44" Height="44" CornerRadius="6" Margin="0,0,12,4" VerticalAlignment="Top"
-                                Background="{StaticResource SurfaceRaised}" ToolTip="{Binding SelectedDevice.IconToolTip}">
+                                Background="{DynamicResource SurfaceRaised}" ToolTip="{Binding SelectedDevice.IconToolTip}">
                             <TextBlock Text="{Binding SelectedDevice.IconGlyph}" FontFamily="{StaticResource IconFont}"
-                                       FontSize="{StaticResource IconLarge}" Foreground="{StaticResource TextPrimary}"
+                                       FontSize="{StaticResource IconLarge}" Foreground="{DynamicResource TextPrimary}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="{Binding SelectedDevice.Device.FriendlyName}" ToolTip="{Binding SelectedDevice.Device.FriendlyName}"
                                        FontSize="{StaticResource FontTitle}" FontWeight="SemiBold" Margin="0,0,0,4"
-                                       Foreground="{StaticResource TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                       Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis"/>
                             <!-- MinHeight: the formats arrive a moment after the selection; the card shouldn't jump. -->
                             <WrapPanel MinHeight="24">
                                 <!-- The pills bring an 8 px left margin (for the list); pulled back so they align with the name.
@@ -346,7 +356,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <TextBlock Text="{Binding SelectedDevice.StateText}" Style="{StaticResource ChipText}" Foreground="{StaticResource Caution}"/>
+                                    <TextBlock Text="{Binding SelectedDevice.StateText}" Style="{StaticResource ChipText}" Foreground="{DynamicResource Caution}"/>
                                 </Border>
                                 <Border>
                                     <Border.ToolTip>
@@ -365,7 +375,7 @@
                                         </Style>
                                     </Border.Style>
                                     <TextBlock Style="{StaticResource ChipText}">
-                                        <Run Text="Shared" Foreground="{StaticResource TextTertiary}"/>
+                                        <Run Text="Shared" Foreground="{DynamicResource TextTertiary}"/>
                                         <Run Text="{Binding SelectedDeviceDetails.SharedModeFormat.ShortText, Mode=OneWay}"/>
                                     </TextBlock>
                                 </Border>
@@ -386,7 +396,7 @@
                                         </Style>
                                     </Border.Style>
                                     <TextBlock Style="{StaticResource ChipText}">
-                                        <Run Text="Exclusive" Foreground="{StaticResource TextTertiary}"/>
+                                        <Run Text="Exclusive" Foreground="{DynamicResource TextTertiary}"/>
                                         <Run Text="{Binding SelectedDeviceDetails.ExclusiveModeFormat.ShortText, Mode=OneWay}"/>
                                     </TextBlock>
                                 </Border>
@@ -413,8 +423,8 @@
                                     </Button.ToolTip>
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontCaption}"
-                                                   Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                        <TextBlock Text="ID" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondary}"/>
+                                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="ID" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextSecondary}"/>
                                     </StackPanel>
                                 </Button>
                             </WrapPanel>
@@ -429,7 +439,7 @@
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Margin="0,0,0,8" CornerRadius="6" BorderThickness="1"
-                            Background="{StaticResource SurfacePanel}" BorderBrush="{StaticResource BorderSubtle}">
+                            Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderSubtle}">
                         <local:LevelGraph x:Name="DetailGraph" Background="Transparent" Margin="1"/>
                     </Border>
 
@@ -437,7 +447,7 @@
                     <DockPanel Grid.Row="1"
                                Visibility="{Binding HasChannels, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel DockPanel.Dock="Left" Width="104" Margin="0,0,12,0" VerticalAlignment="Top">
-                            <TextBlock Text="CHANNELS" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextTertiary}"/>
+                            <TextBlock Text="CHANNELS" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
                             <Button Click="CycleChannelsButton_Click" Margin="0,8,0,0" Padding="8,4" HorizontalAlignment="Left"
                                     IsEnabled="{Binding CanCycleChannels}" ToolTip="{Binding CycleChannelsToolTip}"
                                     ToolTipService.ShowOnDisabled="True" Style="{StaticResource FlatButton}">
@@ -459,11 +469,11 @@
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Text" Value="&#xE768;"/>
-                                                <Setter Property="Foreground" Value="{StaticResource Positive}"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource Positive}"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsSelectedDeviceTesting}" Value="True">
                                                         <Setter Property="Text" Value="&#xE71A;"/>
-                                                        <Setter Property="Foreground" Value="{StaticResource Negative}"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -487,10 +497,10 @@
                                                    HorizontalAlignment="Center" Margin="0,0,0,4">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                            <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
                                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
@@ -501,7 +511,7 @@
                                                      Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
                                                      Width="6" Height="48" HorizontalAlignment="Center"/>
                                         <TextBlock Text="{Binding DbShort}" ToolTip="{Binding LevelText}" FontSize="{StaticResource FontCaption}"
-                                                   Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,4"/>
+                                                   Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center" Margin="0,4,0,4"/>
                                         <Button Click="ChannelPlayButton_Click" Width="30" Height="22" Padding="0"
                                                 HorizontalAlignment="Center" Style="{StaticResource FlatButton}"
                                                 IsEnabled="{Binding CanPlay}" ToolTip="{Binding PlayToolTip}"
@@ -510,11 +520,11 @@
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Text" Value="&#xE768;"/>
-                                                        <Setter Property="Foreground" Value="{StaticResource Positive}"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource Positive}"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsPlaying}" Value="True">
                                                                 <Setter Property="Text" Value="&#xE71A;"/>
-                                                                <Setter Property="Foreground" Value="{StaticResource Negative}"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -565,7 +575,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource IconNormal}"
                                            VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBlock VerticalAlignment="Center"><Run Text="Events"/> <Run Text="{Binding EventLog.Events.Count, Mode=OneWay}" Foreground="{StaticResource TextTertiary}"/></TextBlock>
+                                <TextBlock VerticalAlignment="Center"><Run Text="Events"/> <Run Text="{Binding EventLog.Events.Count, Mode=OneWay}" Foreground="{DynamicResource TextTertiary}"/></TextBlock>
                             </StackPanel>
                         </ToggleButton>
                         <ToggleButton IsChecked="{Binding IsProcessesPanelOpen}" AutomationProperties.Name="Processes">
@@ -602,11 +612,28 @@
                                 <TextBlock VerticalAlignment="Center"><Run Text="Raw recording"/></TextBlock>
                             </StackPanel>
                         </ToggleButton>
+                        <ToggleButton IsChecked="{Binding IsDriverPanelOpen}" AutomationProperties.Name="Driver">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton" BasedOn="{StaticResource PanelTab}">
+                                    <Setter Property="ToolTip" Value="Show the selected device's driver, USB connection and audio effects (APOs)"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDriverPanelOpen}" Value="True">
+                                            <Setter Property="ToolTip" Value="Hide the driver panel"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE950;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource IconNormal}"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock VerticalAlignment="Center"><Run Text="Driver"/></TextBlock>
+                            </StackPanel>
+                        </ToggleButton>
                     </StackPanel>
                     <Grid>
                         <!-- PROPERTIES: the selected device's property store, in the same table style as the event log. -->
-                        <Border x:Name="PropertiesPanel" Background="{StaticResource SurfacePanel}"
-                                BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="0,0,0,2">
+                        <Border x:Name="PropertiesPanel" Background="{DynamicResource SurfacePanel}"
+                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="0,0,0,2">
                             <DataGrid x:Name="PropertiesGrid"
                                       ItemsSource="{Binding SelectedDeviceProperties}"
                                       AutoGenerateColumns="False"
@@ -627,7 +654,7 @@
                                       RowHeight="24"
                                       FontSize="{StaticResource FontLabel}"
                                       ClipboardCopyMode="None"
-                                      Foreground="{StaticResource TextPrimary}"
+                                      Foreground="{DynamicResource TextPrimary}"
                                       ColumnHeaderStyle="{StaticResource LogHeaderResizable}"
                                       CellStyle="{StaticResource LogCell}"
                                       VirtualizingPanel.IsVirtualizing="True"
@@ -635,7 +662,7 @@
                                       TextOptions.TextRenderingMode="Grayscale">
                                 <DataGrid.RowStyle>
                                     <Style TargetType="DataGridRow">
-                                        <Setter Property="BorderBrush" Value="{StaticResource Separator}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource Separator}"/>
                                         <Setter Property="BorderThickness" Value="0,0,0,1"/>
                                         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                                     </Style>
@@ -651,7 +678,7 @@
                                                         <Style TargetType="TextBlock">
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsKnown}" Value="False">
-                                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -671,7 +698,7 @@
                                     <DataGridTemplateColumn Header="KEY" Width="330" MinWidth="80">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis">
+                                                <TextBlock Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis">
                                                     <Run Text="{Binding KeyLabel, Mode=OneWay}"/>
                                                     <Run Text="{Binding RawKey, Mode=OneWay}"/>
                                                 </TextBlock>
@@ -684,7 +711,7 @@
 
                         <!-- Event timeline: shares the right-hand column with the property table (only one is open at a time). -->
                         <Border x:Name="EventsPanel" DataContext="{Binding EventLog}"
-                                Background="{StaticResource SurfacePanel}" BorderBrush="{StaticResource BorderSubtle}"
+                                Background="{DynamicResource SurfacePanel}" BorderBrush="{DynamicResource BorderSubtle}"
                                 BorderThickness="1" CornerRadius="6">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Top" Margin="10,8,10,6">
@@ -698,8 +725,8 @@
                                                     Padding="10,3" ToolTip="Remove all recorded events"/>
                                         </StackPanel>
                                         <TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontCaption}">
-                                            <Run Text="{Binding CountText, Mode=OneWay}" Foreground="{StaticResource TextSecondary}"/>
-                                            <Run Text="shown" Foreground="{StaticResource TextSecondary}"/>
+                                            <Run Text="{Binding CountText, Mode=OneWay}" Foreground="{DynamicResource TextSecondary}"/>
+                                            <Run Text="shown" Foreground="{DynamicResource TextSecondary}"/>
                                         </TextBlock>
                                     </DockPanel>
                                     <WrapPanel Margin="0,8,0,0">
@@ -739,7 +766,7 @@
                                           RowHeight="26"
                                           FontSize="{StaticResource FontLabel}"
                                           ClipboardCopyMode="None"
-                                          Foreground="{StaticResource TextPrimary}"
+                                          Foreground="{DynamicResource TextPrimary}"
                                           ColumnHeaderStyle="{StaticResource LogHeader}"
                                           CellStyle="{StaticResource LogCell}"
                                           RowStyle="{StaticResource LogRow}"
@@ -750,7 +777,7 @@
                                         <DataGridTemplateColumn Header="TIME" Width="86">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock Text="{Binding TimeText}" Foreground="{StaticResource TextSecondary}"/>
+                                                    <TextBlock Text="{Binding TimeText}" Foreground="{DynamicResource TextSecondary}"/>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
@@ -762,10 +789,10 @@
                                                             <Style TargetType="TextBlock">
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding Kind}" Value="Error">
-                                                                        <Setter Property="Foreground" Value="{StaticResource Negative}"/>
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding Kind}" Value="DefaultChanged">
-                                                                        <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -791,7 +818,7 @@
                                         <DataGridTemplateColumn Header="BY" Width="64">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock Text="{Binding SourceText}" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondary}"/>
+                                                    <TextBlock Text="{Binding SourceText}" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextSecondary}"/>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
@@ -801,12 +828,12 @@
                         </Border>
 
                         <!-- PROCESSES: apps (processes) with an audio session on the selected device — read-only (N1). -->
-                        <Border x:Name="ProcessesPanel" Background="{StaticResource SurfacePanel}"
-                                BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6">
+                        <Border x:Name="ProcessesPanel" Background="{DynamicResource SurfacePanel}"
+                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="6">
                             <DockPanel Margin="10,8,10,8">
                                 <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" FontSize="{StaticResource FontCaption}"
-                                           Text="{Binding SessionsSummary}" Foreground="{StaticResource TextSecondary}"/>
-                                <TextBlock DockPanel.Dock="Top" FontSize="{StaticResource FontLabel}" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"
+                                           Text="{Binding SessionsSummary}" Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock DockPanel.Dock="Top" FontSize="{StaticResource FontLabel}" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
                                            Text="Select an active device to see which apps have it open.">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
@@ -828,12 +855,12 @@
                                         <ColumnDefinition Width="52"/>
                                         <ColumnDefinition Width="80"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="APP" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextTertiary}"/>
-                                    <TextBlock Grid.Column="1" Text="PROCESS · PID" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextTertiary}"/>
-                                    <TextBlock Grid.Column="2" Text="STATE" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextTertiary}"/>
-                                    <TextBlock Grid.Column="3" Text="VOLUME" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextTertiary}"
+                                    <TextBlock Grid.Column="0" Text="APP" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
+                                    <TextBlock Grid.Column="1" Text="PROCESS · PID" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
+                                    <TextBlock Grid.Column="2" Text="STATE" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
+                                    <TextBlock Grid.Column="3" Text="VOLUME" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"
                                                ToolTip="App volume (Windows volume mixer)"/>
-                                    <TextBlock Grid.Column="4" Text="LEVEL" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextTertiary}"/>
+                                    <TextBlock Grid.Column="4" Text="LEVEL" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
                                 </Grid>
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                               Visibility="{Binding ShowSessions, Converter={StaticResource BoolToVisibility}}">
@@ -858,23 +885,23 @@
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Grid.Style>
-                                                    <TextBlock Grid.Column="0" Text="{Binding AppName}" FontSize="{StaticResource FontLabel}" Foreground="{StaticResource TextPrimary}"
+                                                    <TextBlock Grid.Column="0" Text="{Binding AppName}" FontSize="{StaticResource FontLabel}" Foreground="{DynamicResource TextPrimary}"
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding ProcessText}" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondary}"
+                                                    <TextBlock Grid.Column="1" Text="{Binding ProcessText}" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextSecondary}"
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding StateText}" FontSize="{StaticResource FontCaption}" VerticalAlignment="Center">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                                        <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
-                                                    <TextBlock Grid.Column="3" Text="{Binding VolumeText}" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondary}"
+                                                    <TextBlock Grid.Column="3" Text="{Binding VolumeText}" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextSecondary}"
                                                                VerticalAlignment="Center" ToolTip="App volume (Windows volume mixer)"/>
                                                     <ProgressBar Grid.Column="4" Style="{StaticResource FlatMeter}" Minimum="0" Maximum="1"
                                                                  Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
@@ -889,8 +916,8 @@
 
                         <!-- RAW RECORDING (inputs, N4): the last recording per processing mode — Raw / Call / Standard — for A/B
                              listening. Record A/B records all three at once; picking a line makes the channel strip play it. -->
-                        <Border x:Name="RecordingsPanel" Background="{StaticResource SurfacePanel}"
-                                BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6">
+                        <Border x:Name="RecordingsPanel" Background="{DynamicResource SurfacePanel}"
+                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="6">
                             <DockPanel Margin="10,8,10,8">
                                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                                     <Button DockPanel.Dock="Right" Click="RecordAbButton_Click" Padding="10,3" Margin="8,0,0,0"
@@ -914,7 +941,7 @@
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Text" Value="&#xE7C8;"/>
-                                                        <Setter Property="Foreground" Value="{StaticResource Negative}"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsSelectedDeviceTesting}" Value="True">
                                                                 <Setter Property="Text" Value="&#xE71A;"/>
@@ -927,10 +954,10 @@
                                     </Button>
                                     <TextBlock FontSize="{StaticResource FontCaption}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                ToolTip="{Binding RecordingsSummary}">
-                                        <Run Text="{Binding RecordingsSummary, Mode=OneWay}" Foreground="{StaticResource TextSecondary}"/>
+                                        <Run Text="{Binding RecordingsSummary, Mode=OneWay}" Foreground="{DynamicResource TextSecondary}"/>
                                     </TextBlock>
                                 </DockPanel>
-                                <TextBlock DockPanel.Dock="Top" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"
+                                <TextBlock DockPanel.Dock="Top" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
                                            Margin="0,0,0,10">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
@@ -974,7 +1001,7 @@
                                                                 <Setter Property="Cursor" Value="Hand"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsStripSource}" Value="True">
-                                                                <Setter Property="Background" Value="{StaticResource RowSelected}"/>
+                                                                <Setter Property="Background" Value="{DynamicResource RowSelected}"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -999,11 +1026,11 @@
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
                                                                     <Setter Property="Text" Value="&#xE768;"/>
-                                                                    <Setter Property="Foreground" Value="{StaticResource Positive}"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource Positive}"/>
                                                                     <Style.Triggers>
                                                                         <DataTrigger Binding="{Binding IsPlaying}" Value="True">
                                                                             <Setter Property="Text" Value="&#xE71A;"/>
-                                                                            <Setter Property="Foreground" Value="{StaticResource Negative}"/>
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -1013,10 +1040,10 @@
                                                     <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="{StaticResource FontBody}" VerticalAlignment="Center">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                                        <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
                                                                         <Setter Property="FontWeight" Value="SemiBold"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
@@ -1024,13 +1051,13 @@
                                                         </TextBlock.Style>
                                                     </TextBlock>
                                                     <TextBlock Grid.Column="2" Text="{Binding LevelText}" FontSize="{StaticResource FontLabel}" VerticalAlignment="Center"
-                                                               Foreground="{StaticResource TextPrimary}"/>
+                                                               Foreground="{DynamicResource TextPrimary}"/>
                                                     <TextBlock Grid.Column="3" Text="{Binding DetailText}" FontSize="{StaticResource FontCaption}" VerticalAlignment="Center"
-                                                               Foreground="{StaticResource TextSecondary}" Margin="0,0,12,0"/>
+                                                               Foreground="{DynamicResource TextSecondary}" Margin="0,0,12,0"/>
                                                     <TextBlock Grid.Column="4" Text="{Binding EffectsText}" FontSize="{StaticResource FontCaption}" VerticalAlignment="Center"
-                                                               Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis"/>
+                                                               Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis"/>
                                                     <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Text="{Binding Description}" FontSize="{StaticResource FontCaption}"
-                                                               Margin="0,2,0,0" Foreground="{StaticResource TextTertiary}" TextTrimming="CharacterEllipsis"/>
+                                                               Margin="0,2,0,0" Foreground="{DynamicResource TextTertiary}" TextTrimming="CharacterEllipsis"/>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
@@ -1038,13 +1065,78 @@
                                 </ListBox>
                             </DockPanel>
                         </Border>
+
+                        <!-- DRIVER: what is behind the endpoint: its audio device, driver, USB connection and the audio
+                             effects (APOs) Windows runs on it (DeviceInventoryService). -->
+                        <Border x:Name="DriverPanel" Background="{DynamicResource SurfacePanel}"
+                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="6">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="10,8,10,2">
+                                    <Button DockPanel.Dock="Right" Content="Copy" Click="CopyInventoryButton_Click" Padding="10,3"
+                                            ToolTip="Copy these details as text (for a bug report)">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource FlatButton}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedDeviceInventory}" Value="{x:Null}">
+                                                        <Setter Property="IsEnabled" Value="False"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextSecondary}"
+                                               Text="{Binding SelectedDeviceInventory.EndpointName, FallbackValue='Select a device.', TargetNullValue='Select a device.'}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10,0,10,8">
+                                    <ItemsControl x:Name="InventoryList" ItemsSource="{Binding SelectedDeviceInventory.Sections}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,8,0,0">
+                                                    <TextBlock Text="{Binding Title}" FontSize="{StaticResource FontCaption}" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,4"/>
+                                                    <ItemsControl ItemsSource="{Binding Rows}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <!-- The tooltip has the details: CLSIDs, files, all hardware IDs. -->
+                                                                <Grid Background="Transparent" ToolTip="{Binding ToolTip}" ToolTipService.ShowDuration="30000">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="150"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding Label}" FontSize="{StaticResource FontLabel}" Foreground="{DynamicResource TextSecondary}"
+                                                                               TextTrimming="CharacterEllipsis" Margin="0,2,8,2"/>
+                                                                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="{StaticResource FontLabel}"
+                                                                               TextWrapping="Wrap" Margin="0,2">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                                                                        <Setter Property="Foreground" Value="{DynamicResource TextTertiary}"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
                     </Grid>
                 </DockPanel>
             </Grid>
         </Grid>
 
-        <Border Grid.Row="2" Margin="0,8,0,0" Padding="8,6" CornerRadius="6" Background="{StaticResource SurfacePanel}">
-            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextPrimary}"/>
+        <Border Grid.Row="2" Margin="0,8,0,0" Padding="8,6" CornerRadius="6" Background="{DynamicResource SurfacePanel}">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextPrimary}"/>
         </Border>
     </Grid>
 </Window>

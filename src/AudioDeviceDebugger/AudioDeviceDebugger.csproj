@@ -35,4 +35,9 @@
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Unit tests (tests/AudioDeviceDebugger.Tests) also cover internal helpers. -->
+    <InternalsVisibleTo Include="AudioDeviceDebugger.Tests" />
+  </ItemGroup>
+
 </Project>

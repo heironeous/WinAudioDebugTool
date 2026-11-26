@@ -305,6 +305,85 @@ was not built.
   5/6, never showed for it. Fixed 2026-11-23 by matching container IDs (see
   "Small follow-ups" below).
 
+## Light theme and high contrast (2026-11-25)
+`Views/ThemeManager.cs`, `Views/Themes/Dark.xaml`, `Views/Themes/Light.xaml`; `Theme.xaml` keeps the sizes and styles.
+
+- **Mechanism.** The palette is the first merged dictionary of `App.Resources` (Dark.xaml in `App.xaml`, so the XAML
+  designer still has colours). Every palette reference in the views is a `DynamicResource` (163 of them), so
+  replacing that dictionary repaints the running app. Brushes in setters can't simply be recoloured instead: WPF
+  freezes them when a style is sealed. Code that builds brushes from palette colours (the level graph's gridlines and
+  gradient brushes, the title bar) listens to `ThemeManager.ThemeChanged`.
+- **Choice**: `--theme=` override, then `SystemParameters.HighContrast`, then
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme` (missing = light, as in
+  Windows). Re-evaluated on `SystemEvents.UserPreferenceChanged` (General / Color / VisualStyle / Accessibility) and
+  when `SystemParameters.HighContrast` changes.
+- **High contrast** builds the palette from `SystemColors` (Window, WindowText, Highlight, HotTrack, GrayText):
+  no translucent overlays, every text level in WindowText, the selected row outlined in Highlight (a 2 px top/bottom
+  border on each cell that is transparent in the other palettes) rather than filled, and the title bar left to
+  Windows (`DWMWA_CAPTION_COLOR` = default).
+- **Title bar**: `DWMWA_USE_IMMERSIVE_DARK_MODE` 1 for dark, 0 for light and high contrast; caption colour = the
+  palette's `SurfaceBase`.
+- **Light palette**: white panels on a light grey window; the meaning colours are darker than in the dark palette
+  (accent #0F6CBD, positive #107C41, caution #8A5300, negative #C42B1C) so they read as text on white.
+  `ThemeTests` checks both palettes: same keys as `ThemeManager.PaletteKeys`, primary and secondary text ≥ 4.5:1 on
+  every surface and on hovered / selected rows, tertiary text and the meaning colours ≥ 4.5:1 on the surfaces. The dark
+  palette's tertiary text failed on raised surfaces (3.97:1) and is now #9C9CA3.
+- Verified: screenshots with `--theme=light`, `dark` and `high-contrast` (the last with this desktop's normal system
+  colours, since contrast themes are off here), and the live switch dark → light → dark in a scratch harness that
+  opens the real main window and swaps the palette (everything repainted, `ThemeChanged` raised twice). Not checked:
+  a real Windows contrast theme, the app-mode change coming from Windows itself (the registry value wasn't changed on
+  the maintainer's machine), Windows 10.
+
+## Device grouping (2026-11-25)
+`Services/DeviceGrouping.cs` (pure, unit-tested), `ViewModels/DeviceListGroup.cs`, `ListSection` / `SectionExpander`
+in `Theme.xaml`.
+
+- **Key**: `DEVPKEY_Device_ContainerId`; Windows' "this PC" container (`00000000-0000-0000-ffff-ffffffffffff`) is
+  "This PC", endpoints without one are "Other". On the desktop each old HDMI output has a container of its own (one per
+  monitor ever connected), so several "High Definition Audio Device" groups appear when Not present is shown.
+- **Names**: the container's own name (`DEVPKEY_ItemNameDisplay` through `DevGetObjectProperties`,
+  DevObjectTypeDeviceContainer) would be ideal, but on the desktop every call took 60 s and then failed with
+  ERROR_FILE_NOT_FOUND, so the name comes from the endpoints: `PKEY_DeviceInterface_FriendlyName` (the part in brackets
+  of "Speakers (Jabra Link 380)", a "2- " duplicate prefix removed), except for display endpoints (form factor 9),
+  whose interface is the graphics card's audio: there the endpoint part ("ASUS VP28U") is used, unless it's generic
+  ("Digital Output", "NVIDIA Output"). The most common name among the active endpoints wins.
+- **Grouping in WPF**: the view is grouped by a `DeviceListGroup` object per row (`SectionGroup` or `DeviceGroup`,
+  swapped by `MainViewModel.ApplyGrouping`), sorted by `GroupDescription.CustomSort`. Refresh rebuilds every row, so
+  the group objects are cached by key in the view model; they carry `IsExpanded`, which is why a collapsed group stays
+  collapsed. The group template is an `Expander`: with a plain ToggleButton heading the GroupItem exposed no
+  expand / collapse pattern to UI Automation (screen readers couldn't open a group).
+- Verified on the desktop with all states shown: 14 groups, each collapsed through UI Automation; collapsed state
+  survives Refresh; switching back restores OUTPUTS / INPUTS. Not checked: the laptop (Jabra Link 390 should group
+  its speaker and mic, the Intel array and Realtek speakers under This PC), keyboard navigation across collapsed groups.
+
+## Device inventory: the Driver tab (2026-11-25)
+`Services/DeviceInventoryService.cs`, `Interop/DeviceNode.cs` (cfgmgr32), `Interop/UsbHub.cs`; pure helpers in
+`Services/InventoryFormat.cs` (unit-tested).
+
+- **Endpoint → device.** Every endpoint is a device node `SWD\MMDEVAPI\{endpoint ID}`; its parent is the audio device
+  whose driver created it (e.g. `USB\VID_046D&PID_085C&MI_02\…`, `HDAUDIO\FUNC_01&VEN_10DE…`). Nodes of devices
+  that aren't connected are found with `CM_LOCATE_DEVNODE_PHANTOM` and still carry their driver properties. Old
+  endpoints whose device was removed from Device Manager have no node at all; the tab says so.
+- **Connection** is the first real bus walking up from the device. A Bluetooth LE Audio headset (the desktop's Jabra
+  Evolve3 75, 2026-11-25) is `APXENUM\{2D68507B…}&AUDIO\…` (Windows' audio proxy) under `BTHLE\DEV_…`, whose chain
+  ends at the USB Bluetooth adapter: without that rule the tab showed the adapter's USB details as the headset's.
+- **USB speed** comes from the hub: `IOCTL_USB_GET_NODE_CONNECTION_INFORMATION_EX` on the hub's interface
+  (`GUID_DEVINTERFACE_USB_HUB`) with the port number (`DEVPKEY_Device_Address` of the USB device), opened with
+  `GENERIC_WRITE` like USBView; no admin rights needed. `_EX_V2` adds "SuperSpeed capable", used for the "connected
+  slower than it could" note. Checked on the desktop: C922 high speed / USB 2.0, the MSI lighting controller and the
+  ASUS Bluetooth adapter full speed / USB 1.1, which matches their descriptors.
+- **APOs** are in `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\{Render|Capture}\{guid}\FxProperties`,
+  values named `{fmtid},pid`: `PKEY_FX_*` (d04e05a6…: 5 SFX, 6 MFX, 7 EFX, 13–15 their composite lists, 1/2 legacy LFX
+  / GFX, 3 the enhancements page), `PKEY_*FX_ProcessingModes_Supported_For_Streaming` (d3993a3f…, 5–7) and
+  `PKEY_AudioEndpoint_Disable_SysFx` (1da5d803…,5). Names: `HKLM\SOFTWARE\Classes\AudioEngine\AudioProcessingObjects`
+  (`FriendlyName`), else the COM class name, else the driver package. Packaged APOs (Realtek's on this desktop) are in
+  neither registry list; their `FxProperties` hold `{APO CLSID},100` = the instance ID of the package's software device
+  (`SWD\DRIVERENUM\…#REALTEKAPO…`, "Realtek Audio Effects Component"), which also names Windows 11 effect packs that
+  sit in no slot (Voice Clarity on the C922).
+- Reading one endpoint takes ~7 ms (27 not-present endpoints measured from PowerShell through the app's assembly).
+- Not checked: the laptop (Jabra Link 390, Intel array, Realtek HD Audio), a device with a Device Manager problem, a
+  SuperSpeed device held back by a USB 2 port, classic (non-LE) Bluetooth headsets.
+
 ## Visual refresh (2026-11-25)
 Branch `feature/visual-refresh`, one commit per item of "Visual refresh" in [TODO.md](../TODO.md). The layout stays:
 device list on top, details below.

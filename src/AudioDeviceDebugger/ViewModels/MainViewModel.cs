@@ -17,6 +17,7 @@ public enum SidePanel
     Events,
     Processes,
     Recordings,
+    Driver,
 }
 
 public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
@@ -28,6 +29,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly ILevelMeterService _levelMeterService;
     private readonly IEndpointVolumeService _volumeService;
     private readonly IAudioSessionService _sessionService;
+    private readonly IDeviceInventoryService _inventoryService;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _refreshDebounce;
     private readonly EventLogFile? _logFile;
@@ -44,6 +46,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         ILevelMeterService levelMeterService,
         IEndpointVolumeService volumeService,
         IAudioSessionService sessionService,
+        IDeviceInventoryService inventoryService,
         EventLogFile? logFile = null)
     {
         _enumerationService = enumerationService;
@@ -53,6 +56,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _levelMeterService = levelMeterService;
         _volumeService = volumeService;
         _sessionService = sessionService;
+        _inventoryService = inventoryService;
         _dispatcher = Dispatcher.CurrentDispatcher;
         _logFile = logFile;
 
@@ -87,7 +91,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         // without removing them, so metering / volume / running tests are unaffected.
         _devicesView = CollectionViewSource.GetDefaultView(Devices);
         _devicesView.Filter = item => item is DeviceRowViewModel row && IsShown(row);
-        _devicesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(DeviceRowViewModel.SectionText)));
+        ApplyGrouping();
 
         Refresh();
         LogStarted();
@@ -104,6 +108,46 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly Dictionary<string, (int Percent, bool Muted)> _lastVolume = new();
 
     public ObservableCollection<DeviceRowViewModel> Devices { get; } = new();
+
+    // One group object per key, kept across refreshes (they carry the collapsed state).
+    private readonly Dictionary<string, DeviceListGroup> _groups = new();
+
+    private bool _groupByDevice;
+
+    /// <summary>Groups the device list by physical device (container ID) instead of OUTPUTS / INPUTS.</summary>
+    public bool GroupByDevice
+    {
+        get => _groupByDevice;
+        set
+        {
+            if (!SetField(ref _groupByDevice, value)) return;
+            foreach (var row in Devices) row.ShowDirection = value;
+            ApplyGrouping();
+        }
+    }
+
+    private void ApplyGrouping()
+    {
+        using (_devicesView.DeferRefresh())
+        {
+            _devicesView.GroupDescriptions.Clear();
+            _devicesView.GroupDescriptions.Add(new PropertyGroupDescription(
+                _groupByDevice ? nameof(DeviceRowViewModel.DeviceGroup) : nameof(DeviceRowViewModel.SectionGroup))
+            {
+                CustomSort = DeviceListGroup.Comparer,
+            });
+        }
+    }
+
+    private DeviceListGroup GroupFor(DeviceGroupInfo info)
+    {
+        if (!_groups.TryGetValue(info.Key, out var group))
+        {
+            _groups[info.Key] = group = new DeviceListGroup(info);
+        }
+        group.Update(info);
+        return group;
+    }
 
     private readonly ICollectionView _devicesView;
 
@@ -309,6 +353,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             OnPropertyChanged(nameof(IsEventsPanelOpen));
             OnPropertyChanged(nameof(IsProcessesPanelOpen));
             OnPropertyChanged(nameof(IsRecordingsPanelOpen));
+            OnPropertyChanged(nameof(IsDriverPanelOpen));
             if (value == SidePanel.Properties)
             {
                 LoadSelectedDeviceProperties(SelectedDevice);
@@ -316,6 +361,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             else if (previous == SidePanel.Properties)
             {
                 SelectedDeviceProperties = null;
+            }
+            if (value == SidePanel.Driver)
+            {
+                LoadSelectedDeviceInventory(SelectedDevice);
+            }
+            else if (previous == SidePanel.Driver)
+            {
+                SelectedDeviceInventory = null;
             }
         }
     }
@@ -325,6 +378,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public bool IsEventsPanelOpen { get => _openSidePanel == SidePanel.Events; set => SetSidePanel(SidePanel.Events, value); }
     public bool IsProcessesPanelOpen { get => _openSidePanel == SidePanel.Processes; set => SetSidePanel(SidePanel.Processes, value); }
     public bool IsRecordingsPanelOpen { get => _openSidePanel == SidePanel.Recordings; set => SetSidePanel(SidePanel.Recordings, value); }
+    public bool IsDriverPanelOpen { get => _openSidePanel == SidePanel.Driver; set => SetSidePanel(SidePanel.Driver, value); }
 
     private void SetSidePanel(SidePanel panel, bool open)
     {
@@ -345,6 +399,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         get => _selectedDeviceProperties;
         private set => SetField(ref _selectedDeviceProperties, value);
+    }
+
+    private DeviceInventory? _selectedDeviceInventory;
+
+    /// <summary>The selected device's driver, USB connection and audio effects (the Driver tab); null while the tab
+    /// is closed or still loading.</summary>
+    public DeviceInventory? SelectedDeviceInventory
+    {
+        get => _selectedDeviceInventory;
+        private set => SetField(ref _selectedDeviceInventory, value);
     }
 
     private string? _statusMessage;
@@ -529,12 +593,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
 
         Devices.Clear();
+        var deviceGroups = DeviceGrouping.ByDevice(latest);
         foreach (var info in latest
                      .OrderBy(d => d.Direction)
                      .ThenBy(d => d.FriendlyName, StringComparer.OrdinalIgnoreCase))
         {
             _knownDevices[info.Id] = info;
-            var row = new DeviceRowViewModel(info);
+            var row = new DeviceRowViewModel(info)
+            {
+                SectionGroup = GroupFor(DeviceGrouping.SectionOf(info.Direction)),
+                DeviceGroup = GroupFor(deviceGroups[info.Id]),
+                ShowDirection = _groupByDevice,
+            };
             ApplyTestState(row);
             if (info.State == DeviceConnectionState.Active)
             {
@@ -795,6 +865,29 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         });
 
         LoadSelectedDeviceProperties(row);
+        LoadSelectedDeviceInventory(row);
+    }
+
+    /// <summary>Reads the Driver tab's inventory for <paramref name="row"/> in the background — only while that tab is
+    /// open. Results that arrive after the selection changed or the tab closed are discarded.</summary>
+    private void LoadSelectedDeviceInventory(DeviceRowViewModel? row)
+    {
+        SelectedDeviceInventory = null;
+        if (row is null || !IsDriverPanelOpen) return;
+
+        string id = row.Device.Id;
+        string name = row.Device.FriendlyName;
+        Task.Run(() =>
+        {
+            var inventory = _inventoryService.GetInventory(id, name);
+            _dispatcher.BeginInvoke(() =>
+            {
+                if (IsDriverPanelOpen && SelectedDevice?.Device.Id == id)
+                {
+                    SelectedDeviceInventory = inventory;
+                }
+            });
+        });
     }
 
     /// <summary>Fetches the property dump for <paramref name="row"/> in the background — only if the properties

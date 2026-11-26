@@ -165,13 +165,29 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
 **Visual**
 - [ ] **Mini meter window.** A small, always-on-top window with one level bar
       per active device, for watching during a call.
-- [ ] **Follow the Windows theme.** A light theme next to the dark one, chosen
+- [x] **Follow the Windows theme.** A light theme next to the dark one, chosen
       from the Windows app mode, plus high-contrast support.
-- [ ] **Device grouping.** Group the endpoints of one physical device by
+      Done: palettes in `Views/Themes/Dark.xaml` and `Light.xaml`; with high
+      contrast on, a palette from Windows' system colours (no translucency,
+      the selected row outlined). `ThemeManager` follows changes while the
+      app runs (title bar and level graph too); `--theme=light|dark|
+      high-contrast` forces one. Unit tests check that the palettes define
+      the same keys and that text meets 4.5:1 contrast (dark tertiary text
+      was brightened from #8F8F96 to #9C9CA3 to pass on raised surfaces).
+      Not tested with a real Windows contrast theme switched on.
+- [x] **Device grouping.** Group the endpoints of one physical device by
       container ID (`DEVPKEY_Device_ContainerId`), e.g. "Jabra Evolve3 75"
       with its Speakers and Microphone rows. Switch the device list from a
       flat list to a grouped view (collapsible groups; built-in devices in a
       "This PC" group).
+      Done: a **By device** chip in the DEVICE header switches between
+      OUTPUTS / INPUTS and one group per container (state lines then say
+      "Output ·" / "Input ·"). Group names come from the endpoints: the
+      interface name ("Jabra Link 380"), or the monitor name for HDMI /
+      DisplayPort ("ASUS VP28U", not "NVIDIA High Definition Audio"). Groups
+      with an active endpoint come first. Every group heading (sections too)
+      collapses on click and stays collapsed across refreshes. Not kept
+      between app starts (the app has no settings file yet).
 
 **Functional**
 - [ ] **Setup snapshots.** Save the whole audio setup (defaults, volumes, mute,
@@ -189,9 +205,25 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
     noticeable (ITU-R BT.1359);
   - one-way delay in a call: up to ~150 ms is fine, beyond ~400 ms
     conversation breaks down (ITU-T G.114).
-- [ ] **Device inventory.** Driver name, version and date, USB VID/PID and
+- [x] **Device inventory.** Driver name, version and date, USB VID/PID and
       USB speed, and the processing modules (APOs) installed per endpoint
       (`FxProperties` keys).
+      Done as a fifth side-panel tab, **Driver** (read only while it is open):
+  - Device: name, manufacturer, connection (the first real bus in the device
+    tree, so a Bluetooth LE Audio headset reads "Bluetooth", not the USB
+    adapter its radio hangs off), Device Manager status, hardware and
+    instance ID.
+  - Driver: description, provider, version, date, INF file and section,
+    service, generic class driver or not.
+  - USB (USB audio devices only): product, VID / PID, revision, composite
+    interface, speed from the hub (IOCTL_USB_GET_NODE_CONNECTION_INFORMATION
+    _EX and _EX_V2; works unelevated), declared USB version, port and hub.
+  - Audio effects: every SFX / MFX / EFX (and composite, legacy, keyword and
+    offload) slot in the endpoint's `FxProperties` key, named from the APO
+    registration, the COM class or the driver package that installed it
+    (`{APO CLSID},100`); effect packs; supported processing modes; whether
+    enhancements are switched off.
+  - Copy as text.
 - [ ] **Bluetooth battery level** for headsets paired directly with Windows
       (from the Bluetooth device's PnP properties). Doesn't apply to headsets
       behind a USB dongle.
@@ -224,9 +256,13 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       existing working interop is only converted when it is touched anyway.
 
 ### Other ideas
-- [ ] Automated tests for the pure-logic parts that don't need audio hardware:
+- [x] Automated tests for the pure-logic parts that don't need audio hardware:
       event log merging and filters, exporters, `LevelScale`, `ChannelLayout`
-      (an offline harness covered the event log during development)
+      (an offline harness covered the event log during development).
+      Done: `tests/AudioDeviceDebugger.Tests` (xUnit, 114 tests), also the
+      property-value decoders, the daily log files, the channel conversion and
+      the device rows' "in use" text; CI runs them on every push to `main` and
+      on pull requests, which are built but not released
 - [ ] A/B listening test for headsets in media vs call mode (pair speaker and
       mic by `DEVPKEY_Device_ContainerId`)
 - [ ] Disable a headset's mic endpoint so apps can't switch it into call mode

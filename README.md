@@ -22,6 +22,9 @@ Events tab with the timeline.*
 - Every audio endpoint in two sections, **OUTPUTS** and **INPUTS**, including disabled, not-present and unplugged ones
   (the **Also show** chips at the top right), with an icon for its type, its role badges (Default · Comms), a live level
   meter, volume slider and mute button.
+- **By device** (in the list's header) groups the endpoints by physical device instead: a headset's speaker and
+  microphone together, a monitor's outputs together, everything built in under **This PC**. Click a group's heading to
+  collapse it.
 - Updates by itself when devices are plugged in or removed, or when another app changes a volume.
 - "· In use by *App*" when another application is streaming to or from the device.
 
@@ -53,8 +56,18 @@ colour zones (yellow from −12 dB, red from −3 dB), and per-channel meters.
   app's own processing) and **Standard** (what most apps get), then plays Raw and Call back to back. Each take shows
   its level, format, per-channel levels and the effects Windows applied (echo cancellation, noise suppression, …), and
   you can listen to each channel of each take — for example the individual capsules of a laptop mic array.
+- **Driver** — what is behind the endpoint: the audio device (name, manufacturer, how it's connected — USB,
+  HD Audio, Bluetooth, …, and whether Device Manager reports a problem), its driver (provider, version, date, INF, and
+  whether it's Windows' generic class driver), for USB devices the vendor and product ID and the speed the device is
+  connected at (with a warning when a faster device runs slower because of a USB 2 port or cable), and the audio
+  effects (APOs) Windows runs on the endpoint, named, with the driver package that installed them. **Copy** puts it on
+  the clipboard as text for a bug report (it contains device instance IDs).
 
 All levels are shown in dBFS (−60…0 dB).
+
+**Light, dark and high contrast** — the app follows Windows: light or dark after the app mode in Settings →
+Personalisation → Colours, and Windows' own colours when a contrast theme is on. It switches while running. To force
+one (for screenshots, say), start it with `--theme=light`, `--theme=dark` or `--theme=high-contrast`.
 
 ## Requirements
 
@@ -103,6 +116,12 @@ dotnet publish -p:PublishProfile=win-x64-selfcontained
 
 (The same profile can be picked in Visual Studio's Publish dialog.)
 
+To run the unit tests (from the repo root):
+
+```powershell
+dotnet test
+```
+
 ## Good to know
 
 - **Selecting a microphone opens it.** Windows only reports an input's level while something records from it, so
@@ -129,12 +148,15 @@ Every finished item in [planning/DONE-TODO.md](planning/DONE-TODO.md) was tested
 Smart Sound Technology 4-channel mic array and a Jabra Link 390 USB headset dongle. Other hardware — surround setups,
 pro audio interfaces, directly paired Bluetooth headsets — hasn't been tried; reports are welcome.
 
-A GitHub Actions workflow builds every push to `main` on Windows (except documentation-only pushes), tags it
-with the next version and publishes it as a release (see "Versioning" below). There are no automated tests yet. Most of the code is a thin layer over live Windows Core Audio calls, which
-can't be meaningfully unit-tested without real devices; the pure-logic parts (event log, exporters, level scale,
-channel layout) are candidates for a test project.
+A GitHub Actions workflow builds every push to `main` on Windows (except documentation-only pushes), runs the unit
+tests, tags it with the next version and publishes it as a release (see "Versioning" below). Pull requests into
+`main` get the same tests and build, without a tag or release.
 
-A quick manual check after building:
+The unit tests (`tests/AudioDeviceDebugger.Tests`, xUnit) cover the parts that need no audio hardware: the event
+log (merging bursts, filters, what gets written to disk), the exporters and the daily log files, the dB scale,
+channel names, the property-value decoders, the channel conversion for test playback and the device rows' "in use"
+text. Most of the rest is a thin layer over live Windows Core Audio calls, which can't be meaningfully unit-tested
+without real devices; that part is checked by hand. A quick manual check after building:
 
 1. The device list matches what Windows Sound settings shows; plugging/unplugging a USB headset updates it.
 2. **Set Default / Set Comms** change the defaults, and Windows Sound settings agrees.
@@ -196,8 +218,10 @@ exported as Markdown (Export… → `.md`). Note that endpoint IDs in the log ca
 │   ├── Services/                Core Audio work, no UI: enumeration, defaults, details, volume, level meters,
 │   │                            tests and recordings, app sessions, event-log export
 │   ├── ViewModels/              MVVM glue between services and views
-│   ├── Views/                   MainWindow, LevelGraph, Theme.xaml (flat dark theme)
+│   ├── Views/                   MainWindow, LevelGraph, Theme.xaml (control styles), Themes/ (dark and light
+│   │                            palettes), ThemeManager (follows the Windows app mode and high contrast)
 │   └── Assets/                  App icon
+├── tests/AudioDeviceDebugger.Tests/  Unit tests (xUnit) for the parts that need no audio hardware
 └── tools/PropertyKeyNameGenerator/   Regenerates the property-key name table
 ```
 

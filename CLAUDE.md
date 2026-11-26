@@ -24,8 +24,9 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   The maintainer pushes; agents don't, unless asked for that branch.
 - Builds cleanly (0 warnings) and runs on Windows 11; every feature in `planning/DONE-TODO.md` was exercised on
   real hardware during development (the maintainer tests manually; see "Verifying changes"). No license file yet —
-  the maintainer's decision. No automated tests.
-- CI: `.github/workflows/build-and-tag.yml` publishes every push to `main` (windows-latest, .NET 10) as the
+  the maintainer's decision. Unit tests (xUnit) in `tests/AudioDeviceDebugger.Tests` cover the hardware-free logic;
+  run `dotnet test` from the repo root (CI runs them too). Add tests with new pure logic.
+- CI: `.github/workflows/build-and-tag.yml` runs the unit tests and publishes every push to `main` (windows-latest, .NET 10) as the
   single-file self-contained exe (publish profile `win-x64-selfcontained`, version stamped in) and, on success,
   pushes an annotated tag `vX.Y.Z` and creates a GitHub Release for it with `AudioDeviceDebugger-vX.Y.Z-win-x64.exe`
   + `.sha256` attached (`gh release create --generate-notes`; a re-run of a tagged commit re-uploads the files). The bump comes from the commit subjects since the last tag
@@ -33,20 +34,26 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   Documentation-only pushes (`**.md`, `docs/**` — `paths-ignore`) don't run the workflow and get no tag.
   So **the commit type matters** — use `feat:` only for user-visible features. Don't create version tags by hand
   and don't edit `<Version>` in the `.csproj` to release (it is only the first tag's version and the local-build
-  version). `.gitattributes` keeps `*.sh` LF — bash on the Windows runner fails on CRLF.
+  version). `.gitattributes` keeps `*.sh` LF — bash on the Windows runner fails on CRLF. Pull requests into `main`
+  run the same tests and build, but the tag and release steps are skipped for them.
 - Docs: `README.md` is for users (features, requirements, build, caveats) — update it when a user-visible feature
   changes; `TODO.md` holds the open items + roadmap (N3, N5 specified) and `planning/DONE-TODO.md` the finished
   items (move an item there once it's done); `docs/design-notes.md` holds implementation and verification notes for
   N1, N2, N4, the side-panel tabs and the visual refresh.
 - **Visual refresh** (2026-11-25): merged into `main` from `feature/visual-refresh` (PR #1, released as v0.3.0); its
   items are in `planning/DONE-TODO.md`. CI only runs on `main`, so feature branches get no CI build.
+- **Branch `feature/tests-inventory-grouping-theme`** (2026-11-25, pushed at the maintainer's request, not merged):
+  unit tests + CI test step (which also runs on pull requests into `main`, without tag or release), the Driver tab
+  (device inventory), grouping by device, and the light / high-contrast themes; one commit each. The items are ticked
+  in `TODO.md`; move them to `planning/DONE-TODO.md` once the branch is merged.
 - The maintainer's hardware: Jabra Link 390 USB dongle (headset speakers + mic), Realtek laptop speakers, Intel Smart
   Sound Technology 4-channel mic array, plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380,
-  Poly BT700, Poly Voyager Focus 2, HP dock). **All headsets connect through USB dongles** — none are paired with
-  Windows Bluetooth directly, so the A2DP/HFP ("call mode") switch happens inside the dongle, invisible to Windows.
+  Poly BT700, Poly Voyager Focus 2, HP dock). **On the laptop, all headsets connect through USB dongles** — none
+  are paired with Windows Bluetooth directly, so the A2DP/HFP ("call mode") switch happens inside the dongle, invisible to Windows.
   A second machine (desktop) is also used. It has Realtek USB Audio (only its digital output is active), an ASUS
   VP28U monitor on NVIDIA HDMI audio and a Logitech C922 webcam mic. Its Jabra Evolve3 75, Link 370 and Link 380 are
-  not present. Check which machine you are on (`Get-PnpDevice -Class AudioEndpoint`) before assuming hardware.
+  not present as USB devices; since 2026-11-25 the Evolve3 75 also shows up paired directly over Bluetooth LE Audio
+  (`APXENUM\…` endpoints under `BTHLE\…`, Unplugged while off). Check which machine you are on (`Get-PnpDevice -Class AudioEndpoint`) before assuming hardware.
 
 ## Environment & commands
 
@@ -62,6 +69,7 @@ cd src\AudioDeviceDebugger
 dotnet build -c Release                                   # output: bin\Release\net10.0-windows\win-x64\AudioDeviceDebugger.exe
 Start-Process bin\Release\net10.0-windows\win-x64\AudioDeviceDebugger.exe
 dotnet run --project tools/PropertyKeyNameGenerator       # (from repo root) regenerate Interop/PropertyKeyNames.g.cs
+dotnet test                                               # (from repo root) unit tests
 ```
 
 The running app locks its exe: stop it before rebuilding (`Get-Process AudioDeviceDebugger | Stop-Process`).
@@ -96,16 +104,23 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   (CSV / Markdown / JSON Lines / text), `AudioSessionService` (per-endpoint app sessions — "used by" — polled
   every 500 ms on its own MTA thread, plus session peaks for the selected device), `ModeCapture` (one capture
   stream in a chosen processing mode — Standard / Call (communications category) / Raw — via our own
-  `Interop/AudioClient2.cs` IAudioClient2 interop, plus the stream's effects from IAudioEffectsManager); the test
+  `Interop/AudioClient2.cs` IAudioClient2 interop, plus the stream's effects from IAudioEffectsManager),
+  `DeviceInventoryService` (Driver tab: device tree via `Interop/DeviceNode.cs` (cfgmgr32), USB speed via
+  `Interop/UsbHub.cs`, APOs from the endpoint's `FxProperties` registry key; pure helpers in `InventoryFormat`); the test
   service's A/B recording runs three of them at once. `DeviceEnumerationService.EndpointNotified` carries each
   IMMNotificationClient callback in detail (for the event log) alongside the coarse `DevicesChanged`.
-- `ViewModels/` — `MainViewModel` (refresh/debounce, filters, selection, tests, side panels, event logging),
-  `DeviceRowViewModel`, `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging),
+- `ViewModels/` — `MainViewModel` (refresh/debounce, filters, grouping, selection, tests, side panels, event logging),
+  `DeviceRowViewModel`, `DeviceListGroup` (a list group; cached per key, carries the collapsed state), `ChannelPeakViewModel`, `EventLogViewModel` (event timeline ring buffer + filters + merging),
   `SessionRowViewModel` (PROCESSES tab), `TakeRowViewModel` (RAW RECORDING tab: last take per processing mode). `Models/` — plain data + `LevelScale` (dB conversion).
-- `Views/` — `MainWindow` (toolbar 1 line, filter chips on the right; device grid top, grouped into OUTPUTS / INPUTS;
+- `Views/` — `MainWindow` (toolbar 1 line, filter chips on the right; device grid top, grouped into OUTPUTS / INPUTS
+  or by physical device (`Services/DeviceGrouping.cs`, the "By device" chip in the DEVICE header);
   details bottom: header card + `LevelGraph` + channel bars left, collapsible right-hand side panel showing one of four
-  horizontal tabs — Properties, Events, Processes (apps using the device), Raw recording (A/B takes)), `LevelGraph`,
-  `Theme.xaml` (palette, type scale and all control styles; merged in `App.xaml`).
+  horizontal tabs — Properties, Events, Processes (apps using the device), Raw recording (A/B takes), Driver), `LevelGraph`,
+  `Theme.xaml` (type scale and all control styles; merged in `App.xaml`), `Themes/Dark.xaml` + `Themes/Light.xaml`
+  (the colour palettes), `ThemeManager` (picks dark / light / high contrast from Windows, follows changes, `--theme=`).
+- `tests/AudioDeviceDebugger.Tests/` — xUnit tests of the hardware-free logic. It references the app (a self-contained
+  exe, hence `ValidateExecutableReferencesMatchSelfContained=false`; internals via `InternalsVisibleTo`), sets the
+  invariant culture for every test (`TestCulture.cs`), and uses `UseWPF` for the event log's CollectionView.
 - `tools/PropertyKeyNameGenerator/` — reads `Windows.Win32.winmd` from Microsoft.Windows.SDK.Win32Metadata and writes
   both generated tables (property keys; audio GUID constants).
 
@@ -132,7 +147,11 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
    (−60…0 dBFS). The property store is only read while the property panel is open (it's the expensive part of
    selection).
 10. WPF projects' implicit usings exclude `System.IO`; `Timer` is ambiguous (System.Timers vs System.Threading).
-11. **The UI uses a flat dark theme** (`Views/Theme.xaml`; use its named colours and sizes, never literals). The DataGrid coerces
+11. **The UI uses a flat theme in dark, light and high contrast** (styles and sizes in `Views/Theme.xaml`, colours in
+    `Views/Themes/*.xaml`). Use the named colours and sizes, never literals, and refer to palette colours with
+    **`DynamicResource`** (a `StaticResource` keeps the startup palette when Windows switches); a new palette key goes
+    into Dark.xaml, Light.xaml, `ThemeManager.HighContrastPalette` and `ThemeManager.PaletteKeys` (a test checks the
+    XAML ones). Code that reads palette brushes must listen to `ThemeManager.ThemeChanged`. The DataGrid coerces
     `DataGridRow.Background` to its `RowBackground`, so row-level hover/selection triggers do nothing — those colours
     are drawn in the `ListCell` template instead. Setting `CellStyle` doesn't remove the theme style's triggers, so
     pin `Foreground` or the selected row's text turns near-black ("inactive selection" colour). Thin icon glyphs get
@@ -173,6 +192,10 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     or hidden), which clips the last columns: `DeviceGrid_ScrollChanged` sets the DEVICE column's width instead.
 19. **A `ContentPresenter`'s own DataContext is its Content**: style triggers on it that bind to the outer view model
     silently get the fallback value. Use a `ContentControl` when it needs triggers.
+20. **Device containers can't be named through DevQuery here**: `DevGetObjectProperties` on a container took 60 s per
+    call and failed (desktop, 2026-11-25). Group names come from the endpoints (`DeviceGrouping.DeviceNameOf`).
+21. **A GroupItem only exposes expand / collapse to UI Automation when its template holds an `Expander`**; a plain
+    ToggleButton heading is invisible to UIA and screen readers.
 
 ## Verifying changes (techniques that worked)
 
@@ -205,4 +228,4 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   see lesson 16 and docs/design-notes.md.
 - The maintainer asked for explanations, not code, on the headset call-mode ideas (media-vs-call listening test,
   disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
-- Not started: license, automated tests, code signing (releases are unsigned, so SmartScreen warns).
+- Not started: license, code signing (releases are unsigned, so SmartScreen warns).

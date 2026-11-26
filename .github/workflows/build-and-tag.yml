@@ -4,10 +4,16 @@
 # feat -> minor, breaking (type!: / BREAKING CHANGE) -> major, anything else -> patch.
 # Pushes that only change documentation (Markdown files, docs/) don't run at all, so they get no tag; their commits
 # are covered by the next tag. A push that changes docs *and* anything else runs as usual.
+# Pull requests into main run the unit tests and the build too, but are never tagged or released.
 name: Build, tag and release
 
 on:
   push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
     branches: [main]
     paths-ignore:
       - '**.md'
@@ -17,9 +23,10 @@ on:
 permissions:
   contents: write # push the tag and create the release
 
-# One run at a time, so two quick pushes can't both claim the same version.
+# One release run at a time, so two quick pushes can't both claim the same version. Pull requests get a group of
+# their own each, so they don't wait for (or hold up) a release.
 concurrency:
-  group: build-and-tag
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'build-and-tag' }}
   cancel-in-progress: false
 
 jobs:
@@ -42,6 +49,11 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+
+      # Unit tests for the parts that need no audio hardware (tests/AudioDeviceDebugger.Tests). A failure stops the
+      # run before anything is tagged or released.
+      - name: Run the unit tests
+        run: dotnet test tests/AudioDeviceDebugger.Tests/AudioDeviceDebugger.Tests.csproj -c Release
 
       # Single-file, self-contained exe (runs without .NET installed), with the version stamped in.
       - name: Publish the app
@@ -69,7 +81,7 @@ jobs:
           echo "sha=dist/$name.sha256" >> "$GITHUB_OUTPUT"
 
       - name: Tag the commit
-        if: steps.version.outputs.skip != 'true'
+        if: github.event_name != 'pull_request' && steps.version.outputs.skip != 'true'
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
@@ -81,6 +93,7 @@ jobs:
       # Also runs when the commit was already tagged (a re-run), so a release that failed earlier is completed and
       # its files are replaced with this build's.
       - name: Publish the release with the exe
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -95,6 +108,7 @@ jobs:
           fi
 
       - name: Summary
+        if: github.event_name != 'pull_request'
         env:
           TAG: ${{ steps.version.outputs.tag }}
           SKIP: ${{ steps.version.outputs.skip }}

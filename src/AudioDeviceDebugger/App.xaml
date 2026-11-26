@@ -2,10 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="Views/MainWindow.xaml">
-    <!-- Application-wide, not per window: tooltips live in their own popup window. -->
+    <!-- Application-wide, not per window: tooltips live in their own popup window. The first dictionary is the colour
+         palette; ThemeManager replaces it with the one matching Windows (dark, light or high contrast). -->
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Views/Themes/Dark.xaml"/>
                 <ResourceDictionary Source="Views/Theme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
