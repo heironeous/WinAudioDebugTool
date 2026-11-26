@@ -298,6 +298,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (!SetField(ref _selectedDevice, value)) return;
             OnPropertyChanged(nameof(CanSetDefaults));
+            OnPropertyChanged(nameof(CanOpenRecordingsPanel));
+            if (!CanOpenRecordingsPanel && _openSidePanel == SidePanel.Recordings)
+            {
+                OpenSidePanel = SidePanel.None;
+            }
             EventLog.SelectedDeviceId = value?.Device.Id;
             UpdateCaptureStream();
             _sessionService.SetPeakDevice(value?.IsActive == true ? value.Device.Id : null);
@@ -379,6 +384,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public bool IsProcessesPanelOpen { get => _openSidePanel == SidePanel.Processes; set => SetSidePanel(SidePanel.Processes, value); }
     public bool IsRecordingsPanelOpen { get => _openSidePanel == SidePanel.Recordings; set => SetSidePanel(SidePanel.Recordings, value); }
     public bool IsDriverPanelOpen { get => _openSidePanel == SidePanel.Driver; set => SetSidePanel(SidePanel.Driver, value); }
+
+    /// <summary>Raw recording only applies to microphones: its tab is greyed out while an output is selected (and
+    /// selecting an output closes the panel).</summary>
+    public bool CanOpenRecordingsPanel => SelectedDevice?.IsOutput != true;
 
     private void SetSidePanel(SidePanel panel, bool open)
     {

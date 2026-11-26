@@ -129,10 +129,23 @@
                         <DataGridTemplateColumn.Header>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="DEVICE" VerticalAlignment="Center"/>
+                                <!-- Labelled with the grouping a click switches to. -->
                                 <CheckBox IsChecked="{Binding DataContext.GroupByDevice, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                          Content="By device" FontSize="{StaticResource FontCaption}" Padding="8,1,8,2" Margin="12,-3,0,-3"
-                                          Style="{StaticResource FilterChip}" VerticalAlignment="Center" AutomationProperties.Name="Group by device"
-                                          ToolTip="Group the list by physical device (a headset's speaker and mic together; built-in audio under This PC) instead of outputs and inputs"/>
+                                          FontSize="{StaticResource FontCaption}" Padding="8,1,8,2" Margin="12,-3,0,-3"
+                                          VerticalAlignment="Center" AutomationProperties.Name="Group by device">
+                                    <CheckBox.Style>
+                                        <Style TargetType="CheckBox" BasedOn="{StaticResource SwitchChip}">
+                                            <Setter Property="Content" Value="By device"/>
+                                            <Setter Property="ToolTip" Value="Group the list by physical device (a headset's speaker and mic together; built-in audio under This PC) instead of outputs and inputs"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter Property="Content" Value="By input / output"/>
+                                                    <Setter Property="ToolTip" Value="Group the list into outputs and inputs again"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </CheckBox.Style>
+                                </CheckBox>
                             </StackPanel>
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
@@ -595,13 +608,17 @@
                                 <TextBlock VerticalAlignment="Center"><Run Text="Processes"/></TextBlock>
                             </StackPanel>
                         </ToggleButton>
-                        <ToggleButton IsChecked="{Binding IsRecordingsPanelOpen}" AutomationProperties.Name="Raw recording">
+                        <ToggleButton IsChecked="{Binding IsRecordingsPanelOpen}" AutomationProperties.Name="Raw recording"
+                                      IsEnabled="{Binding CanOpenRecordingsPanel}" ToolTipService.ShowOnDisabled="True">
                             <ToggleButton.Style>
                                 <Style TargetType="ToggleButton" BasedOn="{StaticResource PanelTab}">
                                     <Setter Property="ToolTip" Value="Show raw recording: record the selected mic raw and as call apps receive it, and compare"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsRecordingsPanelOpen}" Value="True">
                                             <Setter Property="ToolTip" Value="Hide the raw recording panel"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CanOpenRecordingsPanel}" Value="False">
+                                            <Setter Property="ToolTip" Value="Raw recording is for microphones — select an input device"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>

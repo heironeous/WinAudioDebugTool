@@ -181,7 +181,8 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       flat list to a grouped view (collapsible groups; built-in devices in a
       "This PC" group).
       Done: a **By device** chip in the DEVICE header switches between
-      OUTPUTS / INPUTS and one group per container (state lines then say
+      OUTPUTS / INPUTS and one group per container; while grouped it reads
+      **By input / output**, the grouping a click returns to (state lines then say
       "Output ·" / "Input ·"). Group names come from the endpoints: the
       interface name ("Jabra Link 380"), or the monitor name for HDMI /
       DisplayPort ("ASUS VP28U", not "NVIDIA High Definition Audio"). Groups

@@ -215,3 +215,10 @@ docs/design-notes.md, "Visual refresh".
       zones near 0 dB, smooth scrolling
 - [x] **D3. Horizontal tabs with labels** for the side panel, instead of the
       icon strip at the right edge
+
+## Small fixes (2026-11-26)
+- [x] The **By device** chip is labelled with the grouping a click switches
+      to: it reads **By input / output** while grouped by device, without the
+      chip's "on" highlight (which would make that label look current)
+- [x] The **Raw recording** tab is greyed out while an output is selected
+      (raw capture is for microphones); selecting an output closes the panel
