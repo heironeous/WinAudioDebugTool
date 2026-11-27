@@ -22,6 +22,8 @@ Events tab with the timeline.*
 - Every audio endpoint in two sections, **OUTPUTS** and **INPUTS**, including disabled, not-present and unplugged ones
   (the **Also show** chips at the top right), with an icon for its type, its role badges (Default · Comms), a live level
   meter, volume slider and mute button.
+- Rows are coloured by state: a muted device is outlined in soft red, a disabled one outlined and tinted in a
+  stronger red, an unplugged one tinted yellow. Inactive devices (disabled, unplugged, not present) are also greyed out.
 - **By device** (in the list's header) groups the endpoints by physical device instead: a headset's speaker and
   microphone together, a monitor's outputs together, everything built in under **This PC**. Click a group's heading to
   collapse it. The button then reads **By input / output**, which switches back.

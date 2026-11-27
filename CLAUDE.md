@@ -54,6 +54,10 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   maintainer on the Jabra Evolve3 75 over Bluetooth Classic; LE Audio untried (open item in `TODO.md`).
 - **Disable / Enable** toolbar button (2026-11-26): `IPolicyConfig::SetEndpointVisibility` on the selected endpoint;
   no admin needed; Windows moves a disabled default away and back on Enable. A USB dongle's mic is untried.
+- **Row colours by state** (2026-11-27): `DeviceRowViewModel.RowState` drives a soft red outline (muted), a red
+  outline + tint (disabled) and a yellow tint (unplugged); not present keeps only the inactive-row dimming. Tints are
+  in `ListCell`, the outline in `ListRow`'s template (a copy of DataGridRow's default plus an overlay border). Seen on
+  the desktop in dark; muted, light and high contrast not yet seen.
 - The maintainer's hardware (laptop): Jabra Link 390 USB dongle (headset speakers + mic; not plugged in on
   2026-11-26), Realtek laptop speakers, Intel Smart Sound Technology 4-channel mic array, an HP 325 FHD webcam mic,
   plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380, Poly BT700, Poly Voyager Focus 2, HP

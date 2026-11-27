@@ -175,6 +175,15 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       the same keys and that text meets 4.5:1 contrast (dark tertiary text
       was brightened from #8F8F96 to #9C9CA3 to pass on raised surfaces).
       Not tested with a real Windows contrast theme switched on.
+- [x] **Row colours by state.** Muted, disabled, unplugged and not-present
+      devices easy to tell apart in the list.
+      Done (`DeviceRowViewModel.RowState`): muted → soft red outline;
+      disabled → stronger red outline plus red tint; unplugged → soft yellow
+      tint; not present → only the existing dimming (opacity 0.55, kept for
+      every inactive row). The tint is drawn in the cell between the
+      hover/selection background and the text, the outline in a copy of
+      DataGridRow's template on top of the cells (no layout shift). High
+      contrast: outlines only, no tints. Muted not yet seen on real hardware.
 - [x] **Device grouping.** Group the endpoints of one physical device by
       container ID (`DEVPKEY_Device_ContainerId`), e.g. "Jabra Evolve3 75"
       with its Speakers and Microphone rows. Switch the device list from a

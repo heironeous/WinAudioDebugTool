@@ -20,6 +20,14 @@
     <SolidColorBrush x:Key="ControlTrack" Color="#24FFFFFF"/>
     <SolidColorBrush x:Key="ControlOutline" Color="#30FFFFFF"/>
 
+    <!-- Device rows by state: muted outlined in soft red, disabled outlined and tinted in a stronger red, unplugged
+         tinted yellow. Translucent, so hover and selection still show through. Disabled and unplugged rows are dimmed
+         (opacity 0.55) like every inactive row, which softens their colours too. -->
+    <SolidColorBrush x:Key="RowMutedBorder" Color="#80E57373"/>
+    <SolidColorBrush x:Key="RowDisabledBorder" Color="#E57373"/>
+    <SolidColorBrush x:Key="RowDisabledTint" Color="#3CE57373"/>
+    <SolidColorBrush x:Key="RowUnpluggedTint" Color="#30E5B84B"/>
+
     <!-- Lines -->
     <SolidColorBrush x:Key="BorderSubtle" Color="#38383D"/>
     <SolidColorBrush x:Key="Separator" Color="#303034"/>

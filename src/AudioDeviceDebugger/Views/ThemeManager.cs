@@ -34,7 +34,8 @@ public static class ThemeManager
     /// <summary>The palette's keys: Dark.xaml and Light.xaml define all of them, the high-contrast palette too.</summary>
     public static readonly string[] PaletteKeys =
     {
-        "SurfaceBase", "SurfacePanel", "SurfaceRaised", "RowHover", "RowSelected", "RowSelectedBorder", "ControlPressed",
+        "SurfaceBase", "SurfacePanel", "SurfaceRaised", "RowHover", "RowSelected", "RowSelectedBorder", "RowMutedBorder",
+        "RowDisabledBorder", "RowDisabledTint", "RowUnpluggedTint", "ControlPressed",
         "ControlTrack", "ControlOutline", "BorderSubtle", "Separator", "TextPrimary", "TextSecondary", "TextTertiary",
         "Accent", "AccentSoft", "Positive", "Caution", "Negative", "GraphPlate",
     };
@@ -150,6 +151,11 @@ public static class ThemeManager
             ["ControlPressed"] = Solid(highlight),
             ["ControlTrack"] = Solid(gray),
             ["ControlOutline"] = Solid(text),
+            // No tints in high contrast; outlines only (the state line still says which state a row is in).
+            ["RowMutedBorder"] = Solid(gray),
+            ["RowDisabledBorder"] = Solid(text),
+            ["RowDisabledTint"] = Solid(Colors.Transparent),
+            ["RowUnpluggedTint"] = Solid(Colors.Transparent),
             ["BorderSubtle"] = Solid(text),
             ["Separator"] = Solid(gray),
             ["TextPrimary"] = Solid(text),

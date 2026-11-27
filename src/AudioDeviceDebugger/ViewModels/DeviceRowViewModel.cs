@@ -46,6 +46,17 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
 
     public bool IsActive => Device.State == DeviceConnectionState.Active;
 
+    /// <summary>What colours the row in the list: an outline for Muted, an outline plus a tint for Disabled, a tint for
+    /// Unplugged; Not present keeps only the dimming that every inactive row gets. Mute only counts on an active
+    /// device (it is the only kind with a volume control).</summary>
+    public DeviceRowState RowState => Device.State switch
+    {
+        DeviceConnectionState.Disabled => DeviceRowState.Disabled,
+        DeviceConnectionState.NotPresent => DeviceRowState.NotPresent,
+        DeviceConnectionState.Unplugged => DeviceRowState.Unplugged,
+        _ => _isMuted && _hasVolume ? DeviceRowState.Muted : DeviceRowState.Normal,
+    };
+
     /// <summary>Segoe Fluent Icons glyph for the kind of device (its form factor). Drivers often report a plain
     /// "Speakers" or "Microphone" for a headset, so the icon is only as specific as they are.</summary>
     public string IconGlyph => Device.FormFactor switch
@@ -130,6 +141,7 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
             if (_hasVolume == value) return;
             _hasVolume = value;
             OnPropertyChanged(nameof(HasVolume));
+            OnPropertyChanged(nameof(RowState));
         }
     }
 
@@ -159,6 +171,7 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
             if (_isMuted == value) return;
             _isMuted = value;
             OnPropertyChanged(nameof(IsMuted));
+            OnPropertyChanged(nameof(RowState));
             MuteEditedByUser?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -183,6 +196,7 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
         {
             _isMuted = s.Muted;
             OnPropertyChanged(nameof(IsMuted));
+            OnPropertyChanged(nameof(RowState));
         }
     }
 
@@ -262,4 +276,14 @@ public sealed class DeviceRowViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
     public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+/// <summary>See <see cref="DeviceRowViewModel.RowState"/>.</summary>
+public enum DeviceRowState
+{
+    Normal,
+    Muted,
+    Disabled,
+    Unplugged,
+    NotPresent,
 }

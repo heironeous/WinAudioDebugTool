@@ -20,6 +20,12 @@
     <SolidColorBrush x:Key="ControlTrack" Color="#1C000000"/>
     <SolidColorBrush x:Key="ControlOutline" Color="#38000000"/>
 
+    <!-- Device rows by state (see Dark.xaml). The unplugged tint is a clear yellow rather than the brownish Caution. -->
+    <SolidColorBrush x:Key="RowMutedBorder" Color="#80C42B1C"/>
+    <SolidColorBrush x:Key="RowDisabledBorder" Color="#C42B1C"/>
+    <SolidColorBrush x:Key="RowDisabledTint" Color="#30C42B1C"/>
+    <SolidColorBrush x:Key="RowUnpluggedTint" Color="#40F2C230"/>
+
     <!-- Lines -->
     <SolidColorBrush x:Key="BorderSubtle" Color="#D9D9DE"/>
     <SolidColorBrush x:Key="Separator" Color="#E7E7EB"/>

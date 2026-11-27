@@ -124,6 +124,34 @@ public class DeviceRowViewModelTests
     public void Icon_follows_the_form_factor(AudioDirection direction, int? formFactor, string glyph) =>
         Assert.Equal(glyph, new DeviceRowViewModel(Device(direction, formFactor: formFactor)).IconGlyph);
 
+    [Theory]
+    [InlineData(DeviceConnectionState.Active, false, DeviceRowState.Normal)]
+    [InlineData(DeviceConnectionState.Active, true, DeviceRowState.Muted)]
+    [InlineData(DeviceConnectionState.Disabled, false, DeviceRowState.Disabled)]
+    [InlineData(DeviceConnectionState.Unplugged, false, DeviceRowState.Unplugged)]
+    [InlineData(DeviceConnectionState.NotPresent, false, DeviceRowState.NotPresent)]
+    public void Row_state_follows_the_device_state_and_mute(DeviceConnectionState state, bool muted, DeviceRowState expected)
+    {
+        var row = new DeviceRowViewModel(Device(state: state));
+        if (state == DeviceConnectionState.Active) row.ApplyVolumeState(new EndpointVolumeState(0.5f, muted));
+
+        Assert.Equal(expected, row.RowState);
+    }
+
+    [Fact]
+    public void Muting_changes_the_row_state()
+    {
+        var row = new DeviceRowViewModel(Device());
+        row.ApplyVolumeState(new EndpointVolumeState(0.5f, false));
+        var changed = new List<string?>();
+        row.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        row.IsMuted = true;
+
+        Assert.Equal(DeviceRowState.Muted, row.RowState);
+        Assert.Contains(nameof(DeviceRowViewModel.RowState), changed);
+    }
+
     [Fact]
     public void Level_text_and_meter_follow_the_peak()
     {
