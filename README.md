@@ -66,8 +66,8 @@ colour zones (yellow from −12 dB, red from −3 dB), and per-channel meters.
   starting and stopping streams, and tests. Filter it, copy it, or export it as CSV, Markdown or JSON Lines — handy
   for "my mic died in the meeting at 14:03". The timeline is also saved to disk, one JSON Lines file per day in
   `%LOCALAPPDATA%\AudioDeviceDebugger`, kept for 14 days.
-- **Processes** — which applications have the selected device open (app, process and PID, streaming or idle, the app's
-  own volume, live level). Opening a Bluetooth/USB headset's mic is what switches it into low-quality "call mode", so
+- **Processes** — which applications have the selected device open (app, process and PID, streaming or idle, live
+  level), with each app's own **volume and mute** on that device, like the Windows volume mixer. Opening a Bluetooth/USB headset's mic is what switches it into low-quality "call mode", so
   this shows who is doing it. The **Output** (or **Input**) column shows the device each app uses and lets you change
   it: send Spotify to the speakers while Teams stays on the headset, like "App volume and device preferences" in the
   Windows Sound settings. Windows remembers the choice per app; **Windows default** undoes it. Apps that pick a device

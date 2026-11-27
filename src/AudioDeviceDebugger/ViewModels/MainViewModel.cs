@@ -1256,7 +1256,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             }
             if (existing < 0)
             {
-                SelectedDeviceSessions.Insert(i, new SessionRowViewModel(ordered[i]));
+                var row = new SessionRowViewModel(ordered[i], isOutput: device!.Device.Direction == AudioDirection.Output);
+                row.VolumeEditedByUser += OnSessionVolumeEdited;
+                row.MuteEditedByUser += OnSessionMuteEdited;
+                SelectedDeviceSessions.Insert(i, row);
             }
             else
             {
@@ -1272,6 +1275,27 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             ? "No other app has this device open"
             : $"{others.Count} app session{(others.Count == 1 ? "" : "s")}, {streaming} streaming";
         RefreshAppRoutes();
+    }
+
+    // ---- Per-app volume and mute (N6) --------------------------------------------------------------------------------
+
+    // Slider drags send many values; the service merges them, and only a failure is reported.
+    private async void OnSessionVolumeEdited(object? sender, EventArgs e)
+    {
+        if (sender is not SessionRowViewModel row || !row.CanAdjustVolume) return;
+        string? error = await _sessionService.SetSessionVolumeAsync(row.Info.DeviceId, row.Key,
+            (float)(row.VolumePercent / 100.0), mute: null);
+        if (error is not null) SetStatus($"Couldn't set the volume of {row.AppName}: {error}");
+    }
+
+    private async void OnSessionMuteEdited(object? sender, EventArgs e)
+    {
+        if (sender is not SessionRowViewModel row || !row.CanAdjustVolume) return;
+        bool mute = row.IsMuted;
+        string? error = await _sessionService.SetSessionVolumeAsync(row.Info.DeviceId, row.Key, volume: null, mute);
+        SetStatus(error is null
+            ? $"{(mute ? "Muted" : "Unmuted")} {row.AppName} on this device."
+            : $"Couldn't {(mute ? "mute" : "unmute")} {row.AppName}: {error}");
     }
 
     // ---- Per-app devices (N6) -----------------------------------------------------------------------------------------

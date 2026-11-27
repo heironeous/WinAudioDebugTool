@@ -24,11 +24,8 @@ controls with `AdminOnly.IsRequired` (see docs/design-notes.md,
 "Administrator rights").
 
 ## 1. Audio control centre (N6)
-Manage what Windows hides several menus deep. Per-app routing is done (see
-planning/DONE-TODO.md).
-- [ ] **Per-app volume and mute.** Make the Processes tab's VOLUME column
-      adjustable (it only shows the app's volume today), next to the
-      per-app device.
+Manage what Windows hides several menus deep. Per-app routing and per-app
+volume and mute are done (see planning/DONE-TODO.md).
 - [ ] **Endpoint settings in one place.** The shared-mode format (sample
       rate / bit depth, via `IPolicyConfig`), the "allow exclusive mode"
       flags, audio enhancements on/off and the spatial sound mode.

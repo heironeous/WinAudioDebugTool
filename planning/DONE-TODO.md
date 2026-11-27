@@ -341,3 +341,12 @@ From the 2026-11-23 brainstorm; built on
       desktop (Jabra Evolve3 75 and Evolve 75): an app's sound moved from
       one to the other. The Windows 10 interface ID is untested (see
       docs/design-notes.md)
+- [x] **Per-app volume and mute** (2026-11-27). The Processes tab's VOLUME
+      column is a mute button and a slider per app, like the Windows volume
+      mixer: the app's own level on the selected device (outputs and
+      inputs), not the device's. Not offered for this app's own sessions or
+      exited apps. Tested end to end on the desktop with a silent scratch
+      process that reported its own volume and mute while the slider and
+      button were driven by UI Automation (then restored), and on Brave
+      playing on the Jabra Evolve 75 with the maintainer's go-ahead
+      (Windows read 0.50, then muted, then 1.00 / unmuted again)

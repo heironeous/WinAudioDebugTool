@@ -3,8 +3,9 @@ using AudioDeviceDebugger.Models;
 namespace AudioDeviceDebugger.Services;
 
 /// <summary>
-/// Watches which apps have audio sessions on each endpoint (read-only — it never changes another app's volume).
-/// Events are raised on the service's own thread; subscribers marshal to the UI thread.
+/// Watches which apps have audio sessions on each endpoint, and sets an app's volume or mute when the user asks
+/// (<see cref="SetSessionVolumeAsync"/>; nothing is changed on its own). Events are raised on the service's own
+/// thread; subscribers marshal to the UI thread.
 /// </summary>
 public interface IAudioSessionService : IDisposable
 {
@@ -21,6 +22,11 @@ public interface IAudioSessionService : IDisposable
 
     /// <summary>The endpoint whose session peaks are polled for the details panel (the selected device), or null.</summary>
     void SetPeakDevice(string? deviceId);
+
+    /// <summary>Sets one session's volume (0–1) and/or mute, like the Windows volume mixer — the app's own level, not
+    /// the device's. Runs on the service's thread (rapid slider changes are merged); completes with null once done, or
+    /// with the reason it failed.</summary>
+    Task<string?> SetSessionVolumeAsync(string deviceId, string sessionKey, float? volume, bool? mute);
 }
 
 public sealed record AudioSessionSnapshot(

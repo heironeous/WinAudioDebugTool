@@ -64,6 +64,9 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   drops button labels when the window is narrow (`FitToolbar`). Verified by the maintainer on the desktop, both with
   UAC elevating admins silently (`ConsentPromptBehaviorAdmin = 0`) and with the prompt on (Yes →
   elevated window, No → app keeps running unchanged). See docs/design-notes.md.
+- **Per-app volume and mute** (N6, 2026-11-27): the Processes tab's VOLUME column (mute button + slider per app),
+  applied on `AudioSessionService`'s thread (`SetSessionVolumeAsync`). Verified end to end with a silent scratch process
+  and, with the maintainer's go-ahead, on Brave (set, muted and restored).
 - **Per-app routing** (N6, 2026-11-27): the Processes tab's OUTPUT / INPUT column, via the undocumented
   `Interop/AudioPolicyConfig.cs` (see docs/design-notes.md). Verified end to end with a silent scratch process, and by the
   maintainer moving an app between two Bluetooth headphones (Jabra Evolve3 75 and Evolve 75, desktop); Windows 10 untried.
@@ -129,7 +132,7 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   `DeviceDetailsService` (formats; `GetProperties` separately, values made readable by `PropertyValueFormatter`), `EndpointVolumeService` (volume/mute + external-change
   notifications), `LevelMeterService` (single MTA polling thread), `AudioTestService` + `AudioTestSession` (phased
   tests with Stop), `TestMusic` (procedural test clip), `ChannelMatchingSampleProvider`, `EventLogExporter`
-  (CSV / Markdown / JSON Lines / text), `AudioSessionService` (per-endpoint app sessions — "used by" — polled
+  (CSV / Markdown / JSON Lines / text), `AudioSessionService` (per-endpoint app sessions — "used by" — and their app volume / mute, polled
   every 500 ms on its own MTA thread, plus session peaks for the selected device), `ModeCapture` (one capture
   stream in a chosen processing mode — Standard / Call (communications category) / Raw — via our own
   `Interop/AudioClient2.cs` IAudioClient2 interop, plus the stream's effects from IAudioEffectsManager),
@@ -236,9 +239,9 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     admin-only controls use `AdminOnly.IsRequired`, and **Restart as admin** relaunches it. Clicking that button in an
     automated check pops a UAC prompt on the maintainer's screen — don't. UI Automation from an unelevated shell can't
     drive an elevated window (UIPI). CI runners are elevated, so tests touching `AppElevation` must pass both ways.
-24. **Per-app devices** (`AudioPolicyConfig`): the setting is stored per app (executable) and survives restarts, so
-    never change a real app's device in an automated check, and never call `ClearAllPersistedApplicationDefaultEndpoints`
-    (it wipes every app's setting). Test on a scratch process that holds a silent session, and reset it afterwards.
+24. **Per-app devices and volumes** (`AudioPolicyConfig`, `SetSessionVolumeAsync`): Windows stores both per app
+    (executable) and keeps them across restarts, so never change a real app's device or volume in an automated check,
+    and never call `ClearAllPersistedApplicationDefaultEndpoints` (it wipes every app's setting). Test on a scratch process that holds a silent session, and reset it afterwards.
     `GetPersistedDefaultAudioEndpoint` returns E_INVALIDARG for a process that hasn't opened audio yet.
 
 ## Verifying changes (techniques that worked)

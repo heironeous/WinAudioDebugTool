@@ -910,7 +910,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="74"/>
-                                        <ColumnDefinition Width="52"/>
+                                        <ColumnDefinition Width="118"/>
                                         <ColumnDefinition Width="80"/>
                                         <ColumnDefinition Width="140"/>
                                     </Grid.ColumnDefinitions>
@@ -918,7 +918,7 @@
                                     <TextBlock Grid.Column="1" Text="PROCESS · PID" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
                                     <TextBlock Grid.Column="2" Text="STATE" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
                                     <TextBlock Grid.Column="3" Text="VOLUME" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"
-                                               ToolTip="App volume (Windows volume mixer)"/>
+                                               ToolTip="Each app's own volume and mute on this device, like the Windows volume mixer"/>
                                     <TextBlock Grid.Column="4" Text="LEVEL" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
                                     <TextBlock Grid.Column="5" Text="{Binding SessionsRouteHeader}" Margin="12,0,0,0" FontSize="{StaticResource FontCaption}"
                                                Foreground="{DynamicResource TextTertiary}" ToolTip="The device each app uses: the Windows default, or one chosen for the app"/>
@@ -933,7 +933,7 @@
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="74"/>
-                                                        <ColumnDefinition Width="52"/>
+                                                        <ColumnDefinition Width="118"/>
                                                         <ColumnDefinition Width="80"/>
                                                         <ColumnDefinition Width="140"/>
                                                     </Grid.ColumnDefinitions>
@@ -963,8 +963,75 @@
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
+                                                    <!-- App volume and mute (N6), like the Windows volume mixer. Read-only text for this
+                                                         app's own sessions and exited apps. -->
+                                                    <Grid Grid.Column="3" Margin="0,0,10,0"
+                                                          Visibility="{Binding CanAdjustVolume, Converter={StaticResource BoolToVisibility}}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <ToggleButton Grid.Column="0" Width="24" Height="22" Margin="0,0,4,0"
+                                                                      IsChecked="{Binding IsMuted, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                            <ToggleButton.Style>
+                                                                <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatIconToggle}">
+                                                                    <Setter Property="ToolTip" Value="Mute this app"/>
+                                                                    <Setter Property="AutomationProperties.Name" Value="Mute app"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                                                            <Setter Property="ToolTip" Value="Unmute this app"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ToggleButton.Style>
+                                                            <TextBlock FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontLabel}"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <!-- Output: speaker / speaker-muted. Input: mic / mic-off. -->
+                                                                        <Setter Property="Text" Value="&#xE720;"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsOutput}" Value="True">
+                                                                                <Setter Property="Text" Value="&#xE767;"/>
+                                                                            </DataTrigger>
+                                                                            <MultiDataTrigger>
+                                                                                <MultiDataTrigger.Conditions>
+                                                                                    <Condition Binding="{Binding IsOutput}" Value="True"/>
+                                                                                    <Condition Binding="{Binding IsMuted}" Value="True"/>
+                                                                                </MultiDataTrigger.Conditions>
+                                                                                <Setter Property="Text" Value="&#xE74F;"/>
+                                                                                <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
+                                                                            </MultiDataTrigger>
+                                                                            <MultiDataTrigger>
+                                                                                <MultiDataTrigger.Conditions>
+                                                                                    <Condition Binding="{Binding IsOutput}" Value="False"/>
+                                                                                    <Condition Binding="{Binding IsMuted}" Value="True"/>
+                                                                                </MultiDataTrigger.Conditions>
+                                                                                <Setter Property="Text" Value="&#xEC54;"/>
+                                                                                <Setter Property="Foreground" Value="{DynamicResource Negative}"/>
+                                                                            </MultiDataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </ToggleButton>
+                                                        <Slider Grid.Column="1" Style="{StaticResource FlatSlider}" Minimum="0" Maximum="100"
+                                                                VerticalAlignment="Center" IsMoveToPointEnabled="True" SmallChange="1" LargeChange="10"
+                                                                Value="{Binding VolumePercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                ToolTip="{Binding VolumeText}" AutomationProperties.Name="App volume"/>
+                                                    </Grid>
                                                     <TextBlock Grid.Column="3" Text="{Binding VolumeText}" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextSecondary}"
-                                                               VerticalAlignment="Center" ToolTip="App volume (Windows volume mixer)"/>
+                                                               VerticalAlignment="Center" ToolTip="App volume (Windows volume mixer)">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding CanAdjustVolume}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                     <ProgressBar Grid.Column="4" Style="{StaticResource FlatMeter}" Minimum="0" Maximum="1"
                                                                  Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
                                                                  VerticalAlignment="Center"/>

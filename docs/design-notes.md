@@ -634,6 +634,29 @@ setting as "App volume and device preferences" in the Windows Sound settings.
   connected a second Bluetooth headset (Jabra Evolve 75 next to the Evolve3 75) and confirmed an app's sound moves from
   one to the other. Windows 10 is still untried.
 
+## Per-app volume and mute (N6, 2026-11-27)
+
+The Processes tab's VOLUME column sets an app's own volume and mute on the selected device (its session's
+`ISimpleAudioVolume`), the same as the Windows volume mixer. It works on capture sessions too (an app's mic level).
+
+- **Threading.** Session objects belong to `AudioSessionService`'s MTA thread (lesson 3), so
+  `SetSessionVolumeAsync(deviceId, sessionKey, volume?, mute?)` queues a request and wakes that thread, which applies
+  it before its next scan and completes the task with null or the error. Requests for one session that pile up during
+  a slider drag are merged (latest volume, latest mute). The session is found by its instance identifier on a fresh
+  enumeration; a rescan is requested afterwards so the list shows the new values.
+- **Row.** `SessionRowViewModel` mirrors the device rows: `VolumePercent` / `IsMuted` setters raise "edited by user"
+  events, scans update them silently. For 1.5 s after a user change, scanned values are ignored, so a scan taken
+  before the change reached Windows doesn't snap the slider back. Values are whole percent, 0–100. Not offered for
+  this app's own sessions (its meter capture and tests) or for apps that have exited; the system sounds can be set.
+- **Not logged.** App volume changes only show in the status line (mute) or not at all (slider); the event log keeps
+  device-level volume only. Could be added with the same merging as device volume drags.
+- **Verification.** End to end via UI Automation on the desktop: a silent scratch process printing its own session's
+  volume and mute every 500 ms saw 0.35 and muted after the slider was set to 35 and the button toggled, and 1.00 /
+  unmuted after both were restored. Then, with the maintainer's go-ahead, on Brave playing on the Jabra Evolve 75: a
+  separate read-only NAudio reader saw Brave's session at 0.50, then muted, then back to 1.00 / unmuted after the
+  original values were restored through the app. Unit tests cover the row (scan vs user edit, the hold, rounding, which sessions
+  are adjustable).
+
 ## Administrator rights (2026-11-27)
 
 The app stays a single exe that runs unelevated (`asInvoker` in `app.manifest`); features that need administrator

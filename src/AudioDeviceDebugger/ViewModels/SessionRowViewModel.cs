@@ -7,9 +7,19 @@ namespace AudioDeviceDebugger.ViewModels;
 /// Updated in place (by session key) so the list doesn't flicker on every scan.</summary>
 public sealed class SessionRowViewModel : INotifyPropertyChanged
 {
-    public SessionRowViewModel(AudioSessionInfo info) => _info = info;
+    /// <param name="isOutput">Whether the session is on an output (speaker icons) or an input (mic icons).</param>
+    /// <param name="clock">For tests; the current UTC time otherwise.</param>
+    public SessionRowViewModel(AudioSessionInfo info, bool isOutput = true, Func<DateTime>? clock = null)
+    {
+        _info = info;
+        IsOutput = isOutput;
+        _clock = clock ?? (() => DateTime.UtcNow);
+        _volumePercent = Math.Round(info.Volume * 100.0);
+        _isMuted = info.Muted;
+    }
 
     private AudioSessionInfo _info;
+    private readonly Func<DateTime> _clock;
     public AudioSessionInfo Info => _info;
 
     public string Key => _info.Key;
@@ -32,7 +42,74 @@ public sealed class SessionRowViewModel : INotifyPropertyChanged
     }) + (_info.ProcessExited ? " · exited" : "");
 
     /// <summary>The app's own volume for this session (Windows volume mixer), e.g. "100 %" or "muted".</summary>
-    public string VolumeText => _info.Muted ? "muted" : $"{Math.Round(_info.Volume * 100)} %";
+    public string VolumeText => _isMuted ? "muted" : $"{Math.Round(_volumePercent)} %";
+
+    // ---- App volume and mute (VOLUME column) -------------------------------------------------------------------------
+
+    public bool IsOutput { get; }
+
+    /// <summary>The volume mixer controls every session except this app's own (its meter and test streams) and the
+    /// leftovers of an app that has exited.</summary>
+    public bool CanAdjustVolume => !_info.IsThisApp && !_info.ProcessExited;
+
+    // After the user moves the slider or clicks mute, scans are ignored this long: a scan taken just before the change
+    // reached Windows would otherwise snap the control back for a moment.
+    internal static readonly TimeSpan UserEditHold = TimeSpan.FromSeconds(1.5);
+    private DateTime _volumeHeldUntil, _muteHeldUntil;
+
+    private double _volumePercent;
+
+    /// <summary>The app's volume, 0–100. Setting it (from the slider) raises <see cref="VolumeEditedByUser"/>.</summary>
+    public double VolumePercent
+    {
+        get => _volumePercent;
+        set
+        {
+            value = Math.Round(Math.Clamp(value, 0, 100));
+            if (_volumePercent == value) return;
+            _volumePercent = value;
+            _volumeHeldUntil = _clock() + UserEditHold;
+            OnPropertyChanged(nameof(VolumePercent));
+            OnPropertyChanged(nameof(VolumeText));
+            VolumeEditedByUser?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private bool _isMuted;
+
+    /// <summary>The app's mute. Setting it (from the mute button) raises <see cref="MuteEditedByUser"/>.</summary>
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (_isMuted == value) return;
+            _isMuted = value;
+            _muteHeldUntil = _clock() + UserEditHold;
+            OnPropertyChanged(nameof(IsMuted));
+            OnPropertyChanged(nameof(VolumeText));
+            MuteEditedByUser?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public event EventHandler? VolumeEditedByUser;
+    public event EventHandler? MuteEditedByUser;
+
+    /// <summary>Takes volume and mute from a scan without raising the "edited by user" events, except right after
+    /// the user changed them here.</summary>
+    private void ApplyScannedVolume(AudioSessionInfo info)
+    {
+        var now = _clock();
+        double percent = Math.Round(info.Volume * 100.0);
+        if (now >= _volumeHeldUntil && _volumePercent != percent)
+        {
+            _volumePercent = percent;
+        }
+        if (now >= _muteHeldUntil && _isMuted != info.Muted)
+        {
+            _isMuted = info.Muted;
+        }
+    }
 
     public string ToolTip
     {
@@ -138,6 +215,7 @@ public sealed class SessionRowViewModel : INotifyPropertyChanged
     {
         if (info == _info) return;
         _info = info;
+        ApplyScannedVolume(info);
         OnPropertyChanged(string.Empty); // everything derived from Info (the route is set again by the caller)
     }
 

@@ -61,6 +61,65 @@ public sealed class AudioSessionService : IAudioSessionService
         _wake.Set();
     }
 
+    private sealed record VolumeRequest(string DeviceId, string SessionKey, float? Volume, bool? Mute,
+        TaskCompletionSource<string?> Done);
+
+    private readonly System.Collections.Concurrent.ConcurrentQueue<VolumeRequest> _volumeRequests = new();
+
+    public Task<string?> SetSessionVolumeAsync(string deviceId, string sessionKey, float? volume, bool? mute)
+    {
+        var done = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (_disposed)
+        {
+            done.SetResult("the session watcher has stopped");
+            return done.Task;
+        }
+        _volumeRequests.Enqueue(new VolumeRequest(deviceId, sessionKey, volume, mute, done));
+        _wake.Set();
+        return done.Task;
+    }
+
+    /// <summary>Applies the queued volume / mute requests. Several requests for one session (a slider drag) are merged
+    /// into one change, the latest value of each.</summary>
+    private void ApplyVolumeRequests(Dictionary<string, Endpoint> endpoints)
+    {
+        var requests = new List<VolumeRequest>();
+        while (_volumeRequests.TryDequeue(out var request)) requests.Add(request);
+        if (requests.Count == 0) return;
+
+        foreach (var group in requests.GroupBy(r => (r.DeviceId, r.SessionKey)))
+        {
+            float? volume = group.LastOrDefault(r => r.Volume is not null)?.Volume;
+            bool? mute = group.LastOrDefault(r => r.Mute is not null)?.Mute;
+            string? error = endpoints.TryGetValue(group.Key.DeviceId, out var endpoint)
+                ? SetVolume(endpoint, group.Key.SessionKey, volume, mute)
+                : "the device isn't active";
+            foreach (var request in group) request.Done.TrySetResult(error);
+        }
+        _scanRequested = true; // report the new values with the next scan
+    }
+
+    private static string? SetVolume(Endpoint endpoint, string sessionKey, float? volume, bool? mute)
+    {
+        try
+        {
+            var sessions = endpoint.Manager.Sessions;
+            for (int i = 0; i < sessions.Count; i++)
+            {
+                using var control = sessions[i];
+                if (control.GetSessionInstanceIdentifier != sessionKey) continue;
+                if (volume is { } v) control.SimpleAudioVolume.Volume = Math.Clamp(v, 0f, 1f);
+                if (mute is { } m) control.SimpleAudioVolume.Mute = m;
+                return null;
+            }
+            return "the app's session has closed";
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
     private void Run()
     {
         var endpoints = new Dictionary<string, Endpoint>();
@@ -99,6 +158,8 @@ public sealed class AudioSessionService : IAudioSessionService
                     var endpoint = Endpoint.TryOpen(enumerator, id, OnSessionCreated);
                     if (endpoint is not null) endpoints[id] = endpoint;
                 }
+
+                ApplyVolumeRequests(endpoints);
 
                 var now = DateTime.UtcNow;
                 bool peakDeviceChanged = peakDevice != peakControlsDevice;
@@ -153,6 +214,7 @@ public sealed class AudioSessionService : IAudioSessionService
         {
             DisposeAll(peakControls);
             foreach (var endpoint in endpoints.Values) endpoint.Dispose();
+            while (_volumeRequests.TryDequeue(out var request)) request.Done.TrySetResult("the session watcher has stopped");
         }
     }
 
