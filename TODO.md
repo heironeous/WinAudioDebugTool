@@ -28,6 +28,58 @@ as its own commit, with this file (and the README, if user-visible) updated in
 the same commit; once it is done, its items move to
 [planning/DONE-TODO.md](planning/DONE-TODO.md).
 
+### Next up: ideas from the 2026-11-27 brainstorm
+The maintainer picked these four directions as the next focus. Each needs a
+short spec (like N3 / N5) before it is built; features that need
+administrator rights mark their controls with `AdminOnly.IsRequired` (see
+"Least privilege" below).
+
+**N6. Audio control centre** — manage what Windows hides several menus deep.
+- [ ] **Per-app routing.** Send one app (Teams) to the headset and another
+      (Spotify) to the speakers, through the undocumented
+      `IAudioPolicyConfigFactory` (the interface EarTrumpet and SoundSwitch
+      use). Lives in the Processes tab, next to per-app volume and mute.
+- [ ] **Endpoint settings in one place.** The shared-mode format (sample
+      rate / bit depth, via `IPolicyConfig`), the "allow exclusive mode"
+      flags, audio enhancements on/off, the spatial sound mode, and the
+      communications ducking toggle (see "Other ideas").
+- [ ] **Hardware controls through device topology.** Mic boost and hardware
+      AGC (`IDeviceTopology` parts: `IAudioVolumeLevel`,
+      `IAudioAutoGainControl`), plus a read-only topology view (connectors,
+      volume / mute / AGC nodes). The Bluetooth code already walks the
+      topology.
+
+**N7. Reliability monitoring** — "why did my audio break?"
+- [ ] **Glitch detection.** Count dropouts per device and app from the audio
+      engine's ETW events (what WPA uses for glitch analysis) and show them
+      on the event timeline. ETW real-time sessions usually need
+      administrator rights: likely the first `AdminOnly` feature.
+- [ ] **Correlate with the system logs.** Bluetooth disconnects, USB resets
+      and power events from the Windows System event log on the same
+      timeline ("the headset dropped 3 s after a USB selective suspend").
+- [ ] **Long-term stats per device:** disconnects per day, time spent in call
+      mode, how often the default changed. Builds on N2's daily log files and
+      tray mode.
+
+**N8. Seeing the signal: loopback and analysis**
+- [ ] **Loopback capture of outputs** (WASAPI loopback): record what an
+      output plays, to show its spectrum and check what render effects (APOs)
+      change. Today the app can't record an output at all (see N3).
+- [ ] **Per-app capture** (process loopback, Windows 10 2004+): record only
+      one app's audio, e.g. what Teams sends to the speakers.
+- [ ] **Live spectrum / spectrogram** for any device, generalising N3's
+      planned `SpectrumView`.
+
+**N9. Pre-call check** — one button that answers "am I ready for this
+meeting?" with a short green / yellow / red list, for people who aren't audio
+experts.
+- [ ] Is the right mic the comms default, and is it unmuted?
+- [ ] Is the level OK, and is the bandwidth wideband or better (N3)?
+- [ ] Is there an echo path? Play a short chirp and check whether the mic
+      picks it up (acoustic coupling).
+- [ ] Is the headset in call mode (N1), and what is the round-trip latency
+      (see "Latency numbers")?
+
 ### N3. Call-mode detection from a recording (bandwidth analysis)
 Goal: after a mic test, report the *audio bandwidth* actually reaching
 Windows, which shows the Bluetooth codec in use even through a USB dongle,
@@ -283,3 +335,17 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
       planning/DONE-TODO.md); it needs no elevation, and a disabled Bluetooth
       Hands-Free mic leaves the headphones working.
 - [ ] Toggle for Windows' "communications activity" ducking
+
+### Nice to have (not the focus)
+Ideas from the 2026-11-27 brainstorm that the maintainer judged useful but
+outside the tool's focus; not planned.
+- **Automation and CLI:** a command-line mode (`set-default "Jabra*" --role
+  comms`, `list --json`) for scripts and Intune; rules ("when the headset
+  connects, make it the comms default"); hotkeys to cycle outputs or mute the
+  default mic.
+- **Wider hardware coverage:** what an HDMI / DisplayPort sink claims to
+  support (channels, rates, passthrough), a 5.1 / 7.1 speaker check with
+  level and delay measured through a mic, the active Bluetooth codec (if
+  Windows exposes it), virtual devices (Voicemeeter, VB-Cable, NVIDIA
+  Broadcast) and the chain through them, MIDI devices through Windows MIDI
+  Services.
