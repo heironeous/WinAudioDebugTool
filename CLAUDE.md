@@ -17,7 +17,7 @@ default / communications / both roles, per-device volume + mute, live dB level m
 and mic record-and-playback tests, per-channel tests, an event timeline, the apps using each device, raw vs
 call-processed mic recording (A/B), and a full property-store dump with human-readable key names.
 
-## Current state (as of v0.7.0, 2026-11-27)
+## Current state (as of v0.7.0 + admin restart, 2026-11-27)
 
 - Public on GitHub: <https://github.com/heironeous/WinAudioDebugTool>, branch `main` (work is committed straight to
   `main`, or on a feature branch merged by pull request when the maintainer asks for one, as for the visual refresh).
@@ -58,6 +58,12 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   outline + tint (disabled) and a yellow tint (unplugged); not present keeps only the inactive-row dimming. Tints are
   in `ListCell`, the outline in `ListRow`'s template (a copy of DataGridRow's default plus an overlay border). Seen on
   the desktop in dark; muted, light and high contrast not yet seen.
+- **Administrator rights** (2026-11-27): the app stays one unelevated exe — **no elevated helper** (the maintainer's
+  decision). `AppElevation.IsElevated` at startup; controls that need admin rights get
+  `local:AdminOnly.IsRequired="True"` (greyed out + tooltip hint without them; none marked yet); the toolbar's
+  **Restart as admin** relaunches the same exe via UAC `runas` and quits once the new copy has started. The toolbar
+  drops button labels when the window is narrow (`FitToolbar`). The UAC prompt and the elevated window are not
+  verified by an agent yet. See docs/design-notes.md.
 - **Next focus** (2026-11-27 brainstorm, in `TODO.md` "Next up"): N6 audio control centre, N7 reliability monitoring,
   N8 loopback and signal analysis, N9 pre-call check. CLI/automation and wider hardware coverage are "not the focus".
 - The maintainer's hardware (laptop): Jabra Link 390 USB dongle (headset speakers + mic; not plugged in on
@@ -125,7 +131,8 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   `DeviceInventoryService` (Driver tab: device tree via `Interop/DeviceNode.cs` (cfgmgr32), USB speed via
   `Interop/UsbHub.cs`, APOs from the endpoint's `FxProperties` registry key; pure helpers in `InventoryFormat`),
   `BluetoothConnectionService` (Connect / Disconnect via `Interop/BluetoothAudioControl.cs`: device topology →
-  `IKsControl` → `KSPROPSETID_BtAudio` one-shot reconnect / disconnect); the test
+  `IKsControl` → `KSPROPSETID_BtAudio` one-shot reconnect / disconnect), `AppElevation` (admin check, restart
+  elevated; `Views/AdminOnly` greys out controls that need admin rights); the test
   service's A/B recording runs three of them at once. `DeviceEnumerationService.EndpointNotified` carries each
   IMMNotificationClient callback in detail (for the event log) alongside the coarse `DevicesChanged`.
 - `ViewModels/` — `MainViewModel` (refresh/debounce, filters, grouping, selection, tests, side panels, event logging),
@@ -220,6 +227,10 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 22. **`Refresh()` rebuilds the rows (`Devices.Clear()`), and the DataGrid pushes a null selection into
     `SelectedDevice` meanwhile.** Logic that reacts to "the user picked another device" must ignore changes while
     `_isRebuildingRows` is set (the Disable button's pinned row was lost this way).
+23. **Elevation.** Never add an elevated helper exe or a `requireAdministrator` manifest: the app is one unelevated exe,
+    admin-only controls use `AdminOnly.IsRequired`, and **Restart as admin** relaunches it. Clicking that button in an
+    automated check pops a UAC prompt on the maintainer's screen — don't. UI Automation from an unelevated shell can't
+    drive an elevated window (UIPI). CI runners are elevated, so tests touching `AppElevation` must pass both ways.
 
 ## Verifying changes (techniques that worked)
 

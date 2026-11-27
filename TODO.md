@@ -308,11 +308,19 @@ Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
 - [ ] **Release hardening.** Code signing (see "Project setup"), GitHub
       build-provenance attestation for the exe, GitHub Actions pinned to
       commit SHAs, Dependabot, CodeQL for C#.
-- [ ] **Least privilege.** The app runs unelevated. Detect whether it runs as
+- [x] **Least privilege.** The app runs unelevated. Detect whether it runs as
       administrator, and show features that need elevation only when they
       can work (or show them disabled, with the reason in the tooltip).
-      If a feature needs admin rights, prefer a small elevated helper that
-      runs one narrow command and exits.
+      Done: the app stays one exe, with no elevated helper (the maintainer's
+      decision). `AppElevation.IsElevated` is checked once at startup; a
+      control marked `local:AdminOnly.IsRequired="True"` is greyed out
+      without admin rights, its tooltip saying to use **Restart as admin**.
+      That toolbar button starts the same exe again through UAC ("runas",
+      same arguments) and closes this copy once the new one has started;
+      if the UAC prompt is cancelled the app keeps running. Elevated, the
+      button gives way to an "Administrator" label and the title says
+      "(Administrator)". No feature needs admin rights yet, so nothing is
+      marked; N7's glitch detection is the likely first.
 
 **Code**
 - [ ] **CsWin32 source generator** for new Win32/COM interop: declarations

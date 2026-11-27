@@ -701,6 +701,46 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         RequestRefresh();
     }
 
+    // ---- Administrator rights ----------------------------------------------------------------------------------------
+
+    /// <summary>Whether the app runs with administrator rights. Controls that need them are marked with
+    /// <c>AdminOnly.IsRequired</c> and greyed out otherwise.</summary>
+    public bool IsElevated => AppElevation.IsElevated;
+
+    private bool _isRestartingAsAdmin;
+
+    /// <summary>False while Windows' UAC prompt is up, so a second click doesn't start a second copy.</summary>
+    public bool CanRestartAsAdmin => !IsElevated && !_isRestartingAsAdmin;
+
+    /// <summary>Starts this exe again with administrator rights (and the same arguments). Returns true once the new
+    /// copy has started; the caller then closes this one. If the user cancels the UAC prompt, this copy keeps
+    /// running.</summary>
+    public async Task<bool> RestartAsAdminAsync()
+    {
+        if (!CanRestartAsAdmin) return false;
+
+        _isRestartingAsAdmin = true;
+        OnPropertyChanged(nameof(CanRestartAsAdmin));
+        SetStatus("Restarting as administrator — confirm in the Windows prompt…");
+        try
+        {
+            var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
+            // Off the UI thread: ShellExecute blocks while the UAC prompt is up.
+            var result = await Task.Run(() => AppElevation.RestartElevated(args));
+            if (result.HasStarted) return true;
+
+            SetStatus(result.WasCancelled
+                ? "Restart as administrator cancelled; still running without admin rights."
+                : $"Couldn't restart as administrator: {result.Error}");
+            return false;
+        }
+        finally
+        {
+            _isRestartingAsAdmin = false;
+            OnPropertyChanged(nameof(CanRestartAsAdmin));
+        }
+    }
+
     // ---- Enable / disable an endpoint ------------------------------------------------------------------------------
 
     /// <summary>Any endpoint Windows still has (Not present ones are only remembered, not there to switch).</summary>
@@ -1412,7 +1452,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             Timestamp = DateTimeOffset.Now,
             Kind = AudioEventKind.Started,
             Source = AudioEventSource.ThisApp,
-            Detail = $"Started: {Devices.Count} endpoints, {active} active. "
+            Detail = $"Started{(IsElevated ? " as administrator" : "")}: {Devices.Count} endpoints, {active} active. "
                      + $"Default output: {DefaultName(AudioDirection.Output, false)}; "
                      + $"comms output: {DefaultName(AudioDirection.Output, true)}; "
                      + $"default input: {DefaultName(AudioDirection.Input, false)}; "

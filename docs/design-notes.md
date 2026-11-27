@@ -599,6 +599,40 @@ The Windows Sound settings' **Connect** / **Disconnect** button for a Bluetooth 
   speakers and the webcam and "Disconnect" for the connected Jabra. The maintainer then used Disconnect and Connect on
   the Jabra Evolve3 75 (Bluetooth Classic, laptop): both worked. LE Audio (`APXENUM` under `BTHLE`) is untried.
 
+## Administrator rights (2026-11-27)
+
+The app stays a single exe that runs unelevated (`asInvoker` in `app.manifest`); features that need administrator
+rights are greyed out until the user restarts it elevated. A separate elevated helper was considered and rejected by
+the maintainer: users should only ever download one exe.
+
+- **Detection.** `AppElevation.IsElevated`: `WindowsPrincipal.IsInRole(Administrator)` on the process token, once at
+  startup. With UAC on, an administrator's normal (filtered) token reports false, so only a copy started "as
+  administrator" counts. Elevation can't change while a process runs.
+- **Marking a feature.** `local:AdminOnly.IsRequired="True"` (an attached property, `Views/AdminOnly.cs`). Without
+  admin rights it sets `IsEnabled = false` as a local value (replacing any IsEnabled binding, which is fine because the
+  state is permanent), `ToolTipService.ShowOnDisabled`, and appends `AppElevation.AdminRequiredHint` to the control's
+  own tooltip on Loaded (a bound tooltip isn't resolved while the XAML loads; a non-text tooltip is replaced). Elevated,
+  it does nothing. No control uses it yet.
+- **Restart.** **Restart as admin** calls `ShellExecute` with the `runas` verb on `Environment.ProcessPath` (the
+  single-file exe), the same command-line arguments (re-quoted by `AppElevation.JoinArguments`, unit-tested against
+  `CommandLineToArgvW`) and working directory. It runs on a pool thread because ShellExecute blocks while the UAC
+  prompt is up; the button is disabled meanwhile. Only once the new process has started does this copy shut down
+  (normal close: tests and streams stopped, event log saved). `ERROR_CANCELLED` (1223) means the user said no; the app
+  keeps running and says so in the status bar.
+- **Elevated look.** The button gives way to a shield + "Administrator" label; the window title gets
+  "(Administrator)"; the event log's Started entry says "Started as administrator".
+- **Toolbar width.** The extra button made the toolbar wider than the default window (1,200 px) can comfortably hold;
+  below ~1,190 px the DockPanel clipped the filter chips (already below ~1,040 px before). `FitToolbar` (on the toolbar's
+  SizeChanged and when a button label or chip count changes) drops labels until everything fits: "Also show", then the
+  labels of Restart as admin, Disable/Enable, Connect/Disconnect and Refresh; those buttons keep icon, tooltip and
+  accessible name. Measuring needs care: hiding a TextBlock only invalidates its direct parent's measure, so the
+  enclosing Button answers `Measure` from its cache; the whole chain up to the toolbar is invalidated first.
+- **Verification.** Unelevated on the desktop via UI Automation: button enabled, tooltip correct, no Administrator
+  label, title without suffix; screenshots at 1,800 / 1,650 / 1,500 / 1,350 px (150 % scaling) show labels dropping
+  one by one with all chips visible. Not verified by an agent: the UAC prompt (accepting or cancelling it needs the
+  maintainer) and the elevated window. UI Automation from an unelevated PowerShell can't drive an elevated window
+  (UIPI), so checks of the elevated copy need an elevated shell.
+
 ## Disable / enable an endpoint (2026-11-26)
 
 The Windows Sound settings' **Disable** ("Don't allow" in the Windows 11 settings) is available in the toolbar.

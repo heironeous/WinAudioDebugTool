@@ -43,6 +43,11 @@ headphones still play). Works for every kind of device and needs no admin rights
 moves the default to another device, and back when it's enabled again. A row you disable stays in the list while it's
 selected, even with the **Disabled** chip off.
 
+**Administrator rights** — the app runs without them. Features that need them (none yet) are greyed out, and their
+tooltip says so. **Restart as admin** in the toolbar starts the app again with administrator rights: Windows asks for
+permission first, and if you say no, the app keeps running as it is. Running as administrator, the toolbar shows
+**Administrator** instead and the title bar says so.
+
 **Tests**
 - **Outputs:** play a short generated music clip (drums, bass, chords, melody), or play it on one speaker channel at
   a time (front left, centre, LFE, …) to check wiring and channel order.

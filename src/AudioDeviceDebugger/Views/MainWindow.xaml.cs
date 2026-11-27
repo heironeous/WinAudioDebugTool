@@ -41,6 +41,12 @@ public partial class MainWindow : Window
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         DataContext = _viewModel;
+        if (AppElevation.IsElevated)
+        {
+            Title += " (Administrator)";
+            RestartAsAdminButton.Visibility = Visibility.Collapsed;
+            AdminBadge.Visibility = Visibility.Visible;
+        }
         Closed += OnClosed;
         StateChanged += (_, _) => _viewModel.IsWindowMinimized = WindowState == WindowState.Minimized;
         ApplySidePanelLayout();
@@ -74,6 +80,56 @@ public partial class MainWindow : Window
         {
             ApplySidePanelLayout();
         }
+        else if (e.PropertyName is nameof(MainViewModel.BluetoothButtonText) or nameof(MainViewModel.EnableButtonText)
+                 or nameof(MainViewModel.UnpluggedDeviceCount) or nameof(MainViewModel.DisabledDeviceCount)
+                 or nameof(MainViewModel.NotPresentDeviceCount))
+        {
+            // The toolbar's content got wider or narrower; check after the new text is laid out.
+            Dispatcher.BeginInvoke(FitToolbar, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+    }
+
+    private void Toolbar_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged) FitToolbar();
+    }
+
+    /// <summary>Drops toolbar labels, least needed first, until the actions and the filter chips fit side by side
+    /// (otherwise the DockPanel clips the chips). The buttons keep their icon, tooltip and accessible name.</summary>
+    private void FitToolbar()
+    {
+        double available = Toolbar.ActualWidth;
+        if (available <= 0) return;
+
+        TextBlock[] labels = [AlsoShowLabel, RestartAsAdminLabel, EnableLabel, BluetoothLabel, RefreshLabel];
+        foreach (var label in labels) SetToolbarLabelShown(label, true);
+        for (int hidden = 0; hidden < labels.Length && ToolbarContentWidth() > available; hidden++)
+        {
+            SetToolbarLabelShown(labels[hidden], false);
+        }
+    }
+
+    // Changing a label's visibility only marks its direct parent for re-measuring; the button around it would
+    // answer Measure from its cache. Mark the whole chain up to the toolbar so ToolbarContentWidth sees the change.
+    private void SetToolbarLabelShown(TextBlock label, bool shown)
+    {
+        label.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        for (DependencyObject? element = label; element is not null && element != Toolbar; element = VisualTreeHelper.GetParent(element))
+        {
+            (element as UIElement)?.InvalidateMeasure();
+        }
+    }
+
+    private double ToolbarContentWidth()
+    {
+        double width = 0;
+        foreach (UIElement child in Toolbar.Children)
+        {
+            if (child.Visibility == Visibility.Collapsed) continue;
+            child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            width += child.DesiredSize.Width;
+        }
+        return width;
     }
 
     // Width the side panel had when last open (keeps the user's splitter position across collapse/expand).
@@ -262,4 +318,14 @@ public partial class MainWindow : Window
 
     private void EnableButton_Click(object sender, RoutedEventArgs e) =>
         _viewModel.ToggleSelectedEndpointEnabled();
+
+    // The elevated copy is already starting when this one closes (closing first would lose the app if the user
+    // said no to the UAC prompt). Closing runs OnClosed, which stops tests and streams and saves the event log.
+    private async void RestartAsAdminButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (await _viewModel.RestartAsAdminAsync())
+        {
+            Application.Current.Shutdown();
+        }
+    }
 }

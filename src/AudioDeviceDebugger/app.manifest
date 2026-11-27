@@ -23,7 +23,8 @@
   </application>
 
   <!-- No elevation required: default-device switching and level metering are user-level Core Audio
-       operations. -->
+       operations. Keep asInvoker: features that need admin rights are greyed out until the user clicks
+       "Restart as admin", which relaunches this exe elevated (Services/AppElevation.cs). -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
