@@ -62,8 +62,9 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   decision). `AppElevation.IsElevated` at startup; controls that need admin rights get
   `local:AdminOnly.IsRequired="True"` (greyed out + tooltip hint without them; none marked yet); the toolbar's
   **Restart as admin** relaunches the same exe via UAC `runas` and quits once the new copy has started. The toolbar
-  drops button labels when the window is narrow (`FitToolbar`). The UAC prompt and the elevated window are not
-  verified by an agent yet. See docs/design-notes.md.
+  drops button labels when the window is narrow (`FitToolbar`). Verified by the maintainer on the desktop, both with
+  UAC elevating admins silently (`ConsentPromptBehaviorAdmin = 0`) and with the prompt on (Yes →
+  elevated window, No → app keeps running unchanged). See docs/design-notes.md.
 - **Next focus** (2026-11-27 brainstorm, in `TODO.md` "Next up"): N6 audio control centre, N7 reliability monitoring,
   N8 loopback and signal analysis, N9 pre-call check. CLI/automation and wider hardware coverage are "not the focus".
 - The maintainer's hardware (laptop): Jabra Link 390 USB dongle (headset speakers + mic; not plugged in on

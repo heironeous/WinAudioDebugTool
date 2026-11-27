@@ -629,8 +629,10 @@ the maintainer: users should only ever download one exe.
   enclosing Button answers `Measure` from its cache; the whole chain up to the toolbar is invalidated first.
 - **Verification.** Unelevated on the desktop via UI Automation: button enabled, tooltip correct, no Administrator
   label, title without suffix; screenshots at 1,800 / 1,650 / 1,500 / 1,350 px (150 % scaling) show labels dropping
-  one by one with all chips visible. Not verified by an agent: the UAC prompt (accepting or cancelling it needs the
-  maintainer) and the elevated window. UI Automation from an unelevated PowerShell can't drive an elevated window
+  one by one with all chips visible. The maintainer restarted it as administrator on the desktop (v0.8.0), where UAC
+  is set to elevate administrators without prompting (`ConsentPromptBehaviorAdmin = 0`), so no prompt appeared.
+  With the UAC prompt turned on, Yes opened the elevated window (and closed the old one), and No left the unelevated
+  window running unchanged. UI Automation from an unelevated PowerShell can't drive an elevated window
   (UIPI), so checks of the elevated copy need an elevated shell.
 
 ## Disable / enable an endpoint (2026-11-26)
