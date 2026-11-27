@@ -17,7 +17,7 @@ default / communications / both roles, per-device volume + mute, live dB level m
 and mic record-and-playback tests, per-channel tests, an event timeline, the apps using each device, raw vs
 call-processed mic recording (A/B), and a full property-store dump with human-readable key names.
 
-## Current state (as of v0.4.1 + Bluetooth connect, 2026-11-26)
+## Current state (as of v0.7.0, 2026-11-27)
 
 - Public on GitHub: <https://github.com/heironeous/WinAudioDebugTool>, branch `main` (work is committed straight to
   `main`, or on a feature branch merged by pull request when the maintainer asks for one, as for the visual refresh).
@@ -50,11 +50,11 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
 - v0.4.1 (2026-11-26): the grouping chip names the grouping a click switches to ("By device" / "By input / output",
   style `SwitchChip`, no checked highlight), and the Raw recording tab is disabled while an output is selected
   (`MainViewModel.CanOpenRecordingsPanel`; selecting an output closes the panel).
-- Bluetooth **Connect / Disconnect** toolbar button (2026-11-26, `feat:`): see docs/design-notes.md. Verified by the
+- Bluetooth **Connect / Disconnect** toolbar button (2026-11-26, released as v0.5.0): see docs/design-notes.md. Verified by the
   maintainer on the Jabra Evolve3 75 over Bluetooth Classic; LE Audio untried (open item in `TODO.md`).
-- **Disable / Enable** toolbar button (2026-11-26): `IPolicyConfig::SetEndpointVisibility` on the selected endpoint;
+- **Disable / Enable** toolbar button (2026-11-26, released as v0.6.0): `IPolicyConfig::SetEndpointVisibility` on the selected endpoint;
   no admin needed; Windows moves a disabled default away and back on Enable. A USB dongle's mic is untried.
-- **Row colours by state** (2026-11-27): `DeviceRowViewModel.RowState` drives a soft red outline (muted), a red
+- **Row colours by state** (2026-11-27, released as v0.7.0): `DeviceRowViewModel.RowState` drives a soft red outline (muted), a red
   outline + tint (disabled) and a yellow tint (unplugged); not present keeps only the inactive-row dimming. Tints are
   in `ListCell`, the outline in `ListRow`'s template (a copy of DataGridRow's default plus an overlay border). Seen on
   the desktop in dark; muted, light and high contrast not yet seen.
