@@ -912,6 +912,7 @@
                                         <ColumnDefinition Width="74"/>
                                         <ColumnDefinition Width="52"/>
                                         <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="140"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="APP" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
                                     <TextBlock Grid.Column="1" Text="PROCESS · PID" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
@@ -919,6 +920,8 @@
                                     <TextBlock Grid.Column="3" Text="VOLUME" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"
                                                ToolTip="App volume (Windows volume mixer)"/>
                                     <TextBlock Grid.Column="4" Text="LEVEL" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource TextTertiary}"/>
+                                    <TextBlock Grid.Column="5" Text="{Binding SessionsRouteHeader}" Margin="12,0,0,0" FontSize="{StaticResource FontCaption}"
+                                               Foreground="{DynamicResource TextTertiary}" ToolTip="The device each app uses: the Windows default, or one chosen for the app"/>
                                 </Grid>
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                               Visibility="{Binding ShowSessions, Converter={StaticResource BoolToVisibility}}">
@@ -932,6 +935,7 @@
                                                         <ColumnDefinition Width="74"/>
                                                         <ColumnDefinition Width="52"/>
                                                         <ColumnDefinition Width="80"/>
+                                                        <ColumnDefinition Width="140"/>
                                                     </Grid.ColumnDefinitions>
                                                     <Grid.Style>
                                                         <Style TargetType="Grid">
@@ -964,6 +968,30 @@
                                                     <ProgressBar Grid.Column="4" Style="{StaticResource FlatMeter}" Minimum="0" Maximum="1"
                                                                  Value="{Binding MeterLevel, Mode=OneWay}" ToolTip="{Binding LevelText}"
                                                                  VerticalAlignment="Center"/>
+                                                    <!-- Per-app device (N6): a menu of the Windows default and the active devices. -->
+                                                    <Button Grid.Column="5" Click="RouteButton_Click" Style="{StaticResource FlatButton}" Margin="12,1,0,1"
+                                                            Padding="6,1" HorizontalContentAlignment="Stretch" ToolTip="{Binding RouteToolTip}"
+                                                            AutomationProperties.Name="{Binding RouteText, StringFormat='Device: {0}'}"
+                                                            Visibility="{Binding CanRoute, Converter={StaticResource BoolToVisibility}}">
+                                                        <DockPanel>
+                                                            <TextBlock DockPanel.Dock="Right" Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource IconSmall}"
+                                                                       Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                                            <TextBlock Text="{Binding RouteText}" FontSize="{StaticResource FontCaption}" TextTrimming="CharacterEllipsis"
+                                                                       VerticalAlignment="Center"/>
+                                                        </DockPanel>
+                                                    </Button>
+                                                    <TextBlock Grid.Column="5" Text="{Binding RouteText}" Margin="12,0,0,0" FontSize="{StaticResource FontCaption}"
+                                                               Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" ToolTip="{Binding RouteToolTip}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding CanRoute}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

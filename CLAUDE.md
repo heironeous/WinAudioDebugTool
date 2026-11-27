@@ -64,6 +64,9 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   drops button labels when the window is narrow (`FitToolbar`). Verified by the maintainer on the desktop, both with
   UAC elevating admins silently (`ConsentPromptBehaviorAdmin = 0`) and with the prompt on (Yes →
   elevated window, No → app keeps running unchanged). See docs/design-notes.md.
+- **Per-app routing** (N6, 2026-11-27): the Processes tab's OUTPUT / INPUT column, via the undocumented
+  `Interop/AudioPolicyConfig.cs` (see docs/design-notes.md). Verified end to end with a silent scratch process, and by the
+  maintainer moving an app between two Bluetooth headphones (Jabra Evolve3 75 and Evolve 75, desktop); Windows 10 untried.
 - **Next focus** (2026-11-27 brainstorm; features 1–4 in `TODO.md`): N6 audio control centre, N7 reliability
   monitoring, N8 loopback and signal analysis, N9 pre-call check (with N3 and the latency numbers as its
   prerequisites). CLI/automation and wider hardware coverage are "not the focus". `TODO.md` was reorganised on
@@ -119,8 +122,8 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 
 `src/AudioDeviceDebugger/` (MVVM, no DI container — services are new'd up in `Views/MainWindow.xaml.cs`):
 
-- `Interop/` — `IPolicyConfig` (undocumented default-endpoint setter), `EndpointPropertyReader` (fast keyed property
-  reads), `PropertyKeyNames.cs` (+ generated `.g.cs`: ~1,550 SDK PKEY/DEVPKEY names; `ManualNames` / `Undocumented`
+- `Interop/` — `IPolicyConfig` (undocumented default-endpoint setter), `AudioPolicyConfig` (undocumented per-app
+  devices; menu entries from `Services/AppRouting`), `EndpointPropertyReader` (fast keyed property reads), `PropertyKeyNames.cs` (+ generated `.g.cs`: ~1,550 SDK PKEY/DEVPKEY names; `ManualNames` / `Undocumented`
   for confirmed undocumented keys), `KnownGuidNames.cs` (+ generated `.g.cs`: 264 audio GUID constants).
 - `Services/` — `DeviceEnumerationService` (enumeration + IMMNotificationClient), `DefaultDeviceService`,
   `DeviceDetailsService` (formats; `GetProperties` separately, values made readable by `PropertyValueFormatter`), `EndpointVolumeService` (volume/mute + external-change
@@ -233,6 +236,10 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
     admin-only controls use `AdminOnly.IsRequired`, and **Restart as admin** relaunches it. Clicking that button in an
     automated check pops a UAC prompt on the maintainer's screen — don't. UI Automation from an unelevated shell can't
     drive an elevated window (UIPI). CI runners are elevated, so tests touching `AppElevation` must pass both ways.
+24. **Per-app devices** (`AudioPolicyConfig`): the setting is stored per app (executable) and survives restarts, so
+    never change a real app's device in an automated check, and never call `ClearAllPersistedApplicationDefaultEndpoints`
+    (it wipes every app's setting). Test on a scratch process that holds a silent session, and reset it afterwards.
+    `GetPersistedDefaultAudioEndpoint` returns E_INVALIDARG for a process that hasn't opened audio yet.
 
 ## Verifying changes (techniques that worked)
 
@@ -242,6 +249,9 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
   names ignore case: `$t = …` overwrites a `$T = [TreeScope]` alias, so name such aliases distinctly (`$Scope`).
   Selecting a headset *mic* row opens it (lesson 5) and can switch the headset into call mode — select the Intel
   array or an output when a test only needs "some input".
+- **Windows PowerShell 5.1 reads a script file without a BOM as ANSI**, so a "·" in it never matches the UI's text;
+  save scripts with `-Encoding UTF8` or avoid non-ASCII in them. Popups (menus) aren't in `PrintWindow` captures of
+  the window; grab their screen area while open instead.
 - **Screenshots**: `PrintWindow(hwnd, hdc, 2)` via a small Add-Type helper works even when the window is covered;
   `CopyFromScreen` returns black when the screen is locked, and WPF windows capture as plain white while the display
   is asleep (maintainer idle for minutes) — don't mistake that for a rendering bug. Re-declare the helper type in each new PowerShell process

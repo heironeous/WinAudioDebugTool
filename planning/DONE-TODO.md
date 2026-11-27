@@ -325,3 +325,19 @@ From the 2026-11-23 brainstorm; built on
       marked; N7's glitch detection is the likely first. Tested by the
       maintainer on the desktop with and without the UAC prompt (Yes →
       elevated window, No → the app keeps running unchanged).
+
+## Audio control centre (N6)
+- [x] **Per-app routing** (2026-11-27). The Processes tab has an OUTPUT
+      (INPUT for a mic) column: each app's device, "Default" when it
+      follows the Windows default. Its menu offers "Windows default (…)"
+      and every active device of the same direction; choosing one sets the
+      app's device like "App volume and device preferences" in the Windows
+      Sound settings (undocumented `Windows.Media.Internal.
+      AudioPolicyConfig` factory, as EarTrumpet uses; no admin rights).
+      Logged as an "App device" event. Not offered for the system sounds,
+      this app or exited processes. Tested end to end on the desktop with a
+      silent scratch process (set to the Jabra, read back, reset to the
+      default), and by the maintainer with two Bluetooth headphones on the
+      desktop (Jabra Evolve3 75 and Evolve 75): an app's sound moved from
+      one to the other. The Windows 10 interface ID is untested (see
+      docs/design-notes.md)

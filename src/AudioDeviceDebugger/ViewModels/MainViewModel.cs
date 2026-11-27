@@ -316,6 +316,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 _dispatcher.BeginInvoke(DispatcherPriority.Background, () => _devicesView.Refresh());
             }
             OnPropertyChanged(nameof(CanSetDefaults));
+            OnPropertyChanged(nameof(SessionsRouteHeader));
             OnBluetoothButtonChanged();
             OnEnableButtonChanged();
             OnPropertyChanged(nameof(CanOpenRecordingsPanel));
@@ -382,6 +383,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             if (value == SidePanel.Properties)
             {
                 LoadSelectedDeviceProperties(SelectedDevice);
+            }
+            if (value == SidePanel.Processes)
+            {
+                RefreshAppRoutes();
             }
             else if (previous == SidePanel.Properties)
             {
@@ -1266,6 +1271,102 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         SessionsSummary = others.Count == 0
             ? "No other app has this device open"
             : $"{others.Count} app session{(others.Count == 1 ? "" : "s")}, {streaming} streaming";
+        RefreshAppRoutes();
+    }
+
+    // ---- Per-app devices (N6) -----------------------------------------------------------------------------------------
+
+    private AudioPolicyConfig? _policyConfig;
+    private string? _policyConfigError;
+    private bool _policyConfigTried;
+
+    /// <summary>Windows' per-app device settings, created on first use on the UI thread and only used there.</summary>
+    private AudioPolicyConfig? PolicyConfig
+    {
+        get
+        {
+            if (!_policyConfigTried)
+            {
+                _policyConfigTried = true;
+                _policyConfig = AudioPolicyConfig.TryCreate(out _policyConfigError);
+            }
+            return _policyConfig;
+        }
+    }
+
+    private AudioDirection SelectedDirection => SelectedDevice?.Device.Direction ?? AudioDirection.Output;
+
+    private string SelectedDirectionWord => SelectedDirection == AudioDirection.Output ? "output" : "input";
+
+    /// <summary>Heading of the Processes tab's device column: an app on an output can be sent to another output,
+    /// an app on a mic to another mic.</summary>
+    public string SessionsRouteHeader => SelectedDirection == AudioDirection.Output ? "OUTPUT" : "INPUT";
+
+    /// <summary>Reads each listed app's per-app device (one call to the audio service per app), only while the
+    /// Processes tab is open.</summary>
+    private void RefreshAppRoutes()
+    {
+        if (_openSidePanel != SidePanel.Processes || SelectedDevice is null) return;
+        var direction = SelectedDirection;
+        string word = SelectedDirectionWord;
+        foreach (var row in SelectedDeviceSessions)
+        {
+            var info = row.Info;
+            if (info.IsSystemSounds || info.IsThisApp || info.ProcessExited)
+            {
+                row.SetRoute(false, null, null, word);
+                continue;
+            }
+            if (PolicyConfig is not { } config)
+            {
+                row.SetRoute(false, null, null, word, _policyConfigError);
+                continue;
+            }
+            try
+            {
+                string? endpointId = config.GetAppEndpoint(info.ProcessId, direction);
+                row.SetRoute(true, endpointId, EndpointName(endpointId), word);
+            }
+            catch (Exception ex)
+            {
+                row.SetRoute(false, null, null, word, ex.Message);
+            }
+        }
+    }
+
+    private string? EndpointName(string? endpointId) =>
+        endpointId is null ? null
+        : _knownDevices.TryGetValue(endpointId, out var info) ? info.FriendlyName
+        : _knownDevices.Values.FirstOrDefault(d => AppRouting.SameId(d.Id, endpointId))?.FriendlyName;
+
+    /// <summary>The entries of an app's device menu: the Windows default, then every active device of the same
+    /// direction (regardless of the list's filters).</summary>
+    public IReadOnlyList<RouteChoice> AppRouteChoices(SessionRowViewModel row) =>
+        AppRouting.BuildChoices(Devices.Select(d => d.Device), SelectedDirection, row.RouteEndpointId);
+
+    /// <summary>Sets the app's device (null: follow the Windows default again), like "App volume and device
+    /// preferences" in the Sound settings. Windows moves the app's streams that use the default device.</summary>
+    public void SetAppRoute(SessionRowViewModel row, string? endpointId)
+    {
+        var device = SelectedDevice;
+        if (device is null || !row.CanRoute || PolicyConfig is not { } config) return;
+
+        string word = SelectedDirectionWord;
+        string target = endpointId is null ? $"the Windows default {word}" : $"\"{EndpointName(endpointId) ?? endpointId}\"";
+        try
+        {
+            config.SetAppEndpoint(row.Info.ProcessId, SelectedDirection, endpointId);
+            SetStatus($"{row.AppName} now uses {target}.");
+            LogForDevice(endpointId ?? device.Device.Id, AudioEventKind.AppDeviceRequested, AudioEventSource.ThisApp,
+                $"{row.AppName} set to use {target}");
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Couldn't set the {word} of {row.AppName}: {ex.Message}");
+            LogForDevice(device.Device.Id, AudioEventKind.Error, AudioEventSource.ThisApp,
+                $"Failed to set the {word} of {row.AppName}: {ex.Message}");
+        }
+        RefreshAppRoutes();
     }
 
     /// <summary>Logs other apps starting / stopping a stream (Active ↔ Inactive, or a streaming session that went

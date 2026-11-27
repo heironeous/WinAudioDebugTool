@@ -61,6 +61,62 @@ public sealed class SessionRowViewModel : INotifyPropertyChanged
         }
     }
 
+    // ---- Per-app device (OUTPUT / INPUT column) --------------------------------------------------------------------
+
+    /// <summary>Whether the app's device can be chosen here: not for the system sounds, this app, or an app that has
+    /// exited (Windows only answers for running processes that use audio), nor when Windows didn't tell us
+    /// the app's current setting.</summary>
+    public bool CanRoute => !_info.IsSystemSounds && !_info.IsThisApp && !_info.ProcessExited && _routeKnown;
+
+    private bool _routeKnown;
+    private string? _routeEndpointId;
+    private string _routeText = "—";
+    private string _routeToolTip = "";
+
+    /// <summary>The endpoint the app is set to use instead of the Windows default, or null when it follows the
+    /// default.</summary>
+    public string? RouteEndpointId => _routeEndpointId;
+
+    /// <summary>"Default", the name of the device the app is set to, or "—" when it can't be set.</summary>
+    public string RouteText => _routeText;
+
+    public string RouteToolTip => _routeToolTip;
+
+    /// <summary>Shows the app's per-app device. <paramref name="known"/> is false when Windows didn't say
+    /// (<paramref name="reason"/> says why); <paramref name="endpointName"/> names <paramref name="endpointId"/>.</summary>
+    public void SetRoute(bool known, string? endpointId, string? endpointName, string direction, string? reason = null)
+    {
+        _routeKnown = known;
+        _routeEndpointId = known ? endpointId : null;
+        _routeText = RouteTextFor(_info, known, endpointId, endpointName);
+        _routeToolTip = RouteToolTipFor(_info, known, endpointId, endpointName, direction, reason);
+        OnPropertyChanged(nameof(CanRoute));
+        OnPropertyChanged(nameof(RouteEndpointId));
+        OnPropertyChanged(nameof(RouteText));
+        OnPropertyChanged(nameof(RouteToolTip));
+    }
+
+    internal static string RouteTextFor(AudioSessionInfo info, bool known, string? endpointId, string? endpointName) =>
+        info.IsSystemSounds || info.IsThisApp || info.ProcessExited || !known ? "—"
+        : endpointId is null ? "Default"
+        : endpointName ?? "Unknown device";
+
+    internal static string RouteToolTipFor(AudioSessionInfo info, bool known, string? endpointId, string? endpointName,
+        string direction, string? reason)
+    {
+        if (info.IsSystemSounds) return $"System sounds always use the Windows default {direction}.";
+        if (info.IsThisApp) return "This app opens the devices it tests directly.";
+        if (info.ProcessExited) return "The app has exited.";
+        if (!known) return $"Can't read this app's {direction} setting" + (reason is null ? "." : $": {reason}.");
+
+        string now = endpointId is null
+            ? $"Follows the Windows default {direction}."
+            : $"Set to \"{endpointName ?? endpointId}\" instead of the Windows default {direction}.";
+        return now + $"\nClick to choose the {direction} for this app, like \"App volume and device preferences\" in "
+               + "the Windows Sound settings. Windows remembers it per app, also after a restart. Apps that pick a "
+               + "device themselves (in their own settings) ignore it.";
+    }
+
     private float _peak;
     public float Peak
     {
@@ -82,7 +138,7 @@ public sealed class SessionRowViewModel : INotifyPropertyChanged
     {
         if (info == _info) return;
         _info = info;
-        OnPropertyChanged(string.Empty); // everything derived from Info
+        OnPropertyChanged(string.Empty); // everything derived from Info (the route is set again by the caller)
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

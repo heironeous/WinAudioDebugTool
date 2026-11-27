@@ -319,6 +319,22 @@ public partial class MainWindow : Window
     private void EnableButton_Click(object sender, RoutedEventArgs e) =>
         _viewModel.ToggleSelectedEndpointEnabled();
 
+    // An app's device menu (Processes tab): the Windows default, a separator, then the active devices.
+    private void RouteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: SessionRowViewModel row } button) return;
+
+        var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        foreach (var choice in _viewModel.AppRouteChoices(row))
+        {
+            if (choice.EndpointId is not null && menu.Items.Count == 1) menu.Items.Add(new Separator());
+            var item = new MenuItem { Header = choice.Name, IsChecked = choice.IsCurrent, IsEnabled = choice.IsAvailable };
+            if (!choice.IsCurrent) item.Click += (_, _) => _viewModel.SetAppRoute(row, choice.EndpointId);
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
     // The elevated copy is already starting when this one closes (closing first would lose the app if the user
     // said no to the UAC prompt). Closing runs OnClosed, which stops tests and streams and saves the event log.
     private async void RestartAsAdminButton_Click(object sender, RoutedEventArgs e)

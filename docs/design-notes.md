@@ -599,6 +599,41 @@ The Windows Sound settings' **Connect** / **Disconnect** button for a Bluetooth 
   speakers and the webcam and "Disconnect" for the connected Jabra. The maintainer then used Disconnect and Connect on
   the Jabra Evolve3 75 (Bluetooth Classic, laptop): both worked. LE Audio (`APXENUM` under `BTHLE`) is untried.
 
+## Per-app routing (N6, 2026-11-27)
+
+The Processes tab's OUTPUT / INPUT column sets the device an app uses instead of the Windows default, the same
+setting as "App volume and device preferences" in the Windows Sound settings.
+
+- **Interface.** There is no public API. `Interop/AudioPolicyConfig.cs` activates the WinRT factory
+  `Windows.Media.Internal.AudioPolicyConfig` (`RoGetActivationFactory`) and calls three methods of its undocumented
+  `IAudioPolicyConfigFactory`: `SetPersistedDefaultAudioEndpoint`, `GetPersistedDefaultAudioEndpoint` and
+  `ClearAllPersistedApplicationDefaultEndpoints` (declared, never called: it would wipe every app's setting). The
+  method order follows EarTrumpet's declaration. .NET no longer supports `InterfaceIsIInspectable`, so the interface is
+  declared as IUnknown with three placeholder slots for IInspectable's methods. The interface ID changed in Windows
+  build 21390: `ab3d4648-…` is tried first, then Windows 10's `2a59116d-…` (same layout as far as is known; untested).
+- **Values.** Device IDs go in and out as HSTRINGs in device-interface form,
+  `\\?\SWD#MMDEVAPI#{0.0.0.00000000}.{guid}#{interface class}` (render `e6327cad-…`, capture `2eef81be-…`);
+  `ToInterfacePath` / `FromInterfacePath` convert, unit-tested. An empty value means "follow the default". Set is
+  called for the console and multimedia roles, like the Sound settings; Get reads multimedia.
+- **Scope.** Windows stores the setting per app (its executable), not per process: it outlives the process and also
+  applies to the app's other processes. Get returns `E_INVALIDARG` for a process that hasn't used audio (and for
+  some service processes); the Processes tab only lists processes with audio sessions, so that shows up only as
+  "—" with the reason in the tooltip. Not offered for the system-sounds session (PID 0), this app's own sessions or
+  exited processes.
+- **Threading.** The factory is created on first use on the UI thread and only used there (lesson 3). Routes are
+  read only while the Processes tab is open: one call per listed app whenever the session list changes.
+- **UI.** The menu is a `ContextMenu` built in code-behind (`RouteButton_Click`) from `AppRouting.BuildChoices`:
+  "Windows default (current default)", a separator, every active endpoint of the same direction by name, and, if the
+  app is set to an endpoint that isn't active, that one marked unavailable. Theme.xaml got flat `ContextMenu`,
+  `MenuItem` and separator styles (implicit, app-wide; no submenus or shortcut column), and `FlatButton` now honours
+  `HorizontalContentAlignment`. Each change is logged as an "App device" event (Defaults filter).
+- **Verification.** A scratch harness first checked the vtable: it opened a silent stream, set its own output to
+  another endpoint, read the same ID back, and reset it. Then end to end via UI Automation on the desktop: a scratch
+  process holding a silent idle session on the default output showed "Default"; picking the Jabra in its menu showed
+  the Jabra, and "Windows default" restored "Default" (status line and two events as expected). The maintainer then
+  connected a second Bluetooth headset (Jabra Evolve 75 next to the Evolve3 75) and confirmed an app's sound moves from
+  one to the other. Windows 10 is still untried.
+
 ## Administrator rights (2026-11-27)
 
 The app stays a single exe that runs unelevated (`asInvoker` in `app.manifest`); features that need administrator

@@ -68,7 +68,10 @@ colour zones (yellow from −12 dB, red from −3 dB), and per-channel meters.
   `%LOCALAPPDATA%\AudioDeviceDebugger`, kept for 14 days.
 - **Processes** — which applications have the selected device open (app, process and PID, streaming or idle, the app's
   own volume, live level). Opening a Bluetooth/USB headset's mic is what switches it into low-quality "call mode", so
-  this shows who is doing it.
+  this shows who is doing it. The **Output** (or **Input**) column shows the device each app uses and lets you change
+  it: send Spotify to the speakers while Teams stays on the headset, like "App volume and device preferences" in the
+  Windows Sound settings. Windows remembers the choice per app; **Windows default** undoes it. Apps that pick a device
+  in their own settings ignore it.
 - **Raw recording** — **Record A/B** records the selected mic three ways *at the same time*: **Raw** (no
   processing), **Call** (what call apps such as Teams or Webex receive — i.e. what the other side hears, before the
   app's own processing) and **Standard** (what most apps get), then plays Raw and Call back to back. Each take shows

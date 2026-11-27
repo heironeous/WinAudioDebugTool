@@ -24,11 +24,11 @@ controls with `AdminOnly.IsRequired` (see docs/design-notes.md,
 "Administrator rights").
 
 ## 1. Audio control centre (N6)
-Manage what Windows hides several menus deep.
-- [ ] **Per-app routing.** Send one app (Teams) to the headset and another
-      (Spotify) to the speakers, through the undocumented
-      `IAudioPolicyConfigFactory` (the interface EarTrumpet and SoundSwitch
-      use). Lives in the Processes tab, next to per-app volume and mute.
+Manage what Windows hides several menus deep. Per-app routing is done (see
+planning/DONE-TODO.md).
+- [ ] **Per-app volume and mute.** Make the Processes tab's VOLUME column
+      adjustable (it only shows the app's volume today), next to the
+      per-app device.
 - [ ] **Endpoint settings in one place.** The shared-mode format (sample
       rate / bit depth, via `IPolicyConfig`), the "allow exclusive mode"
       flags, audio enhancements on/off and the spatial sound mode.
