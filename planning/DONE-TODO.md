@@ -3,7 +3,8 @@
 Finished features, moved here from [TODO.md](../TODO.md), which keeps the open
 items and the roadmap. A checked item is implemented and was tested by hand on
 Windows 11 on a development machine (see "Testing" in
-[README.md](../README.md)); there are no automated tests yet. Implementation
+[README.md](../README.md)); the hardware-free logic also has unit tests
+(`tests/AudioDeviceDebugger.Tests`). Implementation
 and verification notes for the larger features are in
 [docs/design-notes.md](../docs/design-notes.md).
 
@@ -242,3 +243,85 @@ docs/design-notes.md, "Visual refresh".
       an "Endpoint" event. Tested on the Realtek speakers and the Intel array
       (meter stream reopens after Enable) and by the maintainer on default
       devices and the Jabra Evolve3 75 mic (see docs/design-notes.md)
+
+## Tests, Driver tab, grouping and themes (v0.4.0, 2026-11-26)
+From the 2026-11-23 brainstorm; built on
+`feature/tests-inventory-grouping-theme` and merged in PR #2.
+- [x] Automated tests for the pure-logic parts that don't need audio hardware:
+      event log merging and filters, exporters, `LevelScale`, `ChannelLayout`
+      (an offline harness covered the event log during development).
+      Done: `tests/AudioDeviceDebugger.Tests` (xUnit, 114 tests), also the
+      property-value decoders, the daily log files, the channel conversion and
+      the device rows' "in use" text; CI runs them on every push to `main` and
+      on pull requests, which are built but not released.
+- [x] **Device grouping.** Group the endpoints of one physical device by
+      container ID (`DEVPKEY_Device_ContainerId`), e.g. "Jabra Evolve3 75"
+      with its Speakers and Microphone rows. Switch the device list from a
+      flat list to a grouped view (collapsible groups; built-in devices in a
+      "This PC" group).
+      Done: a **By device** chip in the DEVICE header switches between
+      OUTPUTS / INPUTS and one group per container; while grouped it reads
+      **By input / output**, the grouping a click returns to (state lines then say
+      "Output ·" / "Input ·"). Group names come from the endpoints: the
+      interface name ("Jabra Link 380"), or the monitor name for HDMI /
+      DisplayPort ("ASUS VP28U", not "NVIDIA High Definition Audio"). Groups
+      with an active endpoint come first. Every group heading (sections too)
+      collapses on click and stays collapsed across refreshes. Not kept
+      between app starts (the app has no settings file yet).
+- [x] **Device inventory.** Driver name, version and date, USB VID/PID and
+      USB speed, and the processing modules (APOs) installed per endpoint
+      (`FxProperties` keys).
+      Done as a fifth side-panel tab, **Driver** (read only while it is open):
+  - Device: name, manufacturer, connection (the first real bus in the device
+    tree, so a Bluetooth LE Audio headset reads "Bluetooth", not the USB
+    adapter its radio hangs off), Device Manager status, hardware and
+    instance ID.
+  - Driver: description, provider, version, date, INF file and section,
+    service, generic class driver or not.
+  - USB (USB audio devices only): product, VID / PID, revision, composite
+    interface, speed from the hub (IOCTL_USB_GET_NODE_CONNECTION_INFORMATION
+    _EX and _EX_V2; works unelevated), declared USB version, port and hub.
+  - Audio effects: every SFX / MFX / EFX (and composite, legacy, keyword and
+    offload) slot in the endpoint's `FxProperties` key, named from the APO
+    registration, the COM class or the driver package that installed it
+    (`{APO CLSID},100`); effect packs; supported processing modes; whether
+    enhancements are switched off.
+  - Copy as text.
+- [x] **Follow the Windows theme.** A light theme next to the dark one, chosen
+      from the Windows app mode, plus high-contrast support.
+      Done: palettes in `Views/Themes/Dark.xaml` and `Light.xaml`; with high
+      contrast on, a palette from Windows' system colours (no translucency,
+      the selected row outlined). `ThemeManager` follows changes while the
+      app runs (title bar and level graph too); `--theme=light|dark|
+      high-contrast` forces one. Unit tests check that the palettes define
+      the same keys and that text meets 4.5:1 contrast (dark tertiary text
+      was brightened from #8F8F96 to #9C9CA3 to pass on raised surfaces).
+      Not tested with a real Windows contrast theme switched on.
+
+## Row colours by state (v0.7.0, 2026-11-27)
+- [x] **Row colours by state.** Muted, disabled, unplugged and not-present
+      devices easy to tell apart in the list.
+      Done (`DeviceRowViewModel.RowState`): muted → soft red outline;
+      disabled → stronger red outline plus red tint; unplugged → soft yellow
+      tint; not present → only the existing dimming (opacity 0.55, kept for
+      every inactive row). The tint is drawn in the cell between the
+      hover/selection background and the text, the outline in a copy of
+      DataGridRow's template on top of the cells (no layout shift). High
+      contrast: outlines only, no tints. Muted not yet seen on real hardware.
+
+## Administrator rights (v0.8.0, 2026-11-27)
+- [x] **Least privilege.** The app runs unelevated. Detect whether it runs as
+      administrator, and show features that need elevation only when they
+      can work (or show them disabled, with the reason in the tooltip).
+      Done: the app stays one exe, with no elevated helper (the maintainer's
+      decision). `AppElevation.IsElevated` is checked once at startup; a
+      control marked `local:AdminOnly.IsRequired="True"` is greyed out
+      without admin rights, its tooltip saying to use **Restart as admin**.
+      That toolbar button starts the same exe again through UAC ("runas",
+      same arguments) and closes this copy once the new one has started;
+      if the UAC prompt is cancelled the app keeps running. Elevated, the
+      button gives way to an "Administrator" label and the title says
+      "(Administrator)". No feature needs admin rights yet, so nothing is
+      marked; N7's glitch detection is the likely first. Tested by the
+      maintainer on the desktop with and without the UAC prompt (Yes →
+      elevated window, No → the app keeps running unchanged).

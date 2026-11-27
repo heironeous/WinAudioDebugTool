@@ -37,16 +37,15 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   version). `.gitattributes` keeps `*.sh` LF — bash on the Windows runner fails on CRLF. Pull requests into `main`
   run the same tests and build, but the tag and release steps are skipped for them.
 - Docs: `README.md` is for users (features, requirements, build, caveats) — update it when a user-visible feature
-  changes; `TODO.md` holds the open items + roadmap (N3, N5 specified) and `planning/DONE-TODO.md` the finished
-  items (move an item there once it's done); `docs/design-notes.md` holds implementation and verification notes for
+  changes; `TODO.md` holds the open work as one feature list, highest priority first (N3, N5 specified), and
+  `planning/DONE-TODO.md` the finished items (move an item there once it's done); `docs/design-notes.md` holds implementation and verification notes for
   N1, N2, N4, the side-panel tabs and the visual refresh.
 - **Visual refresh** (2026-11-25): merged into `main` from `feature/visual-refresh` (PR #1, released as v0.3.0); its
   items are in `planning/DONE-TODO.md`. CI only runs on `main`, so feature branches get no CI build.
 - **Tests, Driver tab, grouping, themes** (2026-11-26): merged into `main` from
   `feature/tests-inventory-grouping-theme` (PR #2, released as v0.4.0): unit tests + CI test step (which also runs on
   pull requests into `main`, without tag or release), the Driver tab (device inventory), grouping by device, and the
-  light / high-contrast themes. Their items are still ticked in place in `TODO.md` ("Ideas from the 2026-11-23
-  brainstorm"); they have not been moved to `planning/DONE-TODO.md` yet.
+  light / high-contrast themes. Their items are in `planning/DONE-TODO.md`.
 - v0.4.1 (2026-11-26): the grouping chip names the grouping a click switches to ("By device" / "By input / output",
   style `SwitchChip`, no checked highlight), and the Raw recording tab is disabled while an output is selected
   (`MainViewModel.CanOpenRecordingsPanel`; selecting an output closes the panel).
@@ -65,8 +64,10 @@ call-processed mic recording (A/B), and a full property-store dump with human-re
   drops button labels when the window is narrow (`FitToolbar`). Verified by the maintainer on the desktop, both with
   UAC elevating admins silently (`ConsentPromptBehaviorAdmin = 0`) and with the prompt on (Yes →
   elevated window, No → app keeps running unchanged). See docs/design-notes.md.
-- **Next focus** (2026-11-27 brainstorm, in `TODO.md` "Next up"): N6 audio control centre, N7 reliability monitoring,
-  N8 loopback and signal analysis, N9 pre-call check. CLI/automation and wider hardware coverage are "not the focus".
+- **Next focus** (2026-11-27 brainstorm; features 1–4 in `TODO.md`): N6 audio control centre, N7 reliability
+  monitoring, N8 loopback and signal analysis, N9 pre-call check (with N3 and the latency numbers as its
+  prerequisites). CLI/automation and wider hardware coverage are "not the focus". `TODO.md` was reorganised on
+  2026-11-27 into one numbered feature list in priority order; keep new items in that shape.
 - The maintainer's hardware (laptop): Jabra Link 390 USB dongle (headset speakers + mic; not plugged in on
   2026-11-26), Realtek laptop speakers, Intel Smart Sound Technology 4-channel mic array, an HP 325 FHD webcam mic,
   plus many NotPresent endpoints from old USB headsets/dongles (Jabra Link 380, Poly BT700, Poly Voyager Focus 2, HP
@@ -253,8 +254,9 @@ The running app locks its exe: stop it before rebuilding (`Get-Process AudioDevi
 
 ## Open items / ideas (not started unless the maintainer asks)
 
-The roadmap and smaller open items live in `TODO.md` (N3 bandwidth analysis and N5 diagnostic report are fully
-specified there; N3/N5 still need the maintainer's go-ahead). Things only an agent needs to know:
+All open work lives in `TODO.md` as one feature list in priority order (N3 bandwidth analysis and N5 diagnostic
+report are fully specified there; every feature still needs the maintainer's go-ahead). Things only an agent needs to
+know:
 
 - Unconfirmed observations: the Jabra Link 390 mic read 0 / −∞ in every automated check (likely headset muted or
   boom up — never confirmed); the test music read 1.0 peak on the Realtek output meter (driver enhancements?).
@@ -267,7 +269,7 @@ specified there; N3/N5 still need the maintainer's go-ahead). Things only an age
   such as `{f112024a-…}` and `{5510c7ab-…}`); add to `PropertyKeyNames.Undocumented` only with a confirmed meaning —
   see lesson 16 and docs/design-notes.md.
 - The maintainer asked for explanations, not code, on the headset call-mode ideas (media-vs-call listening test,
-  disabling a headset mic, communications ducking) — they're listed in TODO under "Other ideas".
+  disabling a headset mic, communications ducking) — they're in `TODO.md` under features 1 and 6.
 - Bluetooth Connect / Disconnect: don't press it in automated checks without asking — it drops the maintainer's
   headset (often their default device). Check it silently by its label, enabled state and tooltip.
 - Disable / Enable: test only on endpoints the maintainer agreed to (the Realtek speakers and Intel array, never the

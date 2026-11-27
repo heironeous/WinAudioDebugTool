@@ -9,7 +9,7 @@ lives, what was measured, and what still hasn't been checked. User-facing docume
 verification notes is the development machine's: Realtek laptop speakers, an Intel Smart Sound Technology 4-channel
 mic array, and a Jabra Link 390 USB dongle (headset speakers and mic). Other hardware hasn't been tested.
 
-Feature numbers (N1–N5) are the order the features were planned in; N3 and N5 are still on the roadmap in TODO.md.
+Feature numbers (N1–N9) are the order the features were planned in; N3 and N5–N9 are still on the roadmap in TODO.md.
 
 ## N1. "Who's using this device" — implemented (2026-11-10)
 Goal: show which apps have a stream open on each device, especially the

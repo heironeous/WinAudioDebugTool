@@ -268,6 +268,6 @@ tables compiled into the app:
 
 ## Contributing
 
-Issues and pull requests are welcome. See [TODO.md](TODO.md) for the roadmap (bandwidth-based call-mode detection
-and a diagnostic report export are specified there) and [CLAUDE.md](CLAUDE.md) for the hard-won lessons about
-Core Audio, COM apartments and WPF that the code relies on — worth reading before changing services or interop.
+Issues and pull requests are welcome. See [TODO.md](TODO.md) for the roadmap, one feature list in priority order
+(bandwidth-based call-mode detection and a diagnostic report export are specified there), and [CLAUDE.md](CLAUDE.md)
+for the hard-won lessons about Core Audio, COM apartments and WPF that the code relies on — worth reading before changing services or interop.

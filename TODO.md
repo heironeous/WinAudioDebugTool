@@ -1,55 +1,47 @@
 # TODO — Windows Audio Device Debugger
 
-Open items and roadmap. Finished features — everything already implemented
-and tested by hand — are listed in
-[planning/DONE-TODO.md](planning/DONE-TODO.md). Implementation and
-verification notes for the larger features are in
+Open work as one list of features, **highest priority first**. Finished
+features are in [planning/DONE-TODO.md](planning/DONE-TODO.md);
+implementation and verification notes for the larger ones are in
 [docs/design-notes.md](docs/design-notes.md).
 
-## Project setup
-- [ ] License file
-- [ ] Code signing of the published executable
+- **Features 1–4** are the directions the maintainer picked as the next focus
+  in the 2026-11-27 brainstorm, in that order. What a feature needs first is
+  listed under it (N3 and the latency numbers under the pre-call check).
+- **Features 5–11** are the open items from the 2026-11-23 brainstorm and
+  earlier lists. They are ordered by how close they are to that focus
+  (call quality and troubleshooting first, project chores last); the
+  brainstorm didn't rank them.
+- The N numbers (N1–N9) are the order features were planned in and are used
+  in cross-references, the code and docs/design-notes.md.
 
-## Device details panel
-- [ ] Name more undocumented keys — ~170 still show as raw `{fmtid},pid`; no
-      public source documents them, so each needs its own confirmation
+Each feature needs a short spec (like N3 and N5 below) before it is built. If
+you'd like to work on one, please open an issue first to discuss it. Each
+feature lands as its own commit, with this file (and the README, if
+user-visible) updated in the same commit; once it is done, its items move to
+planning/DONE-TODO.md. Features that need administrator rights mark their
+controls with `AdminOnly.IsRequired` (see docs/design-notes.md,
+"Administrator rights").
 
-## Event timeline (N2)
-- [ ] Tray mode, so events are recorded all day without the window open
-
-## Raw recording (N4)
-- [ ] Raw *playback* (render) path — not covered
-
-## Roadmap
-
-Planned features, specified in enough detail to implement. If you'd like to
-work on one, please open an issue first to discuss it. Each feature should land
-as its own commit, with this file (and the README, if user-visible) updated in
-the same commit; once it is done, its items move to
-[planning/DONE-TODO.md](planning/DONE-TODO.md).
-
-### Next up: ideas from the 2026-11-27 brainstorm
-The maintainer picked these four directions as the next focus. Each needs a
-short spec (like N3 / N5) before it is built; features that need
-administrator rights mark their controls with `AdminOnly.IsRequired` (see
-"Least privilege" below).
-
-**N6. Audio control centre** — manage what Windows hides several menus deep.
+## 1. Audio control centre (N6)
+Manage what Windows hides several menus deep.
 - [ ] **Per-app routing.** Send one app (Teams) to the headset and another
       (Spotify) to the speakers, through the undocumented
       `IAudioPolicyConfigFactory` (the interface EarTrumpet and SoundSwitch
       use). Lives in the Processes tab, next to per-app volume and mute.
 - [ ] **Endpoint settings in one place.** The shared-mode format (sample
       rate / bit depth, via `IPolicyConfig`), the "allow exclusive mode"
-      flags, audio enhancements on/off, the spatial sound mode, and the
-      communications ducking toggle (see "Other ideas").
+      flags, audio enhancements on/off and the spatial sound mode.
+- [ ] **Communications ducking.** A toggle for Windows' "when Windows
+      detects communications activity" setting.
 - [ ] **Hardware controls through device topology.** Mic boost and hardware
       AGC (`IDeviceTopology` parts: `IAudioVolumeLevel`,
       `IAudioAutoGainControl`), plus a read-only topology view (connectors,
       volume / mute / AGC nodes). The Bluetooth code already walks the
       topology.
 
-**N7. Reliability monitoring** — "why did my audio break?"
+## 2. Reliability monitoring (N7)
+"Why did my audio break?"
 - [ ] **Glitch detection.** Count dropouts per device and app from the audio
       engine's ETW events (what WPA uses for glitch analysis) and show them
       on the event timeline. ETW real-time sessions usually need
@@ -57,30 +49,36 @@ administrator rights mark their controls with `AdminOnly.IsRequired` (see
 - [ ] **Correlate with the system logs.** Bluetooth disconnects, USB resets
       and power events from the Windows System event log on the same
       timeline ("the headset dropped 3 s after a USB selective suspend").
+- [ ] **Tray mode**, so events are recorded all day without the window open
+      (N2).
 - [ ] **Long-term stats per device:** disconnects per day, time spent in call
       mode, how often the default changed. Builds on N2's daily log files and
       tray mode.
 
-**N8. Seeing the signal: loopback and analysis**
+## 3. Seeing the signal: loopback and analysis (N8)
 - [ ] **Loopback capture of outputs** (WASAPI loopback): record what an
       output plays, to show its spectrum and check what render effects (APOs)
       change. Today the app can't record an output at all (see N3).
 - [ ] **Per-app capture** (process loopback, Windows 10 2004+): record only
       one app's audio, e.g. what Teams sends to the speakers.
+- [ ] **Raw playback path.** Play through an output with its render
+      processing bypassed, the counterpart of N4's raw mic capture.
 - [ ] **Live spectrum / spectrogram** for any device, generalising N3's
       planned `SpectrumView`.
 
-**N9. Pre-call check** — one button that answers "am I ready for this
-meeting?" with a short green / yellow / red list, for people who aren't audio
-experts.
+## 4. Pre-call check (N9)
+One button that answers "am I ready for this meeting?" with a short green /
+yellow / red list, for people who aren't audio experts.
 - [ ] Is the right mic the comms default, and is it unmuted?
-- [ ] Is the level OK, and is the bandwidth wideband or better (N3)?
+- [ ] Is the level OK, and is the bandwidth wideband or better (N3, below)?
 - [ ] Is there an echo path? Play a short chirp and check whether the mic
       picks it up (acoustic coupling).
 - [ ] Is the headset in call mode (N1), and what is the round-trip latency
-      (see "Latency numbers")?
+      (below)?
+- [ ] **Mic quality.** After a mic test: noise floor, signal-to-noise ratio,
+      clipped samples and DC offset, next to N3's bandwidth verdict.
 
-### N3. Call-mode detection from a recording (bandwidth analysis)
+### Needs first: call-mode detection from a recording (N3, specified)
 Goal: after a mic test, report the *audio bandwidth* actually reaching
 Windows, which shows the Bluetooth codec in use even through a USB dongle,
 where Windows sees no format change.
@@ -149,7 +147,20 @@ where Windows sees no format change.
   - Is the spectrum plot wanted, or only the one-line verdict?
   - Should "Record only" be added?
 
-### N5. Diagnostic report export
+### Needs first: latency numbers
+- [ ] Show the device period and the engine period (`IAudioClient` /
+      `IAudioClient3`), and add a round-trip test: play a click on an
+      output, detect it on a mic, report the delay in ms. Explain what the
+      number means for people, for example:
+  - under ~10 ms: not noticeable, even when you hear yourself (monitoring);
+  - ~20–30 ms: hearing yourself starts to sound like an echo; musicians
+    playing along feel it;
+  - audio more than ~45 ms behind the picture: lip-sync errors become
+    noticeable (ITU-R BT.1359);
+  - one-way delay in a call: up to ~150 ms is fine, beyond ~400 ms
+    conversation breaks down (ITU-T G.114).
+
+## 5. Diagnostic report and setup snapshots (N5, specified)
 Goal: one file describing the complete audio setup and its recent history.
 Useful for IT support or a vendor ticket, or to compare a "working" with a
 "broken" state.
@@ -210,141 +221,56 @@ Useful for IT support or a vendor ticket, or to compare a "working" with a
   - Should redaction be on by default?
   - Include driver details (driver version/date, USB VID/PID)
     now, or later?
+- [ ] **Setup snapshots.** Save the whole audio setup (defaults, volumes,
+      mute, formats, enhancements) as JSON, restore it, and diff two
+      snapshots ("what differs between the working and the broken state?").
+      Shares the data gathering with the report.
 
-### Ideas from the 2026-11-23 brainstorm
-Not specified yet. Each needs a short spec (like N3 / N5) before it is built.
-
-**Visual**
-- [ ] **Mini meter window.** A small, always-on-top window with one level bar
-      per active device, for watching during a call.
-- [x] **Follow the Windows theme.** A light theme next to the dark one, chosen
-      from the Windows app mode, plus high-contrast support.
-      Done: palettes in `Views/Themes/Dark.xaml` and `Light.xaml`; with high
-      contrast on, a palette from Windows' system colours (no translucency,
-      the selected row outlined). `ThemeManager` follows changes while the
-      app runs (title bar and level graph too); `--theme=light|dark|
-      high-contrast` forces one. Unit tests check that the palettes define
-      the same keys and that text meets 4.5:1 contrast (dark tertiary text
-      was brightened from #8F8F96 to #9C9CA3 to pass on raised surfaces).
-      Not tested with a real Windows contrast theme switched on.
-- [x] **Row colours by state.** Muted, disabled, unplugged and not-present
-      devices easy to tell apart in the list.
-      Done (`DeviceRowViewModel.RowState`): muted → soft red outline;
-      disabled → stronger red outline plus red tint; unplugged → soft yellow
-      tint; not present → only the existing dimming (opacity 0.55, kept for
-      every inactive row). The tint is drawn in the cell between the
-      hover/selection background and the text, the outline in a copy of
-      DataGridRow's template on top of the cells (no layout shift). High
-      contrast: outlines only, no tints. Muted not yet seen on real hardware.
-- [x] **Device grouping.** Group the endpoints of one physical device by
-      container ID (`DEVPKEY_Device_ContainerId`), e.g. "Jabra Evolve3 75"
-      with its Speakers and Microphone rows. Switch the device list from a
-      flat list to a grouped view (collapsible groups; built-in devices in a
-      "This PC" group).
-      Done: a **By device** chip in the DEVICE header switches between
-      OUTPUTS / INPUTS and one group per container; while grouped it reads
-      **By input / output**, the grouping a click returns to (state lines then say
-      "Output ·" / "Input ·"). Group names come from the endpoints: the
-      interface name ("Jabra Link 380"), or the monitor name for HDMI /
-      DisplayPort ("ASUS VP28U", not "NVIDIA High Definition Audio"). Groups
-      with an active endpoint come first. Every group heading (sections too)
-      collapses on click and stays collapsed across refreshes. Not kept
-      between app starts (the app has no settings file yet).
-
-**Functional**
-- [ ] **Setup snapshots.** Save the whole audio setup (defaults, volumes, mute,
-      formats, enhancements) as JSON, restore it, and diff two snapshots
-      ("what differs between the working and the broken state?"). Overlaps
-      with N5.
-- [ ] **Latency numbers.** Show the device period and the engine period
-      (`IAudioClient` / `IAudioClient3`), and add a round-trip test: play a
-      click on an output, detect it on a mic, report the delay in ms.
-      Explain what the number means for people, for example:
-  - under ~10 ms: not noticeable, even when you hear yourself (monitoring);
-  - ~20–30 ms: hearing yourself starts to sound like an echo; musicians
-    playing along feel it;
-  - audio more than ~45 ms behind the picture: lip-sync errors become
-    noticeable (ITU-R BT.1359);
-  - one-way delay in a call: up to ~150 ms is fine, beyond ~400 ms
-    conversation breaks down (ITU-T G.114).
-- [x] **Device inventory.** Driver name, version and date, USB VID/PID and
-      USB speed, and the processing modules (APOs) installed per endpoint
-      (`FxProperties` keys).
-      Done as a fifth side-panel tab, **Driver** (read only while it is open):
-  - Device: name, manufacturer, connection (the first real bus in the device
-    tree, so a Bluetooth LE Audio headset reads "Bluetooth", not the USB
-    adapter its radio hangs off), Device Manager status, hardware and
-    instance ID.
-  - Driver: description, provider, version, date, INF file and section,
-    service, generic class driver or not.
-  - USB (USB audio devices only): product, VID / PID, revision, composite
-    interface, speed from the hub (IOCTL_USB_GET_NODE_CONNECTION_INFORMATION
-    _EX and _EX_V2; works unelevated), declared USB version, port and hub.
-  - Audio effects: every SFX / MFX / EFX (and composite, legacy, keyword and
-    offload) slot in the endpoint's `FxProperties` key, named from the APO
-    registration, the COM class or the driver package that installed it
-    (`{APO CLSID},100`); effect packs; supported processing modes; whether
-    enhancements are switched off.
-  - Copy as text.
+## 6. Headsets and Bluetooth
 - [ ] **Bluetooth Connect / Disconnect on LE Audio.** The button (see
-      planning/DONE-TODO.md) is enabled for LE Audio headsets too, but was only
-      tried over Bluetooth Classic; check on the desktop's Evolve3 75.
-- [ ] **Bluetooth battery level** for headsets paired directly with Windows
-      (from the Bluetooth device's PnP properties). Doesn't apply to headsets
-      behind a USB dongle.
+      planning/DONE-TODO.md) is enabled for LE Audio headsets too, but was
+      only tried over Bluetooth Classic; check on the desktop's Evolve3 75.
+- [ ] **Disabling a USB dongle's mic.** Check that disabling the Jabra Link
+      390's mic keeps the headset out of call mode. Disable / Enable itself
+      is done; it needs no elevation, and a disabled Bluetooth Hands-Free mic
+      leaves the headphones working.
+- [ ] **Battery level** for headsets paired directly with Windows (from the
+      Bluetooth device's PnP properties). Doesn't apply to headsets behind a
+      USB dongle.
+- [ ] **A/B listening test** for headsets in media vs call mode (pair speaker
+      and mic by `DEVPKEY_Device_ContainerId`).
 
-**Measurement**
-- [ ] **Signal generator.** Sine, sine sweep, pink noise, a polarity test and
-      spoken "left"/"right" channel labels, per output and per channel.
-- [ ] **Mic quality report.** After a mic test: noise floor, signal-to-noise
-      ratio, clipped samples and DC offset, next to N3's bandwidth verdict.
-
-**Privacy and security**
+## 7. Microphone privacy
 - [ ] **Mic and camera access history.** Which apps used the microphone (and
       camera) and when, from the `CapabilityAccessManager\ConsentStore`
       registry data Windows keeps, shown as a per-app timeline.
 - [ ] **Live alert when an app opens the mic.** A notification (tray) when an
       app starts capturing, built on N1's session tracking.
-- [ ] **Release hardening.** Code signing (see "Project setup"), GitHub
-      build-provenance attestation for the exe, GitHub Actions pinned to
-      commit SHAs, Dependabot, CodeQL for C#.
-- [x] **Least privilege.** The app runs unelevated. Detect whether it runs as
-      administrator, and show features that need elevation only when they
-      can work (or show them disabled, with the reason in the tooltip).
-      Done: the app stays one exe, with no elevated helper (the maintainer's
-      decision). `AppElevation.IsElevated` is checked once at startup; a
-      control marked `local:AdminOnly.IsRequired="True"` is greyed out
-      without admin rights, its tooltip saying to use **Restart as admin**.
-      That toolbar button starts the same exe again through UAC ("runas",
-      same arguments) and closes this copy once the new one has started;
-      if the UAC prompt is cancelled the app keeps running. Elevated, the
-      button gives way to an "Administrator" label and the title says
-      "(Administrator)". No feature needs admin rights yet, so nothing is
-      marked; N7's glitch detection is the likely first.
 
-**Code**
+## 8. Mini meter window
+- [ ] A small, always-on-top window with one level bar per active device,
+      for watching during a call.
+
+## 9. Signal generator
+- [ ] Sine, sine sweep, pink noise, a polarity test and spoken "left" /
+      "right" channel labels, per output and per channel.
+
+## 10. Property names
+- [ ] Name more undocumented keys: ~170 still show as raw `{fmtid},pid`; no
+      public source documents them, so each needs its own confirmation.
+
+## 11. Project, release and code
+- [ ] **License file.**
+- [ ] **Code signing** of the published executable (releases are unsigned,
+      so SmartScreen warns).
+- [ ] **Release hardening.** GitHub build-provenance attestation for the
+      exe, GitHub Actions pinned to commit SHAs, Dependabot, CodeQL for C#.
 - [ ] **CsWin32 source generator** for new Win32/COM interop: declarations
       generated from the Win32 metadata instead of written by hand.
       Undocumented interfaces (`IPolicyConfig`) stay hand-written, and
       existing working interop is only converted when it is touched anyway.
 
-### Other ideas
-- [x] Automated tests for the pure-logic parts that don't need audio hardware:
-      event log merging and filters, exporters, `LevelScale`, `ChannelLayout`
-      (an offline harness covered the event log during development).
-      Done: `tests/AudioDeviceDebugger.Tests` (xUnit, 114 tests), also the
-      property-value decoders, the daily log files, the channel conversion and
-      the device rows' "in use" text; CI runs them on every push to `main` and
-      on pull requests, which are built but not released
-- [ ] A/B listening test for headsets in media vs call mode (pair speaker and
-      mic by `DEVPKEY_Device_ContainerId`)
-- [ ] Check that disabling a USB dongle's mic (Jabra Link 390) keeps the
-      headset out of call mode. Disable / Enable itself is done (see
-      planning/DONE-TODO.md); it needs no elevation, and a disabled Bluetooth
-      Hands-Free mic leaves the headphones working.
-- [ ] Toggle for Windows' "communications activity" ducking
-
-### Nice to have (not the focus)
+## Nice to have (not the focus)
 Ideas from the 2026-11-27 brainstorm that the maintainer judged useful but
 outside the tool's focus; not planned.
 - **Automation and CLI:** a command-line mode (`set-default "Jabra*" --role
